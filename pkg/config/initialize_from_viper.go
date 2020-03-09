@@ -2,10 +2,11 @@ package config
 
 import (
 	"fmt"
+	"reflect"
+
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"reflect"
 )
 
 // Viper itself is sadly not capable of resolving childs env when fetching the parent key

@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"os/exec"
 	"reflect"
 	"strings"
 	"syscall"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const flagTag = "flag"

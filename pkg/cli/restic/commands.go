@@ -14,12 +14,18 @@ import (
 	"github.com/mittwald/brudi/pkg/cli/tar"
 )
 
-const binary = "restic"
+const (
+	binary = "restic"
+)
 
-var RepoAlreadyInitialized = fmt.Errorf("repo already initialized")
+var (
+	ErrRepoAlreadyInitialized = fmt.Errorf("repo already initialized")
 
-var createBackupSnapshotIDPattern, createBackupParentSnapshotIDPattern, lsSnapshotSep, lsFileSep *regexp.Regexp
-var forgetSnapshotStartPattern, forgetSnapshotPattern, forgetConcreteSnapshotPattern, forgetSnapshotFinishedPattern *regexp.Regexp
+	createBackupSnapshotIDPattern, createBackupParentSnapshotIDPattern, lsSnapshotSep, lsFileSep                    *regexp.Regexp
+	forgetSnapshotStartPattern, forgetSnapshotPattern, forgetConcreteSnapshotPattern, forgetSnapshotFinishedPattern *regexp.Regexp
+
+	cmdTimeout = 6 * time.Hour
+)
 
 func Init() (string, error) {
 	createBackupSnapshotIDPattern = regexp.MustCompile(`snapshot ([0-9a-z]*) saved\n`)
@@ -55,11 +61,11 @@ func initBackup() ([]byte, error) {
 	if err != nil {
 		// s3 init-check
 		if strings.Contains(string(out), "config already initialized") {
-			return out, RepoAlreadyInitialized
+			return out, ErrRepoAlreadyInitialized
 		}
 		// file init-check
 		if strings.Contains(string(out), "file already exists") {
-			return out, RepoAlreadyInitialized
+			return out, ErrRepoAlreadyInitialized
 		}
 		return out, err
 	}
@@ -103,7 +109,7 @@ func CreateBackup(ctx context.Context, opts *BackupOptions, unlock bool) (Backup
 		Command: "backup",
 		Args:    cli.StructToCLI(opts),
 	}
-	out, err = cli.RunWithTimeout(ctx, cmd, 6*time.Hour)
+	out, err = cli.RunWithTimeout(ctx, cmd, cmdTimeout)
 	if err != nil {
 		return BackupResult{}, out, err
 	}
@@ -145,7 +151,7 @@ func CreateTarBackup(ctx context.Context, resticOpts *BackupOptions, tarName str
 		Nice:    &nice,
 		IONice:  &ionice,
 	}
-	out, err := cli.RunPipedWithTimeout(ctx, cmd1, cmd2, 6*time.Hour, nil)
+	out, err := cli.RunPipedWithTimeout(ctx, cmd1, cmd2, cmdTimeout, nil)
 	if err != nil {
 		return BackupResult{}, out, err
 	}
@@ -455,7 +461,7 @@ func RestoreTarBackup(ctx context.Context, resticOpts *RestoreOptions, tarName s
 		Nice:   &nice,
 		IONice: &ionice,
 	}
-	return cli.RunPipedWithTimeout(ctx, cmd1, cmd2, 6*time.Hour, nil)
+	return cli.RunPipedWithTimeout(ctx, cmd1, cmd2, cmdTimeout, nil)
 }
 
 // Tag executes "restic tag"

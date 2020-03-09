@@ -2,11 +2,12 @@ package restic
 
 import (
 	"fmt"
+	"os"
+	"reflect"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/mittwald/brudi/pkg/config"
 	log "github.com/sirupsen/logrus"
-	"os"
-	"reflect"
 )
 
 const (

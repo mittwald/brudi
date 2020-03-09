@@ -1,9 +1,10 @@
 package internal
 
 import (
+	"os"
+
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
-	"os"
 )
 
 func InitLogger() {

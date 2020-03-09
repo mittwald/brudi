@@ -2,11 +2,12 @@ package cmd
 
 import (
 	"context"
+	"os"
+
 	"github.com/mittwald/brudi/pkg/backend/mongo"
 	"github.com/mittwald/brudi/pkg/cli/restic"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 var (
@@ -72,7 +73,7 @@ var (
 			_ = os.Setenv("RESTIC_HOST", backend.GetHostname())
 
 			_, err = restic.Init()
-			if err == restic.RepoAlreadyInitialized {
+			if err == restic.ErrRepoAlreadyInitialized {
 				logMongoKindRestic.Info("restic repo is already initialized")
 			} else if err != nil {
 				logMongoKindRestic.WithError(err).Fatal("error while initializing restic repository")
