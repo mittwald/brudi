@@ -34,11 +34,11 @@ func InitializeStructFromViper(parentKey string, target interface{}) error {
 
 		var configKey string
 
-		if len(tag) == 0 {
+		if tag == "" {
 			configKey = v.Type().Field(i).Name
 		}
 
-		if len(parentKey) != 0 {
+		if parentKey != "" {
 			configKey = fmt.Sprintf("%s.%s", parentKey, configKey)
 		}
 

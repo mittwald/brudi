@@ -32,7 +32,7 @@ func (c *Config) InitFromViper() error {
 		return err
 	}
 
-	if len(c.Repository) == 0 {
+	if c.Repository == "" {
 		c.Repository = fmt.Sprintf(
 			"s3:%s/%s/%s",
 			c.Region,
@@ -60,7 +60,7 @@ func (c *Config) EnsureEnv() error {
 			continue
 		}
 
-		if len(os.Getenv(tag)) == 0 {
+		if os.Getenv(tag) == "" {
 			err := os.Setenv(tag, v.Field(i).String())
 			if err != nil {
 				return err

@@ -10,9 +10,9 @@ import (
 
 var (
 	// Used for flags.
-	cfgFile string
+	cfgFile   string
 	useRestic bool
-	cleanup bool
+	cleanup   bool
 
 	rootCmd = &cobra.Command{
 		Use:   "brudi",
@@ -25,7 +25,7 @@ var (
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().BoolVar(&useRestic, "restic",false, "backup result with restic and push it to s3")
+	rootCmd.PersistentFlags().BoolVar(&useRestic, "restic", false, "backup result with restic and push it to s3")
 
 	rootCmd.PersistentFlags().BoolVar(&cleanup, "cleanup", false, "cleanup backup files afterwards")
 

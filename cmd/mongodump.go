@@ -42,7 +42,7 @@ var (
 							"path": backend.GetBackupPath(),
 							"cmd":  "cleanup",
 						})
-					if err := os.RemoveAll(backend.GetBackupPath()); err != nil {
+					if err = os.RemoveAll(backend.GetBackupPath()); err != nil {
 						logMongoKindPath.WithError(err).Warn("failed to cleanup backup")
 					} else {
 						logMongoKindPath.Info("successfully cleaned up backup")

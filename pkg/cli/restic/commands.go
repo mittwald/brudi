@@ -71,7 +71,7 @@ func parseSnapshotOut(str string) (BackupResult, error) {
 
 	parentSnapshotID := createBackupParentSnapshotIDPattern.FindStringSubmatch(str)
 	snapshotID := createBackupSnapshotIDPattern.FindStringSubmatch(str)
-	if len(parentSnapshotID) >= 1 {
+	if len(parentSnapshotID) > 0 {
 		result.ParentSnapshotID = parentSnapshotID[1]
 	}
 	if len(snapshotID) == 0 {
@@ -179,7 +179,7 @@ func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
 		}
 
 		match := lsSnapshotSep.FindStringSubmatch(line)
-		if len(match) >= 1 {
+		if len(match) > 0 {
 			if current.SnapshotID != "" {
 				result = append(result, current)
 			}
@@ -201,7 +201,7 @@ func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
 		}
 
 		fileInfo := lsFileSep.FindStringSubmatch(line)
-		if len(fileInfo) >= 1 {
+		if len(fileInfo) > 0 {
 			size, err := strconv.ParseUint(fileInfo[4], 10, 64)
 			if err != nil {
 				continue
@@ -319,7 +319,7 @@ func Check(ctx context.Context, flags *CheckFlags) ([]byte, error) {
 }
 
 // Forget executes "restic forget"
-func Forget(ctx context.Context, opts *ForgetOptions) ([]string, []byte, error) {
+func Forget(ctx context.Context, opts *ForgetOptions) (removedSnapshots []string, output []byte, err error) {
 	opts.Flags.Compact = true // make sure compact mode is enabled to parse result correctly
 	cmd := cli.CommandType{
 		Binary:  binary,
@@ -337,7 +337,7 @@ func Forget(ctx context.Context, opts *ForgetOptions) ([]string, []byte, error) 
 	for _, line := range lines {
 		// check if output prints single remove lines (if concrete snapshot id(s) are given)
 		concreteID := forgetConcreteSnapshotPattern.FindStringSubmatch(line)
-		if len(concreteID) >= 1 {
+		if len(concreteID) > 0 {
 			deletedSnapshots = append(deletedSnapshots, concreteID[1])
 			continue
 		}
@@ -364,7 +364,7 @@ func Forget(ctx context.Context, opts *ForgetOptions) ([]string, []byte, error) 
 
 		// check if line contains a deleted snapshot id
 		match := forgetSnapshotPattern.FindStringSubmatch(line)
-		if len(match) >= 1 {
+		if len(match) > 0 {
 			deletedSnapshots = append(deletedSnapshots, match[1])
 		}
 	}
