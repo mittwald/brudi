@@ -8,9 +8,6 @@ on:
 jobs:
 
   publish:
-    # Ensure test job passes before pushing image.
-    needs: test
-
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
 
