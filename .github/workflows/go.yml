@@ -28,6 +28,10 @@ jobs:
 
       - name: golangci-lint
         uses: actions-contrib/golangci-lint@v1
+        env:
+          GOROOT: ""
+        with:
+          args: "run"
 
       - name: GoReleaser Action
         uses: goreleaser/goreleaser-action@v1.3
