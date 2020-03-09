@@ -11,3 +11,6 @@ build:
 		" \
 		-o $(BINARY_NAME) \
 		-a main.go
+
+lint:
+	docker run --rm -v $(pwd):/app -w /app golangci/golangci-lint:v1.23 golangci-lint run -v

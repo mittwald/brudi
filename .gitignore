@@ -2,3 +2,4 @@ brudi
 .idea
 .env
 example/.internal.yaml
+dist/
