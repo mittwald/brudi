@@ -6,8 +6,9 @@ import (
 	"reflect"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/mittwald/brudi/pkg/config"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/mittwald/brudi/pkg/config"
 )
 
 const (

@@ -4,10 +4,11 @@ import (
 	"context"
 	"os"
 
-	"github.com/mittwald/brudi/pkg/backend/mongo"
-	"github.com/mittwald/brudi/pkg/cli/restic"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
+	"github.com/mittwald/brudi/pkg/backend/mongo"
+	"github.com/mittwald/brudi/pkg/cli/restic"
 )
 
 var (

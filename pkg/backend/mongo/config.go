@@ -1,11 +1,12 @@
 package mongo
 
 import (
-	"github.com/mittwald/brudi/pkg/config"
 	"github.com/mongodb/mongo-tools-common/options"
 	"github.com/mongodb/mongo-tools/mongodump"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+
+	"github.com/mittwald/brudi/pkg/config"
 )
 
 const (
