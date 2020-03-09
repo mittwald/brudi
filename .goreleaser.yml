@@ -1,6 +1,5 @@
 before:
   hooks:
-    # You may remove this if you don't use go modules.
     - go mod download
     - make lint
 builds:
@@ -37,11 +36,11 @@ changelog:
 dockers:
   -
     image_templates:
+      - quay.io/mittwald/brudi:latest
       - quay.io/mittwald/brudi:v{{ .Major }}
       - quay.io/mittwald/brudi:v{{ .Major }}.{{ .Minor }}
       - quay.io/mittwald/brudi:{{ .Tag }}
       - quay.io/mittwald/brudi:stable
-      - quay.io/mittwald/brudi:latest
     binaries:
       - brudi
     goos: linux
