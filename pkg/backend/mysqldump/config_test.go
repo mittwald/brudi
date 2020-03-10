@@ -3,10 +3,11 @@ package mysqldump
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var testConfSHA256 = "8c3cf10504b5b401d9954bb266519bfdd9c53f3a50023471ccce6e8c47902987"

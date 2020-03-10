@@ -3,9 +3,11 @@ package mysqldump
 import (
 	"context"
 	"fmt"
-	"github.com/mittwald/brudi/pkg/cli"
-	"github.com/pkg/errors"
 	"os"
+
+	"github.com/pkg/errors"
+
+	"github.com/mittwald/brudi/pkg/cli"
 )
 
 type ConfigBasedBackend struct {

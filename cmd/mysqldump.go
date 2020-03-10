@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"context"
-	"github.com/mittwald/brudi/pkg/backend/mysqldump"
-	"github.com/mittwald/brudi/pkg/cli/restic"
+	"os"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
+
+	"github.com/mittwald/brudi/pkg/backend/mysqldump"
+	"github.com/mittwald/brudi/pkg/cli/restic"
 )
 
 var (

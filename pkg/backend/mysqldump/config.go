@@ -2,12 +2,14 @@ package mysqldump
 
 import (
 	"fmt"
-	"github.com/mittwald/brudi/internal"
-	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 	"html/template"
 	"io/ioutil"
 	"os"
+
+	"github.com/pkg/errors"
+	"github.com/spf13/viper"
+
+	"github.com/mittwald/brudi/internal"
 )
 
 const (
