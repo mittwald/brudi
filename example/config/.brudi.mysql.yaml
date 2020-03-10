@@ -1,0 +1,9 @@
+mysqldump:
+  clientOptions:
+    host: 127.0.0.1
+    port: 3306
+    password: mysqlroot
+    user: root
+    opt: true
+    all-databases: true
+  out: /tmp/test.sql

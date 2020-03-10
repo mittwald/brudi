@@ -1,4 +1,4 @@
-package mongo
+package mongodump
 
 import (
 	"github.com/mongodb/mongo-tools-common/options"
@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	Kind = "mongodb"
+	Kind = "mongodump"
 )
 
 type Config struct {

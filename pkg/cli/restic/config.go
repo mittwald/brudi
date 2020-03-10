@@ -18,11 +18,11 @@ const (
 type Config struct {
 	Repository      string `env:"RESTIC_REPOSITORY"`
 	Password        string `env:"RESTIC_PASSWORD" validate:"required,min=1"`
-	BucketName      string `validate:"required,min=1"`
+	BucketName      string
 	Host            string `validate:"required,min=1"`
 	AccessKeyID     string `env:"AWS_ACCESS_KEY_ID"`
 	SecretAccessKey string `env:"AWS_SECRET_ACCESS_KEY"`
-	Region          string `validate:"required,min=1"`
+	Region          string
 }
 
 // viper is sadly not capable of resolving childs env when fetching the parent key

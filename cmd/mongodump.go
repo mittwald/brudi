@@ -7,28 +7,29 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/mittwald/brudi/pkg/backend/mongo"
+	"github.com/mittwald/brudi/pkg/backend/mongodump"
 	"github.com/mittwald/brudi/pkg/cli/restic"
 )
 
 var (
 	mongoDumpCmd = &cobra.Command{
 		Use:   "mongodump",
-		Short: "Creates a mongodump of your desired database",
-		Long:  "Backups a given database with given arguments",
+		Short: "Creates a mongodump of your desired server",
+		Long:  "Backups a given database server with given arguments",
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			logMongoKind := log.WithFields(
 				log.Fields{
-					"kind": mongo.Kind,
+					"kind": mongodump.Kind,
 					"task": "mongodump",
-				})
+				},
+			)
 
-			backend, err := mongo.NewBackend()
+			backend, err := mongodump.NewBackend()
 			if err != nil {
-				logMongoKind.WithError(err).Fatal("failed while creating mongodb backend")
+				logMongoKind.WithError(err).Fatal("failed while creating backend")
 			}
 
 			err = backend.CreateBackup()

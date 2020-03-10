@@ -1,4 +1,4 @@
-package mongo
+package mongodump
 
 import (
 	"github.com/mongodb/mongo-tools-common/options"
@@ -6,12 +6,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Backend struct {
+type ConfigBasedBackend struct {
 	dump *mongodump.MongoDump
 	cfg  *Config
 }
 
-func NewBackend() (*Backend, error) {
+func newConfigBasedBackend() (*ConfigBasedBackend, error) {
 	config := &Config{
 		ToolOptions: &options.ToolOptions{
 			General:    &options.General{},
@@ -31,11 +31,11 @@ func NewBackend() (*Backend, error) {
 		return nil, err
 	}
 
-	return newBackendFromConfig(config)
+	return newConfigBasedBackendFromConfig(config)
 }
 
-func newBackendFromConfig(cfg *Config) (*Backend, error) {
-	return &Backend{
+func newConfigBasedBackendFromConfig(cfg *Config) (*ConfigBasedBackend, error) {
+	return &ConfigBasedBackend{
 		cfg: cfg,
 		dump: &mongodump.MongoDump{
 			ToolOptions:       cfg.ToolOptions,
@@ -49,7 +49,7 @@ func newBackendFromConfig(cfg *Config) (*Backend, error) {
 	}, nil
 }
 
-func (b *Backend) CreateBackup() error {
+func (b *ConfigBasedBackend) CreateBackup() error {
 	err := b.dump.Init()
 	if err != nil {
 		return errors.WithStack(err)
@@ -58,7 +58,7 @@ func (b *Backend) CreateBackup() error {
 	return errors.WithStack(b.dump.Dump())
 }
 
-func (b *Backend) GetBackupPath() string {
+func (b *ConfigBasedBackend) GetBackupPath() string {
 	out := b.dump.OutputOptions.Out
 	if len(b.dump.OutputOptions.Archive) > 0 {
 		out = b.dump.OutputOptions.Archive
@@ -67,6 +67,6 @@ func (b *Backend) GetBackupPath() string {
 	return out
 }
 
-func (b *Backend) GetHostname() string {
+func (b *ConfigBasedBackend) GetHostname() string {
 	return b.cfg.ToolOptions.Connection.Host
 }

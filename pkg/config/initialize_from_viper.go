@@ -46,13 +46,21 @@ func InitializeStructFromViper(parentKey string, target interface{}) error {
 		viperVal := viper.Get(configKey)
 		reflectedVal := reflect.ValueOf(viperVal)
 
-		log.WithFields(log.Fields{
-			"viperKey":       configKey,
-			"viperVal":       viperVal,
-			"reflectedValue": reflectedVal,
-		}).Debug("loading viper value into struct")
+		if reflectedVal == reflect.Zero(reflect.TypeOf(reflectedVal)) || viperVal == nil {
+			log.WithFields(log.Fields{
+				"viperKey":       configKey,
+				"viperVal":       viperVal,
+				"reflectedValue": reflectedVal,
+			}).Debug("skipping viper value due to non-existence")
+		} else {
+			log.WithFields(log.Fields{
+				"viperKey":       configKey,
+				"viperVal":       viperVal,
+				"reflectedValue": reflectedVal,
+			}).Debug("loading viper value into struct")
 
-		v.Field(i).Set(reflectedVal)
+			v.Field(i).Set(reflectedVal)
+		}
 	}
 
 	return nil

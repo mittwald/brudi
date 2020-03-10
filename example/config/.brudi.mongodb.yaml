@@ -1,8 +1,8 @@
-mongodb:
+mongodump:
   auth:
-    source: mongow
-    username: mongow
-    password: mongow
+    source: admin
+    username: root
+    password: mongodbroot
   connection:
     host: 127.0.0.1
     port: 27017
