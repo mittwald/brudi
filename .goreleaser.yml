@@ -1,6 +1,7 @@
 before:
   hooks:
     - go mod download
+    - make test
     - make lint
 builds:
 -
@@ -10,7 +11,7 @@ builds:
   ldflags:
     - -s
     - -w
-    - -X 'github.com/mittwald/brudi/cmd.commit={{ .Commit }}'
+    - -X 'github.com/mittwald/brudi/cmd.tag={{ .Tag }}'
   goos:
     - darwin
     - linux

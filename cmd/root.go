@@ -20,7 +20,7 @@ var (
 		Short: "Easy backup creation",
 		Long: `brudi's target is easy, incremental and encrypted backup creation for different backends (file, mongoDB, mysql, etc.).
  After backing up things, brudi uploads them to an S3 object storage.`,
-		Version: commit,
+		Version: tag,
 	}
 )
 

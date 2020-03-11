@@ -9,7 +9,7 @@ build:
 			-s \
 			-w \
 			-X \
-				'github.com/mittwald/brudi/cmd.commit=$(COMMIT_HASH)' \
+				'github.com/mittwald/brudi/cmd.tag=$(COMMIT_HASH)' \
 		" \
 		-o $(BINARY_NAME) \
 		-a main.go

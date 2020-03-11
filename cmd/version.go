@@ -7,9 +7,8 @@ import (
 )
 
 var (
-	author = "Dennis Hermsmeier <Mittwald CM Service>"
-	url    = "https://github.com/mittwald/brudi"
-	commit = ""
+	author = "Mittwald CM Service <https://github.com/mittwald/brudi>"
+	tag    = "dev"
 )
 
 func init() {
@@ -24,10 +23,9 @@ var versionCmd = &cobra.Command{
 		fmt.Printf(
 			""+
 				"\n"+
-				"Commit: %s\n"+
+				"Tag: %s\n"+
 				"Author: %s\n"+
-				"Visit: %s\n"+
 				"",
-			commit, author, url)
+			tag, author)
 	},
 }
