@@ -3,8 +3,9 @@ package backend
 import (
 	"context"
 	"fmt"
-	"github.com/mittwald/brudi/pkg/backend/tar"
 	"os"
+
+	"github.com/mittwald/brudi/pkg/backend/tar"
 
 	log "github.com/sirupsen/logrus"
 

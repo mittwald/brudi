@@ -3,7 +3,6 @@ package mysqldump
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/pkg/errors"
 
@@ -11,17 +10,17 @@ import (
 )
 
 type ConfigBasedBackend struct {
-	config Config
+	cfg Config
 }
 
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	backend := &ConfigBasedBackend{
-		config: Config{
-			ClientOptions: make(map[string]interface{}),
+		cfg: Config{
+			Flags: &Flags{},
 		},
 	}
 
-	err := backend.config.InitFromViper()
+	err := backend.cfg.InitFromViper()
 	if err != nil {
 		return nil, err
 	}
@@ -30,40 +29,23 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 }
 
 func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
-	dumpOut, err := os.Create(b.config.Out)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	defer func() {
-		_ = dumpOut.Close()
-	}()
-
-	flags := &Flags{DefaultsFile: b.config.clientMyCnfPath}
-
 	cmd := cli.CommandType{
 		Binary: binary,
-		Args:   cli.StructToCLI(flags),
+		Args:   cli.StructToCLI(b.cfg.Flags),
 	}
 
-	var out []byte
-	out, err = cli.Run(ctx, cmd)
+	out, err := cli.Run(ctx, cmd)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("%+v - %+v", out, err))
-	}
-
-	_, err = dumpOut.Write(out)
-	if err != nil {
-		return errors.WithStack(err)
+		return errors.WithStack(fmt.Errorf("%+v - %+v", err, out))
 	}
 
 	return nil
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {
-	return b.config.Out
+	return b.cfg.Flags.ResultFile
 }
 
 func (b *ConfigBasedBackend) GetHostname() string {
-	return fmt.Sprintf("%s", b.config.ClientOptions["host"])
+	return b.cfg.Flags.Host
 }

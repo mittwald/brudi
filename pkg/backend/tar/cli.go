@@ -14,7 +14,7 @@ type Flags struct {
 	Warning         []string `flag:"--warning"`
 	Exclude         []string `flag:"--exclude"`
 	Target          string   `flag:"-C"`
-	File            string   `flag:"-f"`
+	File            string   `flag:"-f" validate:"min=1"`
 }
 
 type Options struct {

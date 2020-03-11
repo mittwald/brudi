@@ -1,10 +1,11 @@
 package mongodump
 
 import (
-	"github.com/mongodb/mongo-tools-common/options"
-	"github.com/mongodb/mongo-tools/mongodump"
+	"fmt"
+
+	"github.com/go-playground/validator/v10"
+
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 
 	"github.com/mittwald/brudi/pkg/config"
 )
@@ -14,52 +15,23 @@ const (
 )
 
 type Config struct {
-	ToolOptions   *options.ToolOptions
-	InputOptions  *mongodump.InputOptions
-	OutputOptions *mongodump.OutputOptions
+	Options *Flags
 }
 
 func (c *Config) InitFromViper() error {
-	err := viper.UnmarshalKey(Kind, c.ToolOptions)
+	err := config.InitializeStructFromViper(fmt.Sprintf("%s.%s", Kind, "flags"), c.Options)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = viper.UnmarshalKey(
-		config.GenerateConfigKey(Kind, "inputOptions"),
-		c.InputOptions,
-	)
-	if err != nil {
-		return errors.WithStack(err)
-	}
+	return config.Validate(c, configStructLevelValidation)
+}
 
-	err = viper.UnmarshalKey(
-		config.GenerateConfigKey(Kind, "outputOptions"),
-		c.OutputOptions,
-	)
-	if err != nil {
-		return errors.WithStack(err)
-	}
+func configStructLevelValidation(sl validator.StructLevel) {
+	c := sl.Current().Interface().(Config)
 
-	err = viper.UnmarshalKey(
-		config.GenerateConfigKey(Kind, "auth.username"),
-		&c.ToolOptions.Auth.Username,
-	)
-	if err != nil {
-		return errors.WithStack(err)
+	if c.Options.Out == "" && c.Options.Archive == "" {
+		sl.ReportError(c.Options.Out, "out", "Out", "eitherOutOrArchiveRequired", "")
+		sl.ReportError(c.Options.Archive, "archive", "Archive", "eitherOutOrArchiveRequired", "")
 	}
-
-	err = viper.UnmarshalKey(
-		config.GenerateConfigKey(Kind, "auth.password"),
-		&c.ToolOptions.Auth.Password,
-	)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if c.OutputOptions.NumParallelCollections == 0 {
-		c.OutputOptions.NumParallelCollections = 1
-	}
-
-	return nil
 }

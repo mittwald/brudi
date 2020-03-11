@@ -1,47 +1,6 @@
 mongodump:
-  auth:
-    source: admin
-    username: root
-    password: mongodbroot
-  connection:
+  flags:
     host: 127.0.0.1
     port: 27017
-  namespace:
-    database: ""
-    collection: ""
-  inputOptions:
-    # query filter, as a v2 Extended JSON string, e.g., '{\"x\":{\"$gt\":1}}'
-    query: ""
-    # path to a file containing a query filter (v2 Extended JSON)
-    queryFile: ""
-    # specify either a preference mode (e.g. 'nearest') or a preference json object (e.g. '{mode: \"nearest\", tagSets: [{a: \"b\"}], maxStalenessSeconds: 123}')"
-    readPreference: ""
-    # force a table scan (do not use $snapshot or hint _id). Deprecated since this is default behavior on WiredTiger
-    tableScan: false
-  outputOptions:
-    # output directory, (default: 'dump')
-    out: "/tmp/mongo.dump"
-    # compress archive our collection output with Gzip
-    gzip: false
-    # use oplog for taking a point-in-time snapshot
-    oplog: false
-    # dump as an archive to the specified path.
-    #archive: "/tmp/dump.tar.gz"
-    # dump user and role definitions for the specified database
-    dumpDBUsersAndRoles: false
-    # collection to exclude from the dump (may be specified multiple times to exclude additional collections)
-    excludedCollections: []
-    # exclude all collections from the dump that have the given prefix (may be specified multiple times to exclude additional prefixes)
-    excludedCollectionPrefixes: []
-    # number of collections to dump in parallel
-    numParallelCollections: 4
-    # dump views as normal collections with their produced data, omitting standard collections
-    viewsAsCollections: false
-restic:
-  bucketName: "your.s3.bucket"
-  host: ""
-  accessKeyID: ""
-  secretAccessKey: ""
-  region: "s3.eu-central-1.amazonaws.com"
-  repository: ""
-  password: ""
+    gzip: true
+    archive: /tmp/dump.tar.gz

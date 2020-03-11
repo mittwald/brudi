@@ -2,73 +2,51 @@ package mongodump
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/mongodb/mongo-tools-common/options"
-	"github.com/mongodb/mongo-tools/mongodump"
+	"github.com/mittwald/brudi/pkg/cli"
+
 	"github.com/pkg/errors"
 )
 
 type ConfigBasedBackend struct {
-	dump *mongodump.MongoDump
-	cfg  *Config
+	cfg *Config
 }
 
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	config := &Config{
-		ToolOptions: &options.ToolOptions{
-			General:    &options.General{},
-			Verbosity:  &options.Verbosity{},
-			Connection: &options.Connection{},
-			SSL:        &options.SSL{},
-			Auth:       &options.Auth{},
-			Namespace:  &options.Namespace{},
-			Kerberos:   &options.Kerberos{},
-			URI:        &options.URI{},
-		},
-		InputOptions:  &mongodump.InputOptions{},
-		OutputOptions: &mongodump.OutputOptions{},
+		Options: &Flags{},
 	}
 	err := config.InitFromViper()
 	if err != nil {
 		return nil, err
 	}
 
-	return newConfigBasedBackendFromConfig(config)
-}
-
-func newConfigBasedBackendFromConfig(cfg *Config) (*ConfigBasedBackend, error) {
-	return &ConfigBasedBackend{
-		cfg: cfg,
-		dump: &mongodump.MongoDump{
-			ToolOptions:       cfg.ToolOptions,
-			InputOptions:      cfg.InputOptions,
-			OutputOptions:     cfg.OutputOptions,
-			SkipUsersAndRoles: !cfg.OutputOptions.DumpDBUsersAndRoles,
-			ProgressManager:   nil,
-			SessionProvider:   nil,
-			OutputWriter:      nil,
-		},
-	}, nil
+	return &ConfigBasedBackend{cfg: config}, nil
 }
 
 func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
-	err := b.dump.Init()
-	if err != nil {
-		return errors.WithStack(err)
+	cmd := cli.CommandType{
+		Binary: binary,
+		Args:   cli.StructToCLI(b.cfg.Options),
 	}
 
-	return errors.WithStack(b.dump.Dump())
+	out, err := cli.Run(ctx, cmd)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("%+v - %+v", err, out))
+	}
+
+	return nil
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {
-	out := b.dump.OutputOptions.Out
-	if len(b.dump.OutputOptions.Archive) > 0 {
-		out = b.dump.OutputOptions.Archive
+	if len(b.cfg.Options.Archive) > 0 {
+		return b.cfg.Options.Archive
 	}
 
-	return out
+	return b.cfg.Options.Out
 }
 
 func (b *ConfigBasedBackend) GetHostname() string {
-	return b.cfg.ToolOptions.Connection.Host
+	return b.cfg.Options.Host
 }
