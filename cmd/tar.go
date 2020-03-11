@@ -12,8 +12,8 @@ import (
 var (
 	tarCmd = &cobra.Command{
 		Use:   "tar",
-		Short: "Creates a tar archive of your desired path",
-		Long:  "Backups a given path by creating a tar backup",
+		Short: "Creates a tar archive of your desired paths",
+		Long:  "Backups given paths by creating a tar backup",
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
