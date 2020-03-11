@@ -2,10 +2,12 @@ package tar
 
 import (
 	"fmt"
-	"github.com/mittwald/brudi/pkg/config"
+	"os"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"os"
+
+	"github.com/mittwald/brudi/pkg/config"
 )
 
 const (
