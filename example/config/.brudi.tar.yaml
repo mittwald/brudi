@@ -1,0 +1,7 @@
+tar:
+  flags:
+    create: true
+    gzip: true
+    file: /tmp/test.tar.gz
+  paths:
+    - /tmp/testfile

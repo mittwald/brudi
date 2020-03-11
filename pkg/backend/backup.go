@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/backend/tar"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -17,6 +18,8 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 		return mongodump.NewConfigBasedBackend()
 	case mysqldump.Kind:
 		return mysqldump.NewConfigBasedBackend()
+	case tar.Kind:
+		return tar.NewConfigBasedBackend()
 	default:
 		return nil, fmt.Errorf("unsupported kind '%s'", kind)
 	}

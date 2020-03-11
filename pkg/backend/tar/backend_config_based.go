@@ -1,10 +1,8 @@
-package mysqldump
+package tar
 
 import (
 	"context"
 	"fmt"
-	"os"
-
 	"github.com/pkg/errors"
 
 	"github.com/mittwald/brudi/pkg/cli"
@@ -17,7 +15,10 @@ type ConfigBasedBackend struct {
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	backend := &ConfigBasedBackend{
 		config: Config{
-			ClientOptions: make(map[string]interface{}),
+			Options: &Options{
+				Flags: &Flags{},
+				Paths: []string{},
+			},
 		},
 	}
 
@@ -30,40 +31,22 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 }
 
 func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
-	dumpOut, err := os.Create(b.config.Out)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	defer func() {
-		_ = dumpOut.Close()
-	}()
-
-	flags := &Flags{DefaultsFile: b.config.clientMyCnfPath}
-
 	cmd := cli.CommandType{
 		Binary: binary,
-		Args:   cli.StructToCLI(flags),
+		Args:   cli.StructToCLI(b.config.Options),
 	}
-
-	var out []byte
-	out, err = cli.Run(ctx, cmd)
+	out, err := cli.Run(ctx, cmd)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("%+v - %+v", out, err))
-	}
-
-	_, err = dumpOut.Write(out)
-	if err != nil {
-		return errors.WithStack(err)
+		return errors.WithStack(fmt.Errorf("%+v - %+v", err, out))
 	}
 
 	return nil
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {
-	return b.config.Out
+	return b.config.Options.Flags.File
 }
 
 func (b *ConfigBasedBackend) GetHostname() string {
-	return fmt.Sprintf("%s", b.config.ClientOptions["host"])
+	return b.config.HostName
 }

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/mittwald/brudi/pkg/cli"
-	"github.com/mittwald/brudi/pkg/cli/tar"
 )
 
 const (
@@ -110,48 +109,6 @@ func CreateBackup(ctx context.Context, opts *BackupOptions, unlock bool) (Backup
 		Args:    cli.StructToCLI(opts),
 	}
 	out, err = cli.RunWithTimeout(ctx, cmd, cmdTimeout)
-	if err != nil {
-		return BackupResult{}, out, err
-	}
-
-	backupRes, err := parseSnapshotOut(fmt.Sprintf("%s", out))
-	if err != nil {
-		return backupRes, out, err
-	}
-	return backupRes, nil, nil
-}
-
-// CreateTarBackup executes "restic backup" and returns the parent snapshot id (if available) and the snapshot id
-func CreateTarBackup(ctx context.Context, resticOpts *BackupOptions, tarName string) (BackupResult, []byte, error) {
-	tarOpts := &tar.Options{
-		Flags: &tar.Flags{
-			Create:  true,
-			File:    "-",
-			Exclude: resticOpts.Flags.Exclude,
-		},
-		Paths: resticOpts.Paths,
-	}
-	resticOpts.Flags.Stdin = true
-	resticOpts.Flags.StdinFilename = tarName
-	resticOpts.Flags.Exclude = nil
-	resticOpts.Paths = nil
-
-	nice := 19
-	ionice := 2
-	cmd1 := cli.CommandType{
-		Binary: "tar",
-		Args:   cli.StructToCLI(tarOpts),
-		Nice:   &nice,
-		IONice: &ionice,
-	}
-	cmd2 := cli.CommandType{
-		Binary:  binary,
-		Command: "backup",
-		Args:    cli.StructToCLI(resticOpts),
-		Nice:    &nice,
-		IONice:  &ionice,
-	}
-	out, err := cli.RunPipedWithTimeout(ctx, cmd1, cmd2, cmdTimeout, nil)
 	if err != nil {
 		return BackupResult{}, out, err
 	}
@@ -420,48 +377,6 @@ func Unlock(ctx context.Context, opts *UnlockOptions) ([]byte, error) {
 		Args:    cli.StructToCLI(opts),
 	}
 	return cli.Run(ctx, cmd)
-}
-
-// RestoreTarBackup executes "restic backup" and returns the parent snapshot id (if available) and the snapshot id
-func RestoreTarBackup(ctx context.Context, resticOpts *RestoreOptions, tarName string) ([]byte, error) {
-	includes := []string{}
-	for _, incl := range resticOpts.Flags.Include {
-		if !strings.HasPrefix(incl, "/") {
-			continue
-		}
-		includes = append(includes, incl[1:])
-	}
-	tarOpts := &tar.Options{
-		Flags: &tar.Flags{
-			Extract: true,
-			File:    "-",
-			Exclude: resticOpts.Flags.Exclude,
-			Target:  resticOpts.Flags.Target,
-		},
-		Paths: includes,
-	}
-
-	dumpOptions := &DumpOptions{
-		ID:   resticOpts.ID,
-		File: tarName,
-	}
-
-	nice := 19
-	ionice := 2
-	cmd1 := cli.CommandType{
-		Binary:  binary,
-		Command: "dump",
-		Args:    cli.StructToCLI(dumpOptions),
-		Nice:    &nice,
-		IONice:  &ionice,
-	}
-	cmd2 := cli.CommandType{
-		Binary: "tar",
-		Args:   cli.StructToCLI(tarOpts),
-		Nice:   &nice,
-		IONice: &ionice,
-	}
-	return cli.RunPipedWithTimeout(ctx, cmd1, cmd2, cmdTimeout, nil)
 }
 
 // Tag executes "restic tag"

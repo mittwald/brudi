@@ -32,10 +32,6 @@ type Config struct {
 	Out             string
 }
 
-type CliFlags struct {
-	DefaultsFile string `flag:"--defaults-file="`
-}
-
 func (c *Config) InitFromViper() error {
 	err := viper.UnmarshalKey(Kind, &c)
 	if err != nil {
