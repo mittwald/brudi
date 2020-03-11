@@ -14,10 +14,16 @@ build:
 		-o $(BINARY_NAME) \
 		-a main.go
 
-lint:
+test:
+	go test -v ./...
+
+lintpull:
+	docker pull -q golangci/golangci-lint:$(GOLANGCI_LINT_VERSION)
+
+lint: lintpull
 	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:$(GOLANGCI_LINT_VERSION) golangci-lint run -v
 
-lintfix:
+lintfix: lintpull
 	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:$(GOLANGCI_LINT_VERSION) golangci-lint run -v --fix
 
 goreleaser:

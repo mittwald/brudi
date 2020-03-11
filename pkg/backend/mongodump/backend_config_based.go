@@ -1,6 +1,8 @@
 package mongodump
 
 import (
+	"context"
+
 	"github.com/mongodb/mongo-tools-common/options"
 	"github.com/mongodb/mongo-tools/mongodump"
 	"github.com/pkg/errors"
@@ -11,7 +13,7 @@ type ConfigBasedBackend struct {
 	cfg  *Config
 }
 
-func newConfigBasedBackend() (*ConfigBasedBackend, error) {
+func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	config := &Config{
 		ToolOptions: &options.ToolOptions{
 			General:    &options.General{},
@@ -49,7 +51,7 @@ func newConfigBasedBackendFromConfig(cfg *Config) (*ConfigBasedBackend, error) {
 	}, nil
 }
 
-func (b *ConfigBasedBackend) CreateBackup() error {
+func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 	err := b.dump.Init()
 	if err != nil {
 		return errors.WithStack(err)

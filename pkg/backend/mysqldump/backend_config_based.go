@@ -14,7 +14,7 @@ type ConfigBasedBackend struct {
 	config Config
 }
 
-func newConfigBasedBackend() (*ConfigBasedBackend, error) {
+func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	backend := &ConfigBasedBackend{
 		config: Config{
 			ClientOptions: make(map[string]interface{}),

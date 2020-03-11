@@ -26,8 +26,8 @@ func TestGenerateMyCnfFromClientOptions(t *testing.T) {
 	f, err := os.Open(cfg.clientMyCnfPath)
 	assert.NoError(t, err)
 
-	defer f.Close()
-	defer os.RemoveAll(cfg.clientMyCnfPath)
+	defer func() { _ = f.Close() }()
+	defer func() { _ = os.RemoveAll(cfg.clientMyCnfPath) }()
 
 	h := sha256.New()
 	_, err = io.Copy(h, f)
