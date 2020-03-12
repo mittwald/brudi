@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/mittwald/brudi/pkg/cli/restic"
+	"github.com/mittwald/brudi/pkg/restic"
 
 	log "github.com/sirupsen/logrus"
 )

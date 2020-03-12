@@ -3,6 +3,8 @@ COMMIT_HASH = $(shell git rev-parse --verify HEAD)
 GOLANGCI_LINT_VERSION = v1.23
 CURDIR = $(shell pwd)
 
+all: test lint build
+
 build:
 	go build \
 		-ldflags " \
@@ -29,7 +31,7 @@ lintfix: lintpull
 goreleaser:
 	curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --rm-dist
 
-upTestMongo:
+upTestMongo: downTestMongo
 	trap 'cd $(CURDIR) && make downTestMongo' 0 1 2 3 6 9 15
 	docker-compose --file example/docker-compose/mongo.yml --env-file "nothing" up -d
 	docker-compose --file example/docker-compose/mongo.yml --env-file "nothing" logs -f
@@ -37,7 +39,7 @@ upTestMongo:
 downTestMongo:
 	docker-compose --file example/docker-compose/mongo.yml --env-file "nothing" down -v
 
-upTestMysql:
+upTestMysql: downTestMysql
 	trap 'cd $(CURDIR) && make downTestMysql' 0 1 2 3 6 9 15
 	docker-compose --file example/docker-compose/mysql.yml --env-file "nothing" up -d
 	docker-compose --file example/docker-compose/mysql.yml --env-file "nothing" logs -f
