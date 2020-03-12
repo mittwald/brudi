@@ -60,8 +60,10 @@ Use "brudi [command] --help" for more information about a command.
 
 As already mentioned, `brudi` is configured via `.yaml`. The default path for this file is `${HOME}/.brudi.yaml`, but it's adjustable via `-c` or `--config`.
 Since the configuration provided by the `.yaml`-file is mapped to the corresponding CLI-flags, you can adjust literally every parameter of your source backup.  
-Therefore you can simply refer to the official documentations for the available flags of your desired source. (`tar`, `mysqldump`, ...)
-
+Therefore you can simply refer to the official documentation for explanations on the available flags:
+- [`tar`](https://www.gnu.org/software/tar/manual/html_section/tar_22.html)
+- [`mongodump`](https://docs.mongodb.com/manual/reference/program/mongodump/#options)
+- [`mysqldump`](https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html#mysqldump-option-summary)
 #### Sources
 
 ##### Tar
