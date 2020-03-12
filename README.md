@@ -3,7 +3,7 @@
 When it comes to backup-creation there are several solutions to use.
 In general everybody's doing some sort of `dump` or `tar` and backing up the results incremental with [`restic`](https://github.com/restic/restic) or similar programs.
 
-This is where `brudi` comes in. Brudi supports several backup-methods and is configurable by a simple `yaml` file.
+This is why `brudi` was born. `brudi` supports several backup-methods and is configurable by a simple `yaml` file.
 The advantage of `brudi` is, that you can create a backup of your choice and save it with `restic` aftwards by using one command.
 Under the hood, `brudi` uses the given binaries like `mysqldump` or `restic`.
 
