@@ -7,8 +7,13 @@ ENV         BRUDI_USER="brudi" \
             BRUDI_UID="1000"
 
 COPY        brudi /usr/local/bin/brudi
+COPY        --from=restic/restic:0.9.6 /usr/bin/restic /usr/local/bin/restic
 
-RUN         addgroup \
+RUN         apk add --no-cache --upgrade \
+                mongodb-tools \
+                mysql-client \
+            && \
+            addgroup \
                 -S "${BRUDI_USER}" \
                 -g "${BRUDI_GID}" \
             && \

@@ -3,8 +3,8 @@ package cmd
 import (
 	"context"
 
-	"github.com/mittwald/brudi/pkg/backend"
-	"github.com/mittwald/brudi/pkg/backend/mysqldump"
+	"github.com/mittwald/brudi/pkg/source"
+	"github.com/mittwald/brudi/pkg/source/mysqldump"
 
 	"github.com/spf13/cobra"
 )
@@ -18,7 +18,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			err := backend.DoBackupForKind(ctx, mysqldump.Kind, cleanup, useRestic)
+			err := source.DoBackupForKind(ctx, mysqldump.Kind, cleanup, useRestic)
 			if err != nil {
 				panic(err)
 			}

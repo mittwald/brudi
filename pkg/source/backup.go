@@ -1,16 +1,16 @@
-package backend
+package source
 
 import (
 	"context"
 	"fmt"
 	"os"
 
-	"github.com/mittwald/brudi/pkg/backend/tar"
+	"github.com/mittwald/brudi/pkg/source/tar"
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/mittwald/brudi/pkg/backend/mongodump"
-	"github.com/mittwald/brudi/pkg/backend/mysqldump"
+	"github.com/mittwald/brudi/pkg/source/mongodump"
+	"github.com/mittwald/brudi/pkg/source/mysqldump"
 )
 
 func getGenericBackendForKind(kind string) (Generic, error) {

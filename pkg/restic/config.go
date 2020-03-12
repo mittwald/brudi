@@ -5,7 +5,6 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/go-playground/validator/v10"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/mittwald/brudi/pkg/config"
@@ -25,9 +24,6 @@ type Config struct {
 	Region          string
 }
 
-// viper is sadly not capable of resolving childs env when fetching the parent key
-// therefore we have to workaround the env-resolving
-// https://github.com/spf13/viper/issues/696
 func (c *Config) InitFromViper() error {
 	err := config.InitializeStructFromViper(Kind, c)
 	if err != nil {
@@ -48,8 +44,7 @@ func (c *Config) InitFromViper() error {
 		return err
 	}
 
-	validate := validator.New()
-	return validate.Struct(c)
+	return config.Validate(c)
 }
 
 func (c *Config) EnsureEnv() error {

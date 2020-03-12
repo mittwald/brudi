@@ -3,9 +3,9 @@ package cmd
 import (
 	"context"
 
-	"github.com/mittwald/brudi/pkg/backend/tar"
+	"github.com/mittwald/brudi/pkg/source/tar"
 
-	"github.com/mittwald/brudi/pkg/backend"
+	"github.com/mittwald/brudi/pkg/source"
 
 	"github.com/spf13/cobra"
 )
@@ -19,7 +19,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			err := backend.DoBackupForKind(ctx, tar.Kind, cleanup, useRestic)
+			err := source.DoBackupForKind(ctx, tar.Kind, cleanup, useRestic)
 			if err != nil {
 				panic(err)
 			}

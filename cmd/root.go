@@ -18,15 +18,15 @@ var (
 	rootCmd = &cobra.Command{
 		Use:   "brudi",
 		Short: "Easy backup creation",
-		Long: `brudi's target is easy, incremental and encrypted backup creation for different backends (file, mongoDB, mysql, etc.).
- After backing up things, brudi uploads them to an S3 object storage.`,
+		Long: `Easy, incremental and encrypted backup creation for different backends (file, mongoDB, mysql, etc.)
+After creating your desired tar- or dump-file, brudi backs up the result with restic`,
 		Version: tag,
 	}
 )
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().BoolVar(&useRestic, "restic", false, "backup result with restic and push it to s3")
+	rootCmd.PersistentFlags().BoolVar(&useRestic, "restic", false, "backup result with restic and push it to your desired repository")
 
 	rootCmd.PersistentFlags().BoolVar(&cleanup, "cleanup", false, "cleanup backup files afterwards")
 

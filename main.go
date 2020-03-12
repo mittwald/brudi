@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/mittwald/brudi/cmd"
 	"github.com/mittwald/brudi/internal"
+	"github.com/spf13/cobra"
 )
 
 func init() {
@@ -11,7 +12,7 @@ func init() {
 
 func main() {
 	err := cmd.Execute()
-	if err != nil {
+	if err != nil && err != cobra.ErrSubCommandRequired {
 		panic(err)
 	}
 }

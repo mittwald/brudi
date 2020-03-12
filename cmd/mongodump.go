@@ -3,11 +3,11 @@ package cmd
 import (
 	"context"
 
-	"github.com/mittwald/brudi/pkg/backend"
+	"github.com/mittwald/brudi/pkg/source"
 
 	"github.com/spf13/cobra"
 
-	"github.com/mittwald/brudi/pkg/backend/mongodump"
+	"github.com/mittwald/brudi/pkg/source/mongodump"
 )
 
 var (
@@ -19,7 +19,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			err := backend.DoBackupForKind(ctx, mongodump.Kind, cleanup, useRestic)
+			err := source.DoBackupForKind(ctx, mongodump.Kind, cleanup, useRestic)
 			if err != nil {
 				panic(err)
 			}
