@@ -1,9 +1,10 @@
 package main
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/mittwald/brudi/cmd"
 	"github.com/mittwald/brudi/internal"
-	"github.com/spf13/cobra"
 )
 
 func init() {
