@@ -1,0 +1,39 @@
+#docker-compose for testing purposes
+version: "2.1"
+
+volumes:
+  mongodb-data:
+
+services:
+  mongoexpress:
+    image: mongo-express:latest
+    hostname: mongoexpress
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: mongodbroot
+    ports:
+      - 8081:8081
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: always
+
+  mongo:
+    image: mongo:4.2
+    hostname: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: mongodbroot
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'db.runCommand(\"ping\").ok' | mongo -uroot -p$$MONGO_INITDB_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mongodb-data:/data/db
+    ports:
+      - 27017:27017
+    restart: always

@@ -1,0 +1,20 @@
+#docker-compose for testing purposes
+version: "2.1"
+
+volumes:
+  mysql-data:
+
+services:
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: mysqlroot
+      MYSQL_DATABASE: mysql
+      MYSQL_USER: mysqluser
+      MYSQL_PASSWORD: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - 3306:3306
+    restart: always

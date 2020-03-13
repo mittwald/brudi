@@ -1,0 +1,8 @@
+restic:
+  bucketName: "my.s3.bucket"
+  host: ""
+  accessKeyID: ""
+  secretAccessKey: ""
+  region: "s3.eu-central-1.amazonaws.com"
+  repository: ""
+  password: ""
