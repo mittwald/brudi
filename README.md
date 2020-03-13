@@ -187,6 +187,22 @@ export MONGODUMP_OPTIONS_FLAGS_USERNAME="root"
 export MONGODUMP_OPTIONS_FLAGS_PASSWORD="mongodbroot"
 ```
 
+Same goes for restic. Given this example `.yaml`:
+
+```yaml
+restic:
+  repository: "s3:s3.eu-central-1.amazonaws.com/your.s3.bucket/repo"
+  accessKeyID: "" # set by env
+  secretAccessKey: "" # set by env
+```
+
+Override by env's:
+
+```shell
+export RESTIC_SECRETACCESSKEY="topSecret"
+export RESTIC_ACCESSKEYID="secret"
+```
+
 As soon as a variable for a key exists in your environment, the value of this environment-variable is used in favour of your `.yaml`-config.
 
 ## Featurestate
