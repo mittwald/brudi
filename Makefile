@@ -2,7 +2,11 @@ BINARY_NAME = brudi
 COMMIT_HASH = $(shell git rev-parse --verify HEAD)
 CURDIR = $(shell pwd)
 
-all: test lint build
+all: dep test lint build
+
+dep:
+	go mod tidy
+	go mod download
 
 build:
 	go build \
