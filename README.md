@@ -102,7 +102,9 @@ tar:
 
 Running: `brudi tar -c ${HOME}/.brudi.yml --cleanup`
 
-Becomes the following command: `tar -c -z -f /tmp/test.tar.gz /tmp/testfile`  
+Becomes the following command:  
+`tar -c -z -f /tmp/test.tar.gz /tmp/testfile`  
+
 All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/tar/cli.go#L7).
 
 ##### MySQLDump
@@ -123,7 +125,9 @@ mysqldump:
 
 Running: `brudi mysqldump -c ${HOME}/.brudi.yml --cleanup`
 
-Becomes the following command: `mysqldump --all-databases --host=127.0.0.1 --opt --password=mysqlroot --port=3306 --result-file=/tmp/test.sqldump --user=root`  
+Becomes the following command:  
+`mysqldump --all-databases --host=127.0.0.1 --opt --password=mysqlroot --port=3306 --result-file=/tmp/test.sqldump --user=root`  
+
 All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/mysqldump/cli.go#L7).
 
 ##### MongoDump
@@ -141,7 +145,9 @@ mongodump:
 
 Running: `brudi mongodump -c ${HOME}/.brudi.yml --cleanup`
 
-Becomes the following command: `mongodump --host=127.0.0.1 --port=27017 --username=root --password=mongodbroot --gzip --archive=/tmp/dump.tar.gz`  
+Becomes the following command:  
+`mongodump --host=127.0.0.1 --port=27017 --username=root --password=mongodbroot --gzip --archive=/tmp/dump.tar.gz`  
+
 All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/mongodump/cli.go#L7).
 
 #### Restic
