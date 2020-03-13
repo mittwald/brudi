@@ -19,7 +19,7 @@ var (
 		Use:   "brudi",
 		Short: "Easy backup creation",
 		Long: `Easy, incremental and encrypted backup creation for different backends (file, mongoDB, mysql, etc.)
-After creating your desired tar- or dump-file, brudi backs up the result with restic`,
+After creating your desired tar- or dump-file, brudi backs up the result with restic - if you want to`,
 		Version: tag,
 	}
 )
