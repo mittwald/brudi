@@ -20,7 +20,12 @@ type Config struct {
 }
 
 func (c *Config) InitFromViper() error {
-	err := config.InitializeStructFromViper(fmt.Sprintf("%s.%s.%s", Kind, "options", "flags"), c.Options.Flags)
+	err := config.InitializeStructFromViper(fmt.Sprintf("%s.%s", Kind, config.KeyOptionsFlags), c.Options.Flags)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	err = viper.UnmarshalKey(fmt.Sprintf("%s.%s", Kind, config.KeyOptionsAdditionalArgs), &c.Options.AdditionalArgs)
 	if err != nil {
 		return errors.WithStack(err)
 	}

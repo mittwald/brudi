@@ -3,6 +3,7 @@ package mysqldump
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/pkg/errors"
 
@@ -10,28 +11,33 @@ import (
 )
 
 type ConfigBasedBackend struct {
-	cfg Config
+	cfg *Config
 }
 
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
-	backend := &ConfigBasedBackend{
-		cfg: Config{
-			Flags: &Flags{},
+	config := &Config{
+		&Options{
+			Flags:          &Flags{},
+			AdditionalArgs: []string{},
 		},
 	}
 
-	err := backend.cfg.InitFromViper()
+	err := config.InitFromViper()
 	if err != nil {
 		return nil, err
 	}
 
-	return backend, nil
+	return &ConfigBasedBackend{cfg: config}, nil
 }
 
 func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
+	var args []string
+	args = append(args, cli.StructToCLI(b.cfg.Options.Flags)...)
+	args = append(args, b.cfg.Options.AdditionalArgs...)
+
 	cmd := cli.CommandType{
 		Binary: binary,
-		Args:   cli.StructToCLI(b.cfg.Flags),
+		Args:   args,
 	}
 
 	out, err := cli.Run(ctx, cmd)
@@ -43,9 +49,13 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {
-	return b.cfg.Flags.ResultFile
+	return b.cfg.Options.Flags.ResultFile
 }
 
 func (b *ConfigBasedBackend) GetHostname() string {
-	return b.cfg.Flags.Host
+	return b.cfg.Options.Flags.Host
+}
+
+func (b *ConfigBasedBackend) CleanUp() error {
+	return os.Remove(b.GetBackupPath())
 }

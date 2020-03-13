@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/mittwald/brudi/pkg/source/tar"
 
@@ -51,7 +50,7 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic bool) 
 					"cmd":  "cleanup",
 				},
 			)
-			if err := os.RemoveAll(backend.GetBackupPath()); err != nil {
+			if err := backend.CleanUp(); err != nil {
 				cleanupLogger.WithError(err).Warn("failed to cleanup backup")
 			} else {
 				cleanupLogger.Info("successfully cleaned up backup")

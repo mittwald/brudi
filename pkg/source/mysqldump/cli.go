@@ -4,6 +4,11 @@ const (
 	binary = "mysqldump"
 )
 
+type Options struct {
+	Flags          *Flags
+	AdditionalArgs []string
+}
+
 type Flags struct {
 	AddDropDatabase            bool     `flag:"--add-drop-database"`
 	AddDropTable               bool     `flag:"--add-drop-table"`

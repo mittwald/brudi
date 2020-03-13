@@ -4,6 +4,11 @@ const (
 	binary = "mongodump"
 )
 
+type Options struct {
+	Flags          *Flags
+	AdditionalArgs []string
+}
+
 type Flags struct {
 	URI                          string `flag:"--uri="`
 	Host                         string `flag:"--host=" validate:"min=1"`

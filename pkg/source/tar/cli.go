@@ -4,6 +4,12 @@ const (
 	binary = "tar"
 )
 
+type Options struct {
+	Flags          *Flags
+	AdditionalArgs []string
+	Paths          []string
+}
+
 type Flags struct {
 	Create          bool     `flag:"-c"`
 	Gzip            bool     `flag:"-z"`
@@ -15,9 +21,4 @@ type Flags struct {
 	Exclude         []string `flag:"--exclude"`
 	Target          string   `flag:"-C"`
 	File            string   `flag:"-f" validate:"min=1"`
-}
-
-type Options struct {
-	Flags *Flags
-	Paths []string
 }

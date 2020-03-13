@@ -33,7 +33,6 @@ goreleaser:
 upTestMongo: downTestMongo
 	trap 'cd $(CURDIR) && make downTestMongo' 0 1 2 3 6 9 15
 	docker-compose --file example/docker-compose/mongo.yml --env-file "nothing" up -d
-	docker-compose --file example/docker-compose/mongo.yml --env-file "nothing" logs -f
 
 downTestMongo:
 	docker-compose --file example/docker-compose/mongo.yml --env-file "nothing" down -v
@@ -41,7 +40,6 @@ downTestMongo:
 upTestMysql: downTestMysql
 	trap 'cd $(CURDIR) && make downTestMysql' 0 1 2 3 6 9 15
 	docker-compose --file example/docker-compose/mysql.yml --env-file "nothing" up -d
-	docker-compose --file example/docker-compose/mysql.yml --env-file "nothing" logs -f
 
 downTestMysql:
 	docker-compose --file example/docker-compose/mysql.yml --env-file "nothing" down -v

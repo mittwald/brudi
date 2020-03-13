@@ -3,6 +3,8 @@ package mongodump
 import (
 	"fmt"
 
+	"github.com/spf13/viper"
+
 	"github.com/go-playground/validator/v10"
 
 	"github.com/pkg/errors"
@@ -15,11 +17,16 @@ const (
 )
 
 type Config struct {
-	Options *Flags
+	Options *Options
 }
 
 func (c *Config) InitFromViper() error {
-	err := config.InitializeStructFromViper(fmt.Sprintf("%s.%s", Kind, "flags"), c.Options)
+	err := config.InitializeStructFromViper(fmt.Sprintf("%s.%s", Kind, config.KeyOptionsFlags), c.Options.Flags)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	err = viper.UnmarshalKey(fmt.Sprintf("%s.%s", Kind, config.KeyOptionsAdditionalArgs), &c.Options.AdditionalArgs)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -30,8 +37,8 @@ func (c *Config) InitFromViper() error {
 func configStructLevelValidation(sl validator.StructLevel) {
 	c := sl.Current().Interface().(Config)
 
-	if c.Options.Out == "" && c.Options.Archive == "" {
-		sl.ReportError(c.Options.Out, "out", "Out", "eitherOutOrArchiveRequired", "")
-		sl.ReportError(c.Options.Archive, "archive", "Archive", "eitherOutOrArchiveRequired", "")
+	if c.Options.Flags.Out == "" && c.Options.Flags.Archive == "" {
+		sl.ReportError(c.Options.Flags.Out, "out", "Out", "eitherOutOrArchiveRequired", "")
+		sl.ReportError(c.Options.Flags.Archive, "archive", "Archive", "eitherOutOrArchiveRequired", "")
 	}
 }

@@ -3,10 +3,12 @@ package mongodump
 import (
 	"context"
 	"fmt"
-
-	"github.com/mittwald/brudi/pkg/cli"
+	"os"
 
 	"github.com/pkg/errors"
+
+	"github.com/mittwald/brudi/internal"
+	"github.com/mittwald/brudi/pkg/cli"
 )
 
 type ConfigBasedBackend struct {
@@ -15,8 +17,12 @@ type ConfigBasedBackend struct {
 
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	config := &Config{
-		Options: &Flags{},
+		&Options{
+			Flags:          &Flags{},
+			AdditionalArgs: []string{},
+		},
 	}
+
 	err := config.InitFromViper()
 	if err != nil {
 		return nil, err
@@ -26,9 +32,13 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 }
 
 func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
+	var args []string
+	args = append(args, cli.StructToCLI(b.cfg.Options.Flags)...)
+	args = append(args, b.cfg.Options.AdditionalArgs...)
+
 	cmd := cli.CommandType{
 		Binary: binary,
-		Args:   cli.StructToCLI(b.cfg.Options),
+		Args:   args,
 	}
 
 	out, err := cli.Run(ctx, cmd)
@@ -40,13 +50,27 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {
-	if len(b.cfg.Options.Archive) > 0 {
-		return b.cfg.Options.Archive
+	if b.cfg.Options.Flags.Archive != "" {
+		return b.cfg.Options.Flags.Archive
 	}
 
-	return b.cfg.Options.Out
+	return b.cfg.Options.Flags.Out
 }
 
 func (b *ConfigBasedBackend) GetHostname() string {
-	return b.cfg.Options.Host
+	return b.cfg.Options.Flags.Host
+}
+
+func (b *ConfigBasedBackend) CleanUp() error {
+	var fileTypes []string
+
+	if b.cfg.Options.Flags.Archive != "" {
+		return os.Remove(b.cfg.Options.Flags.Archive)
+	} else if b.cfg.Options.Flags.Gzip {
+		fileTypes = append(fileTypes, ".bson.gz", ".json.gz")
+	} else {
+		fileTypes = append(fileTypes, ".bson", ".json")
+	}
+
+	return internal.ClearDirectory(b.GetBackupPath(), fileTypes...)
 }
