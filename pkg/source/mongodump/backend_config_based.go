@@ -32,18 +32,14 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 }
 
 func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
-	var args []string
-	args = append(args, cli.StructToCLI(b.cfg.Options.Flags)...)
-	args = append(args, b.cfg.Options.AdditionalArgs...)
-
 	cmd := cli.CommandType{
 		Binary: binary,
-		Args:   args,
+		Args:   cli.StructToCLI(b.cfg.Options),
 	}
 
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("%+v - %+v", err, out))
+		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
 	}
 
 	return nil
