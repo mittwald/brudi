@@ -67,7 +67,7 @@ type Flags struct {
 	NetBufferLength            string   `flag:"--net-buffer-length="`
 	NetworkTimeout             bool     `flag:"--network-timeout"`
 	NoAutocommit               bool     `flag:"--no-autocommit"`
-	NoCreateDb                 bool     `flag:"--no-create-db"`
+	NoCreateDB                 bool     `flag:"--no-create-db"`
 	NoCreateInfo               bool     `flag:"--no-create-info"`
 	NoData                     bool     `flag:"--no-data"`
 	NoDefaults                 bool     `flag:"--no-defaults"`

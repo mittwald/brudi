@@ -37,7 +37,7 @@ type Flags struct {
 	Out                          string `flag:"--out="`
 	Archive                      string `flag:"--archive="`
 	Oplog                        bool   `flag:"--oplog"`
-	DumpDbUsersAndRoles          bool   `flag:"--dumpDbUsersAndRoles"`
+	DumpDBUsersAndRoles          bool   `flag:"--dumpDbUsersAndRoles"`
 	ExcludeCollection            string `flag:"--excludeCollection="`
 	ExcludeCollectionsWithPrefix string `flag:"--excludeCollectionsWithPrefix="`
 	NumParallelCollections       int    `flag:"--numParallelCollections="`
