@@ -38,8 +38,8 @@ dockers:
   -
     image_templates:
       - quay.io/mittwald/brudi:latest
-      - quay.io/mittwald/brudi:v{{ .Major }}
-      - quay.io/mittwald/brudi:v{{ .Major }}.{{ .Minor }}
+      - quay.io/mittwald/brudi:{{ .Major }}
+      - quay.io/mittwald/brudi:{{ .Major }}.{{ .Minor }}
       - quay.io/mittwald/brudi:{{ .Tag }}
       - quay.io/mittwald/brudi:stable
     binaries:
