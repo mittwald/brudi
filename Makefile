@@ -23,7 +23,7 @@ test:
 	go test -v ./...
 
 lintpull:
-	docker pull -q golangci/golangci-lint
+	docker pull golangci/golangci-lint
 
 lint: lintpull
 	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint golangci-lint run -v
