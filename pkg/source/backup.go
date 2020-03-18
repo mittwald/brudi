@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/mittwald/brudi/pkg/source/pgdump"
+
 	"github.com/mittwald/brudi/pkg/source/tar"
 
 	log "github.com/sirupsen/logrus"
@@ -14,6 +16,8 @@ import (
 
 func getGenericBackendForKind(kind string) (Generic, error) {
 	switch kind {
+	case pgdump.Kind:
+		return pgdump.NewConfigBasedBackend()
 	case mongodump.Kind:
 		return mongodump.NewConfigBasedBackend()
 	case mysqldump.Kind:

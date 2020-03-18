@@ -36,14 +36,21 @@ goreleaser:
 
 upTestMongo: downTestMongo
 	trap 'cd $(CURDIR) && make downTestMongo' 0 1 2 3 6 9 15
-	docker-compose --file example/docker-compose/mongo.yml --env-file "nothing" up -d
+	docker-compose --file example/docker-compose/mongo.yml up -d
 
 downTestMongo:
-	docker-compose --file example/docker-compose/mongo.yml --env-file "nothing" down -v
+	docker-compose --file example/docker-compose/mongo.yml down -v --remove-orphans
 
 upTestMysql: downTestMysql
 	trap 'cd $(CURDIR) && make downTestMysql' 0 1 2 3 6 9 15
-	docker-compose --file example/docker-compose/mysql.yml --env-file "nothing" up -d
+	docker-compose --file example/docker-compose/mysql.yml up -d
 
 downTestMysql:
-	docker-compose --file example/docker-compose/mysql.yml --env-file "nothing" down -v
+	docker-compose --file example/docker-compose/mysql.yml down -v --remove-orphans
+
+upTestPostgres: downTestPostgres
+	trap 'cd $(CURDIR) && make downTestPostgres' 0 1 2 3 6 9 15
+	docker-compose --file example/docker-compose/postgresql.yml up -d
+
+downTestPostgres:
+	docker-compose --file example/docker-compose/postgresql.yml down -v --remove-orphans
