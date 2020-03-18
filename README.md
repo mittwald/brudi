@@ -177,7 +177,7 @@ All available flags to be set in the `.yaml`-configuration can be found [here](p
 ###### Limitations
 
 Unfortunately `PostgreSQL` is very strict when it comes to version-compatibility.  
-Therefore your `pg_dump`-binary requires the exact same version as your `PostgreSQL`-server is running.
+Therefore your `pg_dump`-binary requires the exact same version your `PostgreSQL`-server is running.
 
 The Docker-image of `brudi` always has the latest version available for the corresponding alpine-version installed.
 
