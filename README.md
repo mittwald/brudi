@@ -5,7 +5,7 @@ In general everybody's doing some sort of `dump` or `tar` and backing up the res
 
 This is why `brudi` was born. `brudi` supports several backup-methods and is configurable by a simple `yaml` file.
 The advantage of `brudi` is, that you can create a backup of a source of your choice and save it with `restic` aftwards in one step.
-Under the hood, `brudi` uses the given binaries like `mysqldump`, `mongodump`, `tar` or `restic`.
+Under the hood, `brudi` uses the given binaries like `mysqldump`, `mongodump`, `pg_dump`, `tar` or `restic`.
 
 Using `brudi` will save you from finding yourself writing bash-scripts to create your backups.
 
@@ -18,6 +18,8 @@ Using `brudi` will save you from finding yourself writing bash-scripts to create
       - [Tar](#tar)
       - [MySQLDump](#mysqldump)
       - [MongoDump](#mongodump)
+      - [PgDump](#PgDump)
+        - [Limitations](#Limitations)
     - [Restic](#restic)
     - [Sensitive data: Environment variables](#sensitive-data--environment-variables)
 - [Featurestate](#featurestate)
@@ -150,6 +152,35 @@ Becomes the following command:
 
 All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/mongodump/cli.go#L7).
 
+##### PgDump
+
+```yaml
+pgdump:
+  options:
+    flags:
+      host: 127.0.0.1
+      port: 5432
+      password: postgresroot
+      username: postgresuser
+      dbName: postgres
+      file: /tmp/postgres.dump
+    additionalArgs: []
+```
+
+Running: `brudi pgdump -c ${HOME}/.brudi.yml --cleanup`
+
+Becomes the following command:  
+`pg_dump --file=/tmp/postgres.dump --dbname=postgres --host=127.0.0.1 --port=5432 --username=postgresuser`  
+
+All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/pgdump/cli.go#L7).
+
+###### Limitations
+
+Unfortunately `PostgreSQL` is very strict when it comes to version-compatibility.  
+Therefore your `pg_dump`-binary requires the exact same version your `PostgreSQL`-server is running.
+
+The Docker-image of `brudi` always has the latest version available for the corresponding alpine-version installed.
+
 #### Restic
 
 In case you're running your backup with the `--restic`-flag, you need to provide a [valid configuration for restic](https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html).  
@@ -218,6 +249,7 @@ As soon as a variable for a key exists in your environment, the value of this en
 - [x] `mysqldump`
 - [x] `mongodump`
 - [x] `tar`
+- [x] `pg_dump`
 
 ### Incremental backup of the source backups
 

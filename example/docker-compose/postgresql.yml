@@ -1,0 +1,17 @@
+#docker-compose for testing purposes
+version: "2.1"
+
+volumes:
+  postgres-data:
+
+services:
+  postgres:
+    image: postgres:12
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=postgresroot
+      - POSTGRES_USER=postgresuser
+      - POSTGRES_DB=postgres
+    ports:
+    - 5432:5432

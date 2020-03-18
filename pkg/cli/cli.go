@@ -84,7 +84,7 @@ func includeFlag(flag, val string) []string {
 //
 //	Notice:
 //	----------------------------------------------------
-//		Zero values (0, "", nil, false) will be ignored
+//		Zero values (0, "", nil, false) and "-" will be ignored
 func StructToCLI(optionStruct interface{}) []string { // nolint: gocyclo
 	if optionStruct == reflect.Zero(reflect.TypeOf(optionStruct)).Interface() {
 		return nil
@@ -96,6 +96,10 @@ func StructToCLI(optionStruct interface{}) []string { // nolint: gocyclo
 		field := structElem.Field(i)
 		fieldVal := field.Interface()
 		flag := structElem.Type().Field(i).Tag.Get(flagTag)
+
+		if flag == "-" {
+			continue
+		}
 
 		switch t := fieldVal.(type) {
 		case int:

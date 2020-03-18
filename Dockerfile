@@ -12,6 +12,7 @@ COPY        --from=restic/restic:0.9.6 /usr/bin/restic /usr/local/bin/restic
 RUN         apk add --no-cache --upgrade \
                 mongodb-tools \
                 mysql-client \
+                postgresql-client \
             && \
             addgroup \
                 -S "${BRUDI_USER}" \
