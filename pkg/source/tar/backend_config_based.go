@@ -34,6 +34,7 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 	var args []string
 	args = append(args, cli.StructToCLI(b.cfg.Options.Flags)...)
 	args = append(args, b.cfg.Options.AdditionalArgs...)
+	args = append(args, cli.StructToCLI(b.cfg.Options.Paths)...)
 
 	cmd := cli.CommandType{
 		Binary: binary,
