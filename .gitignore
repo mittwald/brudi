@@ -1,5 +1,6 @@
 brudi
 .idea
+.brudi.env
 .env
 example/config/.internal.yaml
 dist/
