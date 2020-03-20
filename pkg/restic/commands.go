@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -41,8 +40,14 @@ func init() {
 }
 
 // InitBackup executes "restic init"
-func initBackup() ([]byte, error) {
-	out, err := exec.Command(binary, "init").CombinedOutput()
+func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) {
+	cmd := cli.CommandType{
+		Binary:  binary,
+		Command: "init",
+		Args:    cli.StructToCLI(globalOpts),
+	}
+
+	out, err := cli.RunWithTimeout(ctx, cmd, cmdTimeout)
 	if err != nil {
 		// s3 init-check
 		if strings.Contains(string(out), "config already initialized") {
@@ -73,7 +78,7 @@ func parseSnapshotOut(str string) (BackupResult, error) {
 }
 
 // CreateBackup executes "restic backup" and returns the parent snapshot id (if available) and the snapshot id
-func CreateBackup(ctx context.Context, opts *BackupOptions, unlock bool) (BackupResult, []byte, error) {
+func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *BackupOptions, unlock bool) (BackupResult, []byte, error) {
 	var out []byte
 	var err error
 
@@ -83,16 +88,20 @@ func CreateBackup(ctx context.Context, opts *BackupOptions, unlock bool) (Backup
 				RemoveAll: false,
 			},
 		}
-		out, err = Unlock(ctx, &unlockOpts)
+		out, err = Unlock(ctx, globalOpts, &unlockOpts)
 		if err != nil {
 			return BackupResult{}, out, err
 		}
 	}
 
+	var args []string
+	args = cli.StructToCLI(globalOpts)
+	args = append(args, cli.StructToCLI(backupOpts)...)
+
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "backup",
-		Args:    cli.StructToCLI(opts),
+		Args:    args,
 	}
 	out, err = cli.RunWithTimeout(ctx, cmd, cmdTimeout)
 	if err != nil {
@@ -268,13 +277,19 @@ func Check(ctx context.Context, flags *CheckFlags) ([]byte, error) {
 }
 
 // Forget executes "restic forget"
-func Forget(ctx context.Context, opts *ForgetOptions) (removedSnapshots []string, output []byte, err error) {
-	opts.Flags.Compact = true // make sure compact mode is enabled to parse result correctly
+func Forget(ctx context.Context, globalOpts *GlobalOptions, forgetOpts *ForgetOptions) (removedSnapshots []string, output []byte, err error) {
+	forgetOpts.Flags.Compact = true // make sure compact mode is enabled to parse result correctly
+
+	var args []string
+	args = cli.StructToCLI(globalOpts)
+	args = append(args, cli.StructToCLI(forgetOpts)...)
+
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "forget",
-		Args:    cli.StructToCLI(opts),
+		Args:    args,
 	}
+
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return nil, out, err
@@ -356,11 +371,15 @@ func RestoreBackup(ctx context.Context, opts *RestoreOptions) ([]byte, error) {
 }
 
 // Unlock executes "restic unlock"
-func Unlock(ctx context.Context, opts *UnlockOptions) ([]byte, error) {
+func Unlock(ctx context.Context, globalOpts *GlobalOptions, unlockOpts *UnlockOptions) ([]byte, error) {
+	var args []string
+	args = cli.StructToCLI(globalOpts)
+	args = append(args, cli.StructToCLI(unlockOpts)...)
+
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "unlock",
-		Args:    cli.StructToCLI(opts),
+		Args:    args,
 	}
 	return cli.Run(ctx, cmd)
 }

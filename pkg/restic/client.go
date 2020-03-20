@@ -50,7 +50,7 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 func (c *Client) DoResticBackup(ctx context.Context) error {
 	c.Logger.Info("running 'restic backup'")
 
-	_, err := initBackup()
+	_, err := initBackup(ctx, c.Config.Global)
 	if err == ErrRepoAlreadyInitialized {
 		c.Logger.Info("restic repo is already initialized")
 	} else if err != nil {
@@ -59,7 +59,7 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 		c.Logger.Info("restic repo initialized successfully")
 	}
 
-	_, _, err = CreateBackup(ctx, c.Config.Backup, true)
+	_, _, err = CreateBackup(ctx, c.Config.Global, c.Config.Backup, true)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("error while while running restic backup: %s", err.Error()))
 	}
@@ -72,7 +72,7 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 func (c *Client) DoResticForget(ctx context.Context) error {
 	c.Logger.Info("running 'restic forget'")
 
-	removedSnapshots, output, err := Forget(ctx, c.Config.Forget)
+	removedSnapshots, output, err := Forget(ctx, c.Config.Global, c.Config.Forget)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%s - %s", err.Error(), output))
 	}
