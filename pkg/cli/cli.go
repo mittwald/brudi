@@ -202,8 +202,7 @@ func Run(ctx context.Context, cmd CommandType) ([]byte, error) {
 		out, err = exec.Command(commandLine[0], commandLine[1:]...).CombinedOutput()
 	}
 	if err != nil {
-		log.WithError(err).WithField("output", string(out)).Error("failed to execute command")
-		return out, err
+		return out, fmt.Errorf("failed to execute command: %s", err)
 	}
 
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("successfully executed command")
