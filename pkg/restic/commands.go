@@ -277,7 +277,11 @@ func Check(ctx context.Context, flags *CheckFlags) ([]byte, error) {
 }
 
 // Forget executes "restic forget"
-func Forget(ctx context.Context, globalOpts *GlobalOptions, forgetOpts *ForgetOptions) (removedSnapshots []string, output []byte, err error) {
+func Forget(
+	ctx context.Context, globalOpts *GlobalOptions, forgetOpts *ForgetOptions,
+) (
+	removedSnapshots []string, output []byte, err error,
+) {
 	forgetOpts.Flags.Compact = true // make sure compact mode is enabled to parse result correctly
 
 	var args []string
