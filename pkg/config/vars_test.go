@@ -2,20 +2,36 @@ package config
 
 import (
 	"github.com/go-playground/validator/v10"
+
+	"github.com/mittwald/brudi/internal"
 )
 
-type fooConfig struct {
-	Bar barConfig
+func init() {
+	internal.InitLogger()
 }
 
-type barConfig struct {
+type untaggedFooConfig struct {
+	Bar untaggedBarConfig
+}
+
+type untaggedBarConfig struct {
 	Example        bool
 	AnotherExample bool
 	BrudiTest      string `validate:"min=1"`
 }
 
+type taggedFooConfig struct {
+	CustomBar *taggedBarConfig `viper:"bar"`
+}
+
+type taggedBarConfig struct {
+	CustomExample        bool   `viper:"example"`
+	CustomAnotherExample bool   `viper:"anotherExample"`
+	CustomBrudiTest      string `viper:"brudiTest" validate:"min=1"`
+}
+
 func fooConfigValidation(sl validator.StructLevel) {
-	c := sl.Current().Interface().(fooConfig)
+	c := sl.Current().Interface().(untaggedFooConfig)
 
 	if !c.Bar.Example && !c.Bar.AnotherExample {
 		sl.ReportError(c.Bar.Example, "example", "Example", "ExampleAndAnotherExampleCanNotBothBeFalse", "")

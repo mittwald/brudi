@@ -11,9 +11,10 @@ import (
 
 var (
 	// Used for flags.
-	cfgFile   string
-	useRestic bool
-	cleanup   bool
+	cfgFile         string
+	useRestic       bool
+	useResticForget bool
+	cleanup         bool
 
 	rootCmd = &cobra.Command{
 		Use:   "brudi",
@@ -26,7 +27,9 @@ After creating your desired tar- or dump-file, brudi backs up the result with re
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().BoolVar(&useRestic, "restic", false, "backup result with restic and push it to your desired repository")
+	rootCmd.PersistentFlags().BoolVar(&useRestic, "restic", false, "backup result with 'restic backup'")
+
+	rootCmd.PersistentFlags().BoolVar(&useResticForget, "restic-forget", false, "executes 'restic forget' after backing up things with restic")
 
 	rootCmd.PersistentFlags().BoolVar(&cleanup, "cleanup", false, "cleanup backup files afterwards")
 

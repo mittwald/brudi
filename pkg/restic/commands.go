@@ -26,7 +26,8 @@ var (
 	cmdTimeout = 6 * time.Hour
 )
 
-func Init() (string, error) {
+func init() {
+	// TODO: use json-log option of restic instead 'regex parsing'-foo
 	createBackupSnapshotIDPattern = regexp.MustCompile(`snapshot ([0-9a-z]*) saved\n`)
 	createBackupParentSnapshotIDPattern = regexp.MustCompile(`^using parent snapshot ([0-9a-z]*)\n`)
 	lsSnapshotSep = regexp.MustCompile(`^snapshot ([0-9a-z]*) of \[(.*)\] at (.*):$`)
@@ -37,21 +38,6 @@ func Init() (string, error) {
 	forgetSnapshotFinishedPattern = regexp.MustCompile(`^[0-9]* snapshots have been removed`)
 	forgetSnapshotPattern = regexp.MustCompile(`^([0-9a-z]*)[ ].*[0-9]{4}(-[0-9]{2}){2} ([0-9]{2}:){2}[0-9]{2}`)
 	forgetConcreteSnapshotPattern = regexp.MustCompile(`^removed snapshot ([0-9a-z].*)$`)
-
-	c := &Config{}
-	err := c.InitFromViper()
-	if err != nil {
-		return "", err
-	}
-
-	// init restic repo
-	var out []byte
-	out, err = initBackup()
-	if err != nil {
-		return "", err
-	}
-
-	return string(out), nil
 }
 
 // InitBackup executes "restic init"

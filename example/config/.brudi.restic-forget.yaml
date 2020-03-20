@@ -1,0 +1,13 @@
+restic:
+  global:
+    flags:
+      repo: "s3:s3.eu-central-1.amazonaws.com/your.s3.bucket/myResticRepo"
+  forget:
+    flags:
+      keepLast: 48
+      keepHourly: 24
+      keepDaily: 7
+      keepWeekly: 2
+      keepMonthly: 6
+      keepYearly: 2
+    ids: []

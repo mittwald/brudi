@@ -13,8 +13,8 @@ type ValidationTestSuite struct {
 }
 
 func (validationSuite *ValidationTestSuite) TestSucceedValidationOnTags() {
-	config := fooConfig{
-		Bar: barConfig{
+	config := untaggedFooConfig{
+		Bar: untaggedBarConfig{
 			Example:        true,
 			AnotherExample: false,
 			BrudiTest:      "asdf",
@@ -28,8 +28,8 @@ func (validationSuite *ValidationTestSuite) TestSucceedValidationOnTags() {
 }
 
 func (validationSuite *ValidationTestSuite) TestFailValidationOnTags() {
-	config := fooConfig{
-		Bar: barConfig{
+	config := untaggedFooConfig{
+		Bar: untaggedBarConfig{
 			Example:        true,
 			AnotherExample: false,
 			BrudiTest:      "",
@@ -39,13 +39,13 @@ func (validationSuite *ValidationTestSuite) TestFailValidationOnTags() {
 	assert.EqualError(
 		validationSuite.T(),
 		Validate(config),
-		"Key: 'fooConfig.Bar.BrudiTest' Error:Field validation for 'BrudiTest' failed on the 'min' tag",
+		"Key: 'untaggedFooConfig.Bar.BrudiTest' Error:Field validation for 'BrudiTest' failed on the 'min' tag",
 	)
 }
 
 func (validationSuite *ValidationTestSuite) TestSucceedValidationOnFunc() {
-	config := fooConfig{
-		Bar: barConfig{
+	config := untaggedFooConfig{
+		Bar: untaggedBarConfig{
 			Example:        true,
 			AnotherExample: false,
 			BrudiTest:      "123",
@@ -59,8 +59,8 @@ func (validationSuite *ValidationTestSuite) TestSucceedValidationOnFunc() {
 }
 
 func (validationSuite *ValidationTestSuite) TestFailValidationOnFunc() {
-	config := fooConfig{
-		Bar: barConfig{
+	config := untaggedFooConfig{
+		Bar: untaggedBarConfig{
 			Example:        false,
 			AnotherExample: false,
 			BrudiTest:      "123",
@@ -72,9 +72,9 @@ func (validationSuite *ValidationTestSuite) TestFailValidationOnFunc() {
 		Validate(config, fooConfigValidation),
 		fmt.Sprintf(
 			"%s%s\n%s%s",
-			"Key: 'fooConfig.example' Error:Field validation ",
+			"Key: 'untaggedFooConfig.example' Error:Field validation ",
 			"for 'example' failed on the 'ExampleAndAnotherExampleCanNotBothBeFalse' tag",
-			"Key: 'fooConfig.anotherExample' Error:Field validation ",
+			"Key: 'untaggedFooConfig.anotherExample' Error:Field validation ",
 			"for 'anotherExample' failed on the 'ExampleAndAnotherExampleCanNotBothBeFalse' tag",
 		),
 	)

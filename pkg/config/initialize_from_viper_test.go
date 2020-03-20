@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -23,8 +22,7 @@ func (initializeFromViperTestSuite *InitializeFromViperTestSuite) SetupTest() {
 	viper.AutomaticEnv()
 }
 
-func (initializeFromViperTestSuite *InitializeFromViperTestSuite) TestInitializeStructFromViper() {
-	var exampleConfig = []byte(`
+var exampleConfig = []byte(`
 foo:
   bar:
     example: true
@@ -32,11 +30,12 @@ foo:
     brudiTest: "foobar"
 `)
 
+func (initializeFromViperTestSuite *InitializeFromViperTestSuite) TestInitializeStructFromViperWithoutTags() {
 	assert.NoError(initializeFromViperTestSuite.T(), viper.ReadConfig(bytes.NewBuffer(exampleConfig)))
 
-	isConfig := fooConfig{}
-	shouldBeConfig := fooConfig{
-		Bar: barConfig{
+	isConfig := untaggedFooConfig{}
+	shouldBeConfig := untaggedFooConfig{
+		Bar: untaggedBarConfig{
 			Example:        true,
 			AnotherExample: false,
 			BrudiTest:      "foobar",
@@ -46,9 +45,33 @@ foo:
 	assert.NoError(
 		initializeFromViperTestSuite.T(),
 		InitializeStructFromViper(
-			fmt.Sprintf(
-				"%s.%s", "foo", "bar"),
-			&isConfig.Bar,
+			"foo",
+			&isConfig,
+		),
+	)
+
+	assert.Equal(initializeFromViperTestSuite.T(), shouldBeConfig, isConfig)
+}
+
+func (initializeFromViperTestSuite *InitializeFromViperTestSuite) TestInitializeStructFromViperWithTags() {
+	assert.NoError(initializeFromViperTestSuite.T(), viper.ReadConfig(bytes.NewBuffer(exampleConfig)))
+
+	isConfig := taggedFooConfig{
+		CustomBar: &taggedBarConfig{},
+	}
+	shouldBeConfig := taggedFooConfig{
+		CustomBar: &taggedBarConfig{
+			CustomExample:        true,
+			CustomAnotherExample: false,
+			CustomBrudiTest:      "foobar",
+		},
+	}
+
+	assert.NoError(
+		initializeFromViperTestSuite.T(),
+		InitializeStructFromViper(
+			"foo",
+			&isConfig,
 		),
 	)
 
