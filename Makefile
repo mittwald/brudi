@@ -2,6 +2,8 @@ BINARY_NAME = brudi
 COMMIT_HASH = $(shell git rev-parse --verify HEAD)
 CURDIR = $(shell pwd)
 
+.PHONY: build
+
 all: dep test lint build
 
 dep:

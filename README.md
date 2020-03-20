@@ -77,6 +77,15 @@ The docker-image comes with all required binaries.
 ### Configuration
 
 As already mentioned, `brudi` is configured via `.yaml`. The default path for this file is `${HOME}/.brudi.yaml`, but it's adjustable via `-c` or `--config`.
+The config file itself can include environment-variables via `go-template`:
+
+```yaml
+restic:
+  global:
+    flags:
+      repo: "{{ .Env.RESTIC_REPOSITORY }}"
+```
+
 Since the configuration provided by the `.yaml`-file is mapped to the corresponding CLI-flags, you can adjust literally every parameter of your source backup.  
 Therefore you can simply refer to the official documentation for explanations on the available flags:
 

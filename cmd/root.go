@@ -1,6 +1,11 @@
 package cmd
 
 import (
+	"bytes"
+	"html/template"
+	"io/ioutil"
+	"os"
+	"path"
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
@@ -42,32 +47,66 @@ func Execute() error {
 }
 
 func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
+	if cfgFile == "" {
 		home, err := homedir.Dir()
 		if err != nil {
 			log.WithError(err).Fatal("unable to determine homedir for current user")
 		}
 
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".brudi.yaml")
+		cfgFile = path.Join(home, ".brudi.yaml")
 	}
 
-	viper.SetConfigType("yaml")
+	logFields := log.WithField("cfgFile", cfgFile)
 
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
+	info, err := os.Stat(cfgFile)
+	if os.IsNotExist(err) {
+		logFields.Warn("config does not exist")
+		return
+	} else if info.IsDir() {
+		logFields.Warn("config is a directory")
+		return
+	}
 
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// cfg file not found; ignore error if desired
-		} else {
-			log.WithError(err).Fatal("failed while reading config")
+	var cfgContent []byte
+	cfgContent, err = ioutil.ReadFile(cfgFile)
+	if err != nil {
+		log.WithError(err).Fatal("failed while reading config")
+	}
+
+	var tpl *template.Template
+	tpl, err = template.New("").Parse(string(cfgContent))
+	if err != nil {
+		log.WithError(err).Fatal()
+	}
+
+	type templateData struct {
+		Env map[string]string
+	}
+
+	data := templateData{
+		Env: make(map[string]string),
+	}
+
+	for _, e := range os.Environ() {
+		e := strings.SplitN(e, "=", 2)
+		if len(e) > 1 {
+			data.Env[e[0]] = e[1]
 		}
 	}
 
-	if len(viper.ConfigFileUsed()) > 0 {
-		log.WithField("config", viper.ConfigFileUsed()).Info("config loaded")
+	renderedCfg := new(bytes.Buffer)
+	err = tpl.Execute(renderedCfg, &data)
+	if err != nil {
+		log.WithError(err).Fatal()
 	}
+
+	viper.SetConfigType("yaml")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+
+	if err := viper.ReadConfig(renderedCfg); err != nil {
+		log.WithError(err).Fatal("failed while reading config")
+	}
+
+	log.WithField("config", cfgFile).Info("config loaded")
 }
