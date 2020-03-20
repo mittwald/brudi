@@ -1,11 +1,9 @@
 package tar
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 
 	"github.com/mittwald/brudi/pkg/config"
 )
@@ -20,22 +18,7 @@ type Config struct {
 }
 
 func (c *Config) InitFromViper() error {
-	err := config.InitializeStructFromViper(fmt.Sprintf("%s.%s", Kind, config.KeyOptionsFlags), c.Options.Flags)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	err = viper.UnmarshalKey(fmt.Sprintf("%s.%s", Kind, config.KeyOptionsAdditionalArgs), &c.Options.AdditionalArgs)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	err = viper.UnmarshalKey(fmt.Sprintf("%s.%s.%s", Kind, "options", "paths"), &c.Options.Paths)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	err = viper.UnmarshalKey(fmt.Sprintf("%s.%s", Kind, "hostName"), &c.HostName)
+	err := config.InitializeStructFromViper(Kind, c)
 	if err != nil {
 		return errors.WithStack(err)
 	}

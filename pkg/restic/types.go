@@ -1,5 +1,26 @@
 package restic
 
+// Global options for restic
+type GlobalOptions struct {
+	Flags *GlobalFlags
+}
+
+// Global restic flags
+type GlobalFlags struct {
+	CaCert        string `flag:"--cacert"`
+	CacheDir      string `flag:"--cache-dir"`
+	CleanupCache  bool   `flag:"--cleanup-cache"`
+	KeyHint       string `flag:"--key-hint"`
+	LimitDownload int    `flag:"--limit-download"`
+	LimitUpload   int    `flag:"--limit-upload"`
+	NoCache       bool   `flag:"--no-cache"`
+	NoLock        bool   `flag:"--no-lock"`
+	PasswordFile  string `flag:"--password-file"`
+	Repo          string `flag:"--repo"`
+	TLSClientCert string `flag:"--tls-client-cert"`
+	//--json                     set output mode to JSON for commands that support it
+}
+
 // BackupResult for cmd "restic backup"
 type BackupResult struct {
 	SnapshotID       string

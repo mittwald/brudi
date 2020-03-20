@@ -17,8 +17,9 @@ type ConfigBasedBackend struct {
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	config := &Config{
 		Options: &Options{
-			Flags: &Flags{},
-			Paths: []string{},
+			Flags:          &Flags{},
+			Paths:          []string{},
+			AdditionalArgs: []string{},
 		},
 	}
 

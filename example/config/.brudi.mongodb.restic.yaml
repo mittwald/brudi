@@ -1,0 +1,20 @@
+mongodump:
+  options:
+    flags:
+      host: 127.0.0.1
+      port: 27017
+      gzip: true
+      archive: /tmp/dump.tar.gz
+    additionalArgs: []
+restic:
+  global:
+    flags:
+      repo: "s3:s3.eu-central-1.amazonaws.com/your.s3.bucket/myResticRepo"
+  forget:
+    flags:
+      keepLast: 1
+      keepHourly: 0
+      keepDaily: 0
+      keepWeekly: 0
+      keepMonthly: 0
+      keepYearly: 0

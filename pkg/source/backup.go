@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/mittwald/brudi/pkg/restic"
+
 	"github.com/mittwald/brudi/pkg/source/pgdump"
 
 	"github.com/mittwald/brudi/pkg/source/tar"
@@ -29,7 +31,7 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 	}
 }
 
-func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic bool) error {
+func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useResticForget bool) error {
 	logKind := log.WithFields(
 		log.Fields{
 			"kind": kind,
@@ -68,12 +70,20 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic bool) 
 		return nil
 	}
 
-	resticWrapper := NewResticWrapper(logKind, backend)
-
-	err = resticWrapper.DoRestic(ctx)
+	var resticClient *restic.Client
+	resticClient, err = restic.NewResticClient(logKind, backend.GetHostname(), backend.GetBackupPath())
 	if err != nil {
 		return err
 	}
 
-	return nil
+	err = resticClient.DoResticBackup(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !useResticForget {
+		return nil
+	}
+
+	return resticClient.DoResticForget(ctx)
 }
