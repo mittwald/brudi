@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 
 	"github.com/pkg/errors"
 
@@ -112,5 +113,30 @@ func reflectSetValueFromConfigKey(viperConfigKey string, fieldToBeSet reflect.Va
 
 	fieldLogger.Debug("loading viper value into struct")
 
-	fieldToBeSet.Set(reflectedVal)
+	switch fieldToBeSet.Kind() {
+	case reflect.Int:
+		switch viperVal.(type) {
+		case int:
+			fieldToBeSet.Set(reflectedVal)
+		default:
+			if v, err := strconv.ParseInt(viperVal.(string), 10, 64); err == nil {
+				fieldToBeSet.SetInt(v)
+			} else {
+				fieldLogger.WithError(err).Errorf("unable to parse int: %v", viperVal)
+			}
+		}
+	case reflect.Bool:
+		switch viperVal.(type) {
+		case bool:
+			fieldToBeSet.Set(reflectedVal)
+		default:
+			if v, err := strconv.ParseBool(viperVal.(string)); err == nil {
+				fieldToBeSet.SetBool(v)
+			} else {
+				fieldLogger.WithError(err).Errorf("unable to parse bool: %v", viperVal)
+			}
+		}
+	default:
+		fieldToBeSet.Set(reflectedVal)
+	}
 }
