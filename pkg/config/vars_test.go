@@ -18,6 +18,7 @@ type untaggedBarConfig struct {
 	Example        bool
 	AnotherExample bool
 	BrudiTest      string `validate:"min=1"`
+	BrudiNumber    int
 }
 
 type taggedFooConfig struct {
@@ -28,6 +29,7 @@ type taggedBarConfig struct {
 	CustomExample        bool   `viper:"example"`
 	CustomAnotherExample bool   `viper:"anotherExample"`
 	CustomBrudiTest      string `viper:"brudiTest" validate:"min=1"`
+	CustomBrudiNumber    int    `viper:"brudiNumber"`
 }
 
 func fooConfigValidation(sl validator.StructLevel) {

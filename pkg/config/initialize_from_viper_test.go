@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 
@@ -28,6 +29,7 @@ foo:
     example: true
     newExample: false
     brudiTest: "foobar"
+    brudiNumber: 2222
 `)
 
 func (initializeFromViperTestSuite *InitializeFromViperTestSuite) TestInitializeStructFromViperWithoutTags() {
@@ -39,6 +41,7 @@ func (initializeFromViperTestSuite *InitializeFromViperTestSuite) TestInitialize
 			Example:        true,
 			AnotherExample: false,
 			BrudiTest:      "foobar",
+			BrudiNumber:    2222,
 		},
 	}
 
@@ -64,6 +67,41 @@ func (initializeFromViperTestSuite *InitializeFromViperTestSuite) TestInitialize
 			CustomExample:        true,
 			CustomAnotherExample: false,
 			CustomBrudiTest:      "foobar",
+			CustomBrudiNumber:    2222,
+		},
+	}
+
+	assert.NoError(
+		initializeFromViperTestSuite.T(),
+		InitializeStructFromViper(
+			"foo",
+			&isConfig,
+		),
+	)
+
+	assert.Equal(initializeFromViperTestSuite.T(), shouldBeConfig, isConfig)
+}
+
+func (initializeFromViperTestSuite *InitializeFromViperTestSuite) TestInitializeStructFromViperOverwriteEnv() {
+	assert.NoError(initializeFromViperTestSuite.T(), viper.ReadConfig(bytes.NewBuffer(exampleConfig)))
+
+	os.Setenv("FOO_BAR_BRUDINUMBER", "2223")
+	os.Setenv("FOO_BAR_BRUDITEST", "foobar1")
+	os.Setenv("FOO_BAR_ANOTHEREXAMPLE", "true")
+
+	defer os.Unsetenv("FOO_BAR_BRUDITEST")
+	defer os.Unsetenv("FOO_BAR_BRUDINUMBER")
+	defer os.Unsetenv("FOO_BAR_ANOTHEREXAMPLE")
+
+	isConfig := taggedFooConfig{
+		CustomBar: &taggedBarConfig{},
+	}
+	shouldBeConfig := taggedFooConfig{
+		CustomBar: &taggedBarConfig{
+			CustomExample:        true,
+			CustomAnotherExample: true,
+			CustomBrudiTest:      "foobar1",
+			CustomBrudiNumber:    2223,
 		},
 	}
 
