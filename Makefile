@@ -1,6 +1,7 @@
 BINARY_NAME = brudi
 COMMIT_HASH = $(shell git rev-parse --verify HEAD)
 CURDIR = $(shell pwd)
+GOLANGCI_LINT_VER = v1.23
 
 .PHONY: build
 
@@ -25,13 +26,13 @@ test:
 	go test -v ./...
 
 lintpull:
-	docker pull golangci/golangci-lint
+	docker pull golangci/golangci-lint:$(GOLANGCI_LINT_VER)
 
 lint: lintpull
-	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint golangci-lint run -v
+	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:$(GOLANGCI_LINT_VER) golangci-lint -c build/ci/.golangci.yml run -v
 
 lintfix: lintpull
-	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint golangci-lint run -v --fix
+	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:$(GOLANGCI_LINT_VER) golangci-lint -c build/ci/.golangci.yml run -v --fix
 
 goreleaser:
 	curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --rm-dist

@@ -1,6 +1,6 @@
 module github.com/mittwald/brudi
 
-go 1.14
+go 1.15
 
 require (
 	github.com/fsnotify/fsnotify v1.4.8 // indirect
