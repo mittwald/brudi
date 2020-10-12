@@ -21,7 +21,7 @@ linters-settings:
       - whyNoLint
       - wrapperFunc
   gocyclo:
-    min-complexity: 15
+    min-complexity: 20
   goimports:
     local-prefixes: github.com/mittwald/brudi
   golint:
@@ -30,7 +30,7 @@ linters-settings:
     settings:
       mnd:
         # don't include the "operation" and "assign"
-        checks: argument,case,condition,return
+        checks: argument,case,return
   lll:
     line-length: 140
   maligned:
