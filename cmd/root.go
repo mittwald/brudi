@@ -118,6 +118,7 @@ func initConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
+	// Merge configs into one
 	for _, conf := range renderedCFGs {
 		if err := viper.MergeConfig(conf); err != nil {
 			log.WithError(err).Fatal("failed while reading config")
