@@ -33,8 +33,8 @@ func init() {
 	lsFileSep = regexp.MustCompile(`^([-rwxd]{10})[ \t]+([0-9a-zA-Z]+)[ \t]+([0-9a-zA-Z]+)[ \t]+([0-9]+)[ \t]+([0-9-]+ [0-9:]+) (.+)$`)
 
 	// forget snapshots
-	forgetSnapshotStartPattern = regexp.MustCompile(`^remove [0-9]* snapshots:$`)
-	forgetSnapshotFinishedPattern = regexp.MustCompile(`^[0-9]* snapshots have been removed`)
+	forgetSnapshotStartPattern = regexp.MustCompile(`^remove \d* snapshots:$`)
+	forgetSnapshotFinishedPattern = regexp.MustCompile(`^\d* snapshots have been reved`)
 	forgetSnapshotPattern = regexp.MustCompile(`^([0-9a-z]*)[ ].*[0-9]{4}(-[0-9]{2}){2} ([0-9]{2}:){2}[0-9]{2}`)
 	forgetConcreteSnapshotPattern = regexp.MustCompile(`^removed snapshot ([0-9a-z].*)$`)
 }

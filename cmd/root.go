@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"os"
@@ -107,6 +108,6 @@ func initConfig() {
 	if err := viper.ReadConfig(renderedCfg); err != nil {
 		log.WithError(err).Fatal("failed while reading config")
 	}
-
+	fmt.Println(viper.AllKeys())
 	log.WithField("config", cfgFile).Info("config loaded")
 }
