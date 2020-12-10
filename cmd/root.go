@@ -55,7 +55,7 @@ func initConfig() {
 		cfgFile[0] = path.Join(home, ".brudi.yaml")
 	}
 
-	logFields := log.WithField("cfgFile", cfgFile)
+	logFields := log.WithField("cfgFiles", cfgFile)
 
 	for _, file := range cfgFile {
 		info, err := os.Stat(file)
@@ -72,7 +72,7 @@ func initConfig() {
 	for _, file := range cfgFile {
 		content, err := ioutil.ReadFile(file)
 		if err != nil {
-			log.WithError(err).Fatal("failed while reading config")
+			log.WithError(err).Fatalf("failed while reading config file %s", file)
 			continue
 		}
 		cfgContent = append(cfgContent, content)
@@ -121,7 +121,7 @@ func initConfig() {
 	// Merge configs into one
 	for _, conf := range renderedCFGs {
 		if err := viper.MergeConfig(conf); err != nil {
-			log.WithError(err).Fatal("failed while reading config")
+			log.WithError(err).Fatal("failed while reading config %s", conf)
 		}
 	}
 
