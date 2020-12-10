@@ -16,7 +16,7 @@ import (
 
 var (
 	// Used for flags.
-	cfgFile         string
+	cfgFile         []string
 	useRestic       bool
 	useResticForget bool
 	cleanup         bool
@@ -38,7 +38,7 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVar(&cleanup, "cleanup", false, "cleanup backup files afterwards")
 
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ${HOME}/.brudi.yaml)")
+	rootCmd.PersistentFlags().StringSliceVarP(&cfgFile, "config", "c", []string{}, "config file (default is ${HOME}/.brudi.yaml)")
 }
 
 // Execute executes the root command.
@@ -47,38 +47,47 @@ func Execute() error {
 }
 
 func initConfig() {
-	if cfgFile == "" {
+	if len(cfgFile) == 0 {
 		home, err := homedir.Dir()
 		if err != nil {
 			log.WithError(err).Fatal("unable to determine homedir for current user")
 		}
-
-		cfgFile = path.Join(home, ".brudi.yaml")
+		cfgFile[0] = path.Join(home, ".brudi.yaml")
 	}
 
 	logFields := log.WithField("cfgFile", cfgFile)
 
-	info, err := os.Stat(cfgFile)
-	if os.IsNotExist(err) {
-		logFields.Warn("config does not exist")
-		return
-	} else if info.IsDir() {
-		logFields.Warn("config is a directory")
-		return
+	for _, file := range cfgFile {
+		info, err := os.Stat(file)
+		if os.IsNotExist(err) {
+			logFields.Warn("config does not exist")
+			return
+		} else if info.IsDir() {
+			logFields.Warn("config is a directory")
+			return
+		}
 	}
 
-	var cfgContent []byte
-	cfgContent, err = ioutil.ReadFile(cfgFile)
-	if err != nil {
-		log.WithError(err).Fatal("failed while reading config")
+	var cfgContent [][]byte
+	for _, file := range cfgFile {
+		content, err := ioutil.ReadFile(file)
+		if err != nil {
+			log.WithError(err).Fatal("failed while reading config")
+			continue
+		}
+		cfgContent = append(cfgContent, content)
 	}
 
-	var tpl *template.Template
-	tpl, err = template.New("").Parse(string(cfgContent))
-	if err != nil {
-		log.WithError(err).Fatal()
-	}
+	var tpl []*template.Template
 
+	for _, content := range cfgContent {
+		tpltemp, err := template.New("").Parse(string(content))
+		if err != nil {
+			log.WithError(err).Fatal()
+			continue
+		}
+		tpl = append(tpl, tpltemp)
+	}
 	type templateData struct {
 		Env map[string]string
 	}
@@ -94,18 +103,25 @@ func initConfig() {
 		}
 	}
 
-	renderedCfg := new(bytes.Buffer)
-	err = tpl.Execute(renderedCfg, &data)
-	if err != nil {
-		log.WithError(err).Fatal()
+	var renderedCFGs []*bytes.Buffer
+	for _, template := range tpl {
+		renderedCfg := new(bytes.Buffer)
+		err := template.Execute(renderedCfg, &data)
+		if err != nil {
+			log.WithError(err).Fatal()
+			continue
+		}
+		renderedCFGs = append(renderedCFGs, renderedCfg)
 	}
 
 	viper.SetConfigType("yaml")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
-	if err := viper.ReadConfig(renderedCfg); err != nil {
-		log.WithError(err).Fatal("failed while reading config")
+	for _, conf := range renderedCFGs {
+		if err := viper.MergeConfig(conf); err != nil {
+			log.WithError(err).Fatal("failed while reading config")
+		}
 	}
 
 	log.WithField("config", cfgFile).Info("config loaded")

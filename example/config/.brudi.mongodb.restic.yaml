@@ -3,13 +3,15 @@ mongodump:
     flags:
       host: 127.0.0.1
       port: 27017
+      username: root
+      password: mongodbroot
       gzip: true
       archive: /tmp/dump.tar.gz
     additionalArgs: []
 restic:
   global:
     flags:
-      repo: "s3:s3.eu-central-1.amazonaws.com/your.s3.bucket/myResticRepo"
+      repo: "/home/ybramkamp/resticrepos/mongo-repo"
   forget:
     flags:
       keepLast: 1
