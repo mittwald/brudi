@@ -30,6 +30,7 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	return &ConfigBasedBackend{cfg: config}, nil
 }
 
+// Do a bgsave of the given redis instance
 func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 	cmd := cli.CommandType{
 		Binary: binary,

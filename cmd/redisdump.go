@@ -13,7 +13,7 @@ import (
 var (
 	redisDumpCmd = &cobra.Command{
 		Use:   "redisdump",
-		Short: "Creates a redisdump of your desired server",
+		Short: "Creates an rdp dump of your desired server",
 		Long:  "Backups a given database server with given arguments",
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := context.WithCancel(context.Background())
