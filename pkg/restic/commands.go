@@ -365,11 +365,13 @@ func RebuildIndex(ctx context.Context) ([]byte, error) {
 }
 
 // RestoreBackup executes "restic restore"
-func RestoreBackup(ctx context.Context, opts *RestoreOptions) ([]byte, error) {
+func RestoreBackup(ctx context.Context, glob *GlobalOptions, opts *RestoreOptions) ([]byte, error) {
+	args := cli.StructToCLI(glob)
+	args = append(args, cli.StructToCLI(opts)...)
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "restore",
-		Args:    cli.StructToCLI(opts),
+		Args:    args,
 	}
 	return cli.Run(ctx, cmd)
 }
