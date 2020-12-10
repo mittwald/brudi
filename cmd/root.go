@@ -51,6 +51,7 @@ func initConfig() {
 		home, err := homedir.Dir()
 		if err != nil {
 			log.WithError(err).Fatal("unable to determine homedir for current user")
+			// should we return here?
 		}
 		cfgFile[0] = path.Join(home, ".brudi.yaml")
 	}
