@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"github.com/mittwald/brudi/internal"
 	"html/template"
 	"io/ioutil"
 	"os"
@@ -63,8 +62,18 @@ func initConfig() {
 		cfgFiles = append([]string{path.Join(home, ".brudi.yaml")}, cfgFiles...)
 	}
 
+	exists := make(map[string]struct{})
+	var uniqueCFGs []string
+	for _, val := range cfgFiles {
+		if _, ok := exists[val]; !ok {
+			exists[val] = struct{}{}
+			uniqueCFGs = append(uniqueCFGs, val)
+		} else {
+			logFields.Warnf("Config %s has been specified more than once, ignoring additional instances", val)
+		}
+	}
+	cfgFiles = uniqueCFGs
 	// filter out potential duplicate config files while respecting order. Only first instance of config file will be retained
-	cfgFiles = internal.Unique(cfgFiles)
 
 	for _, file := range cfgFiles {
 		info, err := os.Stat(file)
