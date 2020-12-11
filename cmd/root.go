@@ -16,7 +16,7 @@ import (
 
 var (
 	// Used for flags.
-	cfgFile         []string
+	cfgFiles        []string
 	useRestic       bool
 	useResticForget bool
 	cleanup         bool
@@ -38,7 +38,7 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVar(&cleanup, "cleanup", false, "cleanup backup files afterwards")
 
-	rootCmd.PersistentFlags().StringSliceVarP(&cfgFile, "config", "c", []string{}, "config file (default is ${HOME}/.brudi.yaml)")
+	rootCmd.PersistentFlags().StringSliceVarP(&cfgFiles, "config", "c", []string{}, "config file (default is ${HOME}/.brudi.yaml)")
 }
 
 // Execute executes the root command.
@@ -47,18 +47,22 @@ func Execute() error {
 }
 
 func initConfig() {
-	if len(cfgFile) == 0 {
-		home, err := homedir.Dir()
-		if err != nil {
-			log.WithError(err).Fatal("unable to determine homedir for current user")
-			// should we return here?
-		}
-		cfgFile = append(cfgFile, path.Join(home, ".brudi.yaml"))
+	home, err := homedir.Dir()
+	if err != nil {
+		log.WithError(err).Fatal("unable to determine homedir for current user")
 	}
 
-	logFields := log.WithField("cfgFiles", cfgFile)
+	logFields := log.WithField("cfgFiles", cfgFiles)
 
-	for _, file := range cfgFile {
+	// check if default config exists and prepend it to list of configs
+	_, err = os.Stat(path.Join(home, ".brudi.yaml"))
+	if os.IsNotExist(err) {
+		logFields.Warn("default config does not exist")
+	} else {
+		cfgFiles = append([]string{path.Join(home, ".brudi.yaml")}, cfgFiles...)
+	}
+
+	for _, file := range cfgFiles {
 		info, err := os.Stat(file)
 		if os.IsNotExist(err) {
 			logFields.Warn("config does not exist")
@@ -70,7 +74,7 @@ func initConfig() {
 	}
 
 	var cfgContent [][]byte
-	for _, file := range cfgFile {
+	for _, file := range cfgFiles {
 		content, err := ioutil.ReadFile(file)
 		if err != nil {
 			log.WithError(err).Fatalf("failed while reading config file %s", file)
@@ -123,5 +127,5 @@ func initConfig() {
 		}
 	}
 
-	log.WithField("config", cfgFile).Info("config loaded")
+	log.WithField("config", cfgFiles).Info("config loaded")
 }
