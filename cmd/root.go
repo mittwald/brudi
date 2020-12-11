@@ -73,7 +73,6 @@ func initConfig() {
 		}
 	}
 	cfgFiles = uniqueCFGs
-	// filter out potential duplicate config files while respecting order. Only first instance of config file will be retained
 
 	for _, file := range cfgFiles {
 		info, err := os.Stat(file)
