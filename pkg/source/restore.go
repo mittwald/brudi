@@ -35,19 +35,24 @@ func DoRestoreForKind(ctx context.Context, kind string, cleanup, useRestic, useR
 		return err
 	}
 
-	if !useRestic {
-		return nil
-	}
+	if useRestic {
+		var resticClient *restic.Client
+		resticClient, err = restic.NewResticClient(logKind, backend.GetHostname(), backend.GetBackupPath())
+		if err != nil {
+			return err
+		}
 
-	var resticClient *restic.Client
-	resticClient, err = restic.NewResticClient(logKind, backend.GetHostname(), backend.GetBackupPath())
-	if err != nil {
-		return err
-	}
+		err = resticClient.DoResticRestore(ctx)
+		if err != nil {
+			return err
+		}
 
-	err = resticClient.DoResticRestore(ctx)
-	if err != nil {
-		return err
+		if useResticForget {
+			err = resticClient.DoResticForget(ctx)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	err = backend.RestoreBackup(ctx)
@@ -73,9 +78,5 @@ func DoRestoreForKind(ctx context.Context, kind string, cleanup, useRestic, useR
 
 	logKind.Info("finished restoring")
 
-	if !useResticForget {
-		return nil
-	}
-
-	return resticClient.DoResticForget(ctx)
+	return nil
 }
