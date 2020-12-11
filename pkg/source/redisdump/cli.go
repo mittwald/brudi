@@ -7,6 +7,7 @@ const (
 type Options struct {
 	Flags          *Flags
 	AdditionalArgs []string
+	Command        string
 }
 
 type Flags struct {
@@ -37,7 +38,7 @@ type Flags struct {
 	PipeTimeout      int    `flag:"--pipe-timeout="`
 	Port             int    `flag:"-p"`
 	Raw              bool   `flag:"--raw"`
-	Rdb              string `flag:"--rdb"`
+	Rdb              string `flag:"--rdb"validate:"min=1"`
 	ReadStdin        bool   `flag:"-x"`
 	Repeat           int    `flag:"-r"`
 	Replica          bool   `flag:"--replica"`

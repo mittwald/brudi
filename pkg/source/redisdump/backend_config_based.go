@@ -19,6 +19,7 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 		&Options{
 			Flags:          &Flags{},
 			AdditionalArgs: []string{},
+			Command:        "bgsave",
 		},
 	}
 
@@ -34,7 +35,7 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 	cmd := cli.CommandType{
 		Binary: binary,
-		Args:   append(cli.StructToCLI(b.cfg.Options), "bgsave"),
+		Args:   cli.StructToCLI(b.cfg.Options),
 	}
 	fmt.Println(cmd.Args)
 
