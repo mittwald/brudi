@@ -9,12 +9,15 @@ import (
 	"github.com/mittwald/brudi/pkg/restic"
 
 	"github.com/mittwald/brudi/pkg/source/mongorestore"
+	"github.com/mittwald/brudi/pkg/source/mysqlrestore"
 )
 
 func getGenericRestoreBackendForKind(kind string) (GenericRestore, error) {
 	switch kind {
 	case mongorestore.Kind:
 		return mongorestore.NewConfigBasedBackend()
+	case mysqlrestore.Kind:
+		return mysqlrestore.NewConfigBasedBackend()
 	default:
 		return nil, fmt.Errorf("unsupported kind '%s'", kind)
 	}
