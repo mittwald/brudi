@@ -53,11 +53,10 @@ type Flags struct {
 	BypassDocumentValidation         bool   `flag:"--bypassDocumentValidation"`
 	PreserveUUID                     bool   `flag:"--preserveUUID"`
 	FixDottedHashIndex               bool   `flag:"--fixDottedHashIndex"`
-
-	Gzip                         bool   `flag:"--gzip"`
-	Out                          string `flag:"--out="`
-	Archive                      string `flag:"--archive="`
-	ExcludeCollection            string `flag:"--excludeCollection="`
-	ExcludeCollectionsWithPrefix string `flag:"--excludeCollectionsWithPrefix="`
-	NumParallelCollections       int    `flag:"--numParallelCollections="`
+	Gzip                             bool   `flag:"--gzip"`
+	Out                              string `flag:"--out="`
+	Archive                          string `flag:"--archive="`
+	ExcludeCollection                string `flag:"--excludeCollection="`
+	ExcludeCollectionsWithPrefix     string `flag:"--excludeCollectionsWithPrefix="`
+	NumParallelCollections           int    `flag:"--numParallelCollections="`
 }
