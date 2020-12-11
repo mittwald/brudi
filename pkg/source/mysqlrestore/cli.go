@@ -6,17 +6,47 @@ const (
 
 type Options struct {
 	Flags          *Flags
+	Command        string
 	SourceFile     string
 	AdditionalArgs []string
 }
 
 type Flags struct {
-	Host     string `flag:"--host=" validate:"min=1"`
-	Password string `flag:"--password="`
-	Port     int    `flag:"--port="`
-	User     string `flag:"--user="`
+	Database              string `flag:"--database" valiudate:"min=1"`
+	Debug                 string `flag:"--debug="`
+	DebugCheck            bool   `flag:"--debug-check"`
+	DebugInfo             bool   `flag:"--debug-info"`
+	DefaultAuth           string `flag:"--default-auth="`
+	DefaultCharacterSet   string `flag:"--default-character-set="`
+	DefaultsExtraFile     string `flag:"--defaults-extra-file="`
+	DefaultsFile          string `flag:"--defaults-file="`
+	DefaultsGroupSuffix   string `flag:"--defaults-group-suffix="`
+	EnableCleartextPlugin bool   `flag:"--enable-cleartext-plugin"`
+	Force                 bool   `flaf:"--force"`
+	GetServerPublicKey    bool   `flag:"--get-server-public-key"`
+	Host                  string `flag:"--host=" validate:"min=1"`
+	LoginPath             string `flag:"--login-path="`
+	MaxAllowedPacket      string `flag:"--max-allowed-packet="`
+	Password              string `flag:"--password="`
+	Port                  int    `flag:"--port="`
+	ServerPublicKeyPath   string `flag:"--server-public-key-path="`
+	SharedMemoryBaseName  string `flag:"--shared-memory-base-name="`
+	Socket                string `flag:"--socket="`
+	SslCa                 string `flag:"--ssl-ca="`
+	SslCaPath             string `flag:"--ssl-capath="`
+	SslCert               string `flag:"--ssl-cert="`
+	SslCipher             string `flag:"--ssl-cipher="`
+	SslCrl                string `flag:"--ssl-crl="`
+	SslCrlPath            string `flag:"--ssl-crlpath="`
+	SslFipsMode           string `flag:"--ssl-fips-mode"`
+	SslKey                string `flag:"--ssl-key="`
+	TLSCipherSuites       string `flag:"--tls-ciphersuites="`
+	TLSVersion            string `flag:"--tls-version="`
+	User                  string `flag:"--user="`
+	XML                   bool   `flag:"--xml"`
+	ZstdCompressionLevel  int    `flag:"--zstd-compression-level"`
 
-	AutoRehash bool `flag:"--auto-rehash"`
+	//AutoRehash bool `flag:"--auto-rehash"`
 	//AutoVerticalInput --auto-vertical-output
 	//--batch
 	//--binary-as-hex
@@ -30,32 +60,17 @@ type Flags struct {
 	//--compression-algorithms
 	//--connect-expired-password
 	//--connect-timeout
-	//--database
-	//--debug
-	//--debug-check
-	//--debug-info
-	//--default-auth
-	//--default-character-set
-	//--defaults-extra-file
-	//--defaults-file
-	//--defaults-group-suffix
 	//--delimiter
 	//--dns-srv-name
-	//--enable-cleartext-plugin
 	//--execute
-	//--force
-	//--get-server-public-key
 	//--help
 	//--histignore
-	//--host
 	//--html
 	//--ignore-spaces
 	//--init-command
 	//--line-numbers
 	//--load-data-local-dir
 	//--local-infile
-	//--login-path
-	//--max-allowed-packet
 	//--max-join-size
 	//--named-commands
 	//--net-buffer-length
@@ -65,10 +80,8 @@ type Flags struct {
 	//--no-defaults
 	//--one-database
 	//--pager
-	//--password
 	//--pipe
 	//--plugin-dir
-	//--port
 	//--print-defaults
 	//--prompt
 	//--protocol
@@ -77,8 +90,6 @@ type Flags struct {
 	//--reconnect
 	//--safe-updates, --i-am-a-dummy
 	//--select-limit
-	//--server-public-key-path
-	//--shared-memory-base-name
 	//--show-warnings
 	//--sigint-ignore
 	//--silent
@@ -88,28 +99,14 @@ type Flags struct {
 	//--skip-named-commands
 	//--skip-pager
 	//--skip-reconnect
-	//--socket
-	//--ssl-ca
-	//--ssl-capath
-	//--ssl-cert
-	//--ssl-cipher
-	//--ssl-crl
-	//--ssl-crlpath
-	//--ssl-fips-mode
-	//--ssl-key
 	//--ssl-mode
 	//--syslog
 	//--table
 	//--tee
-	//--tls-ciphersuites
-	//--tls-version
 	//--unbuffered
-	//--user
 	//--verbose
 	//--version
 	//--vertical
 	//--wait
-	//--xml
-	//--zstd-compression-level
 
 }

@@ -27,5 +27,5 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(mongoRestoreCmd)
+	rootCmd.AddCommand(mysqlRestoreCmd)
 }

@@ -19,6 +19,8 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 		&Options{
 			Flags:          &Flags{},
 			AdditionalArgs: []string{},
+			Command:        "<",
+			SourceFile:     "",
 		},
 	}
 
