@@ -46,6 +46,7 @@ type Flags struct {
 	HistIgnore             bool   `flag:"--histignore"`
 	Host                   string `flag:"--host=" validate:"min=1"`
 	HTML                   bool   `flag:"--html"`
+	IAmADummy              bool   `flag:"--i-am-a-dummy"`
 	IgnoreSpaces           bool   `flag:"--ignore-spaces"`
 	InitCommand            string `flag:"--init-command="`
 	LineNumbers            bool   `flag:"--line-numbers"`
@@ -66,48 +67,45 @@ type Flags struct {
 	Pipe                   bool   `flag:"--pipe"`
 	PluginDir              string `flag:"--plugin-dir"`
 	Port                   int    `flag:"--port="`
-	//--print-defaults
-	//--prompt
-	//--protocol
-	//--quick
-	//--raw
-	//--reconnect
-	ServerPublicKeyPath  string `flag:"--server-public-key-path="`
-	SharedMemoryBaseName string `flag:"--shared-memory-base-name="`
-	Socket               string `flag:"--socket="`
-	SslCa                string `flag:"--ssl-ca="`
-	SslCaPath            string `flag:"--ssl-capath="`
-	SslCert              string `flag:"--ssl-cert="`
-	SslCipher            string `flag:"--ssl-cipher="`
-	SslCrl               string `flag:"--ssl-crl="`
-	SslCrlPath           string `flag:"--ssl-crlpath="`
-	SslFipsMode          string `flag:"--ssl-fips-mode"`
-	SslKey               string `flag:"--ssl-key="`
-	TLSCipherSuites      string `flag:"--tls-ciphersuites="`
-	TLSVersion           string `flag:"--tls-version="`
-	User                 string `flag:"--user="`
-	XML                  bool   `flag:"--xml"`
-	ZstdCompressionLevel int    `flag:"--zstd-compression-level"`
-
-	//--safe-updates, --i-am-a-dummy
-	//--select-limit
-	//--show-warnings
-	//--sigint-ignore
-	//--silent
-	//--skip-auto-rehash
-	//--skip-column-names
-	//--skip-line-numbers
-	//--skip-named-commands
-	//--skip-pager
-	//--skip-reconnect
-	//--ssl-mode
-	//--syslog
-	//--table
-	//--tee
-	//--unbuffered
-	//--verbose
-	//--version
-	//--vertical
-	//--wait
-
+	PrintDefaults          bool   `flag:"--print-defaults"`
+	Promtp                 string `flag:"--prompt="`
+	Protocol               string `flag:"--protocol="`
+	Quick                  bool   `flag:"--quick"`
+	Raw                    bool   `flag:"--raw"`
+	Reconnect              bool   `flag:"--reconnect"`
+	SafeUpdates            bool   `flag:"--safe-updates"`
+	SelcetLimit            int    `flag:"--select-limit"`
+	ServerPublicKeyPath    string `flag:"--server-public-key-path="`
+	SharedMemoryBaseName   string `flag:"--shared-memory-base-name="`
+	ShowWarning            bool   `flag:"--show-warnings"`
+	SigintIgnore           bool   `flag:"--sigint-ignore"`
+	Silent                 bool   `flag:"--silent"`
+	SkipAutoRehash         bool   `flag:"--skip-auto-rehash"`
+	SkipColumnNames        bool   `flags:"--skip-column-names"`
+	skipLineNumbers        bool   `flags:"--skip-line-numbers"`
+	SkipNamedCommands      bool   `flags:"--skip-named-commands"`
+	SkipPager              bool   `flag:"--skip-pager"`
+	SkipReconnect          bool   `flag:"--skip-reconnect"`
+	Socket                 string `flag:"--socket="`
+	SslCa                  string `flag:"--ssl-ca="`
+	SslCaPath              string `flag:"--ssl-capath="`
+	SslCert                string `flag:"--ssl-cert="`
+	SslCipher              string `flag:"--ssl-cipher="`
+	SslCrl                 string `flag:"--ssl-crl="`
+	SslCrlPath             string `flag:"--ssl-crlpath="`
+	SslFipsMode            string `flag:"--ssl-fips-mode"`
+	SslKey                 string `flag:"--ssl-key="`
+	Syslog                 bool   `flag:"--syslog"`
+	Table                  bool   `flag:"--table"`
+	Tee                    string `flag:"--tee="`
+	TLSCipherSuites        string `flag:"--tls-ciphersuites="`
+	TLSVersion             string `flag:"--tls-version="`
+	Unbuffered             bool   `flag:"--unbuffered"`
+	User                   string `flag:"--user="`
+	Verbose                bool   `flag:"--verbose"`
+	Version                bool   `flag:"--version"`
+	Vertical               bool   `flag:"--vertical"`
+	Wait                   bool   `flag:"--wait"`
+	XML                    bool   `flag:"--xml"`
+	ZstdCompressionLevel   int    `flag:"--zstd-compression-level="`
 }
