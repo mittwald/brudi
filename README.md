@@ -99,6 +99,7 @@ Every source has a an `additionalArgs`-key which's value is an array of strings.
 Even though `brudi` should support all cli-flags to be configured via the `.yaml`-file, there may be flags which are not.  
 In this case, use the `additionalArgs`-key.
 
+It is also possible to provide more than one configuration file, for example `-c mongodump.yaml -c restic.yaml`. These configs get merged at runtime.
 #### Sources
 
 ##### Tar
