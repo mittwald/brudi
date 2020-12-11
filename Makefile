@@ -5,7 +5,7 @@ GOLANGCI_LINT_VER = v1.33.0
 
 .PHONY: build
 
-all: dep test lint build upTestMongo
+all: dep test lint build
 
 dep:
 	go mod tidy
