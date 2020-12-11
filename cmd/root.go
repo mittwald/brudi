@@ -74,7 +74,6 @@ func initConfig() {
 		content, err := ioutil.ReadFile(file)
 		if err != nil {
 			log.WithError(err).Fatalf("failed while reading config file %s", file)
-			continue
 		}
 		cfgContent = append(cfgContent, content)
 	}
@@ -85,7 +84,6 @@ func initConfig() {
 		tpltemp, err := template.New("").Parse(string(content))
 		if err != nil {
 			log.WithError(err).Fatal()
-			continue
 		}
 		tpl = append(tpl, tpltemp)
 	}
@@ -122,7 +120,7 @@ func initConfig() {
 	// Merge configs into one
 	for _, conf := range renderedCFGs {
 		if err := viper.MergeConfig(conf); err != nil {
-			log.WithError(err).Fatal("failed while reading config %s", conf)
+			log.WithError(err).Fatal("failed while reading config")
 		}
 	}
 
