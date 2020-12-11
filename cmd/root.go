@@ -108,7 +108,6 @@ func initConfig() {
 		err := template.Execute(renderedCfg, &data)
 		if err != nil {
 			log.WithError(err).Fatal()
-			continue
 		}
 		renderedCFGs = append(renderedCFGs, renderedCfg)
 	}
