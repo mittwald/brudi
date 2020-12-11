@@ -53,7 +53,7 @@ func initConfig() {
 			log.WithError(err).Fatal("unable to determine homedir for current user")
 			// should we return here?
 		}
-		cfgFile[0] = path.Join(home, ".brudi.yaml")
+		cfgFile = append(cfgFile, path.Join(home, ".brudi.yaml"))
 	}
 
 	logFields := log.WithField("cfgFiles", cfgFile)
