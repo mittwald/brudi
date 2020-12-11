@@ -10,40 +10,40 @@ type Options struct {
 }
 
 type Flags struct {
-	Host             string `flag:"-h"`
-	Port             int    `flag:"-p"`
-	ResultFile       string `flag:"--rdb"`
-	Password         string `flag:"-a"`
-	Socket           string `flag:"-s"`
-	URI              string `flag:"-u"`
-	Repeat           int    `flag:"-r"`
-	Interval         int    `flag:"-i"`
-	DatabaseNumber   int    `flag:"-n"`
-	ReadStdin        bool   `flag:"-x"`
-	Delimiter        string `flag:"-d"`
-	ClusterMode      bool   `flag:"-c"`
-	Raw              bool   `flag:"--raw"`
-	NoRaw            bool   `flag:"--no-raw"`
-	Csv              bool   `flag:"--csv"`
-	Stat             bool   `flag:"--stat"`
-	Latency          bool   `flag:"--latency"`
-	LatencyHistory   bool   `flag:"--latency-history"`
-	LatencyDist      bool   `flag:"latency-dist"`
-	LruTest          string `flag:"--lru-test="`
-	Replica          bool   `flag:"--replica"`
-	Pipe             bool   `flag:"--pipe"`
-	PipeTimeout      int    `flag:"--pipe-timeout="`
 	Bigkeys          bool   `flag:"--bigKeys"`
-	Memkeys          bool   `flag:"--memkeys"`
-	MemkeysSamples   int    `flag:"--memkeys-samples="`
-	Hotkeys          bool   `flag:"--hotkeys"`
-	Scan             bool   `flag:"--scan"`
-	Pattern          string `flag:"--pattern="`
-	IntrinsicLatency int    `flag:"--intrinsic-latency="`
+	Cluster          string `flag:"--cluster="`
+	ClusterMode      bool   `flag:"-c"`
+	Csv              bool   `flag:"--csv"`
+	DatabaseNumber   int    `flag:"-n"`
+	Delimiter        string `flag:"-d"`
 	Eval             string `flag:"--eval="`
+	Host             string `flag:"-h"`
+	Hotkeys          bool   `flag:"--hotkeys"`
+	Interval         int    `flag:"-i"`
+	IntrinsicLatency int    `flag:"--intrinsic-latency="`
+	Latency          bool   `flag:"--latency"`
+	LatencyDist      bool   `flag:"latency-dist"`
+	LatencyHistory   bool   `flag:"--latency-history"`
 	Ldb              bool   `flag:"--ldb"`
 	LdbSyncMode      bool   `flag:"--ldb-sync-mode"`
-	Cluster          string `flag:"--cluster="`
-	Verbose          bool   `flag:"--verbose"`
+	LruTest          string `flag:"--lru-test="`
+	Memkeys          bool   `flag:"--memkeys"`
+	MemkeysSamples   int    `flag:"--memkeys-samples="`
 	NoAuthWarning    bool   `flag:"--no-auth-warning"`
+	NoRaw            bool   `flag:"--no-raw"`
+	Password         string `flag:"-a"`
+	Pattern          string `flag:"--pattern="`
+	Pipe             bool   `flag:"--pipe"`
+	PipeTimeout      int    `flag:"--pipe-timeout="`
+	Port             int    `flag:"-p"`
+	Raw              bool   `flag:"--raw"`
+	Rdb              string `flag:"--rdb"`
+	ReadStdin        bool   `flag:"-x"`
+	Repeat           int    `flag:"-r"`
+	Replica          bool   `flag:"--replica"`
+	Scan             bool   `flag:"--scan"`
+	Socket           string `flag:"-s"`
+	Stat             bool   `flag:"--stat"`
+	URI              string `flag:"-u"`
+	Verbose          bool   `flag:"--verbose"`
 }

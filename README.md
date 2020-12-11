@@ -199,14 +199,14 @@ redisdump:
     flags:
       host: 127.0.0.1
       password: redisdb
-      resultFile: /tmp/redisdump.rdp
+      rdb: /tmp/redisdump.rdb
     additionalArgs: []
 ```
 
 Running: `brudi redisdump -c ${HOME}/.brudi.yml`
 
 Becomes the following command:
-`redis-cli -h 127.0.0.1 -a redisdb --rdp /tmp/redisdump.rdp bgsave`
+`redis-cli -h 127.0.0.1 -a redisdb --rdb /tmp/redisdump.rdb bgsave`
 
 As `redis-cli` is not a dedicated backup tool but a client for `redis`, only a limited number of flags are available by default,
 as you can see [here](pkg/source/redisdump/cli.go#L7).

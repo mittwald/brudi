@@ -47,7 +47,7 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {
-	return b.cfg.Options.Flags.ResultFile
+	return b.cfg.Options.Flags.Rdb
 }
 
 func (b *ConfigBasedBackend) GetHostname() string {
