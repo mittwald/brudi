@@ -36,7 +36,9 @@ In order to use the `brudi`-binary on your local machine or a remote server of y
 - `mongodump` (required when running `brudi mongodump`)
 - `mysqldump` (required when running `brudi mysqldump`)
 - `tar` (required when running `brudi tar`)
+- `redis-cli` (required when running `brudi redisdump`)
 - `restic` (required when running `brudi --restic`)
+
 
 ```shell
 $ brudi --help
@@ -52,6 +54,7 @@ Available Commands:
   mongodump   Creates a mongodump of your desired server
   mysqldump   Creates a mysqldump of your desired server
   pgdump      Creates a pg_dump of your desired postgresql-server
+  redisdump   Creates an rdp dump of your desired server
   tar         Creates a tar archive of your desired paths
   version     Print the version number of brudi
 
@@ -187,6 +190,26 @@ Becomes the following command:
 `pg_dump --file=/tmp/postgres.dump --dbname=postgres --host=127.0.0.1 --port=5432 --username=postgresuser`  
 
 All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/pgdump/cli.go#L7).
+
+##### Redis
+
+```yaml
+redisdump:
+  options:
+    flags:
+      host: 127.0.0.1
+      password: redisdb
+      resultFile: /tmp/redisdump.rdp
+    additionalArgs: []
+```
+
+Running: `brudi redisdump -c ${HOME}/.brudi.yml`
+
+Becomes the following command:
+`redis-cli -h 127.0.0.1 -a redisdb --rdp /tmp/redisdump.rdp bgsave`
+
+As `redis-cli` is not a dedicated backup tool but a client for `redis`, only a limited number of flags are available by default,
+as you can see [here](pkg/source/redisdump/cli.go#L7).
 
 ###### Limitations
 
