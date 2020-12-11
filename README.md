@@ -100,6 +100,9 @@ Even though `brudi` should support all cli-flags to be configured via the `.yaml
 In this case, use the `additionalArgs`-key.
 
 It is also possible to provide more than one configuration file, for example `-c mongodump.yaml -c restic.yaml`. These configs get merged at runtime.
+If available, the default config will always be laoded first and then overwritten with any values from user-specified files. 
+In case the same config file has been provided more than once, only the first instance will be taken into account.
+
 #### Sources
 
 ##### Tar

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"github.com/mittwald/brudi/internal"
 	"html/template"
 	"io/ioutil"
 	"os"
@@ -62,13 +63,16 @@ func initConfig() {
 		cfgFiles = append([]string{path.Join(home, ".brudi.yaml")}, cfgFiles...)
 	}
 
+	// filter out potential duplicate config files while respecting order. Only first instance of config file will be retained
+	cfgFiles = internal.Unique(cfgFiles)
+
 	for _, file := range cfgFiles {
 		info, err := os.Stat(file)
 		if os.IsNotExist(err) {
-			logFields.Warn("config does not exist")
+			logFields.Warnf("config %s does not exist", file)
 			return
 		} else if info.IsDir() {
-			logFields.Warn("config is a directory")
+			logFields.Warnf("config %s is a directory", file)
 			return
 		}
 	}
@@ -87,7 +91,7 @@ func initConfig() {
 	for _, content := range cfgContent {
 		tpltemp, err := template.New("").Parse(string(content))
 		if err != nil {
-			log.WithError(err).Fatal()
+			log.WithError(err).Fatalf("Failed while templating config %s", content)
 		}
 		tpl = append(tpl, tpltemp)
 	}
@@ -111,7 +115,7 @@ func initConfig() {
 		renderedCfg := new(bytes.Buffer)
 		err := template.Execute(renderedCfg, &data)
 		if err != nil {
-			log.WithError(err).Fatal()
+			log.WithError(err).Fatalf("Failed while rendering template %s", template)
 		}
 		renderedCFGs = append(renderedCFGs, renderedCfg)
 	}
@@ -123,9 +127,9 @@ func initConfig() {
 	// Merge configs into one
 	for _, conf := range renderedCFGs {
 		if err := viper.MergeConfig(conf); err != nil {
-			log.WithError(err).Fatal("failed while reading config")
+			log.WithError(err).Fatalf("failed while reading config %s", conf)
 		}
 	}
 
-	log.WithField("config", cfgFiles).Info("config loaded")
+	log.WithField("config", cfgFiles).Info("configs loaded")
 }
