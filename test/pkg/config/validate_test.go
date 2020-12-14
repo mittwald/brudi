@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	config2 "github.com/mittwald/brudi/pkg/config"
+	"github.com/mittwald/brudi/pkg/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -15,7 +15,7 @@ type ValidationTestSuite struct {
 }
 
 func (validationSuite *ValidationTestSuite) TestSucceedValidationOnTags() {
-	config := untaggedFooConfig{
+	testConfig := untaggedFooConfig{
 		Bar: untaggedBarConfig{
 			Example:        true,
 			AnotherExample: false,
@@ -25,12 +25,12 @@ func (validationSuite *ValidationTestSuite) TestSucceedValidationOnTags() {
 
 	assert.NoError(
 		validationSuite.T(),
-		config2.Validate(config),
+		config.Validate(testConfig),
 	)
 }
 
 func (validationSuite *ValidationTestSuite) TestFailValidationOnTags() {
-	config := untaggedFooConfig{
+	testConfig := untaggedFooConfig{
 		Bar: untaggedBarConfig{
 			Example:        true,
 			AnotherExample: false,
@@ -40,13 +40,13 @@ func (validationSuite *ValidationTestSuite) TestFailValidationOnTags() {
 
 	assert.EqualError(
 		validationSuite.T(),
-		config2.Validate(config),
+		config.Validate(testConfig),
 		"Key: 'untaggedFooConfig.Bar.BrudiTest' Error:Field validation for 'BrudiTest' failed on the 'min' tag",
 	)
 }
 
 func (validationSuite *ValidationTestSuite) TestSucceedValidationOnFunc() {
-	config := untaggedFooConfig{
+	testConfig := untaggedFooConfig{
 		Bar: untaggedBarConfig{
 			Example:        true,
 			AnotherExample: false,
@@ -56,12 +56,12 @@ func (validationSuite *ValidationTestSuite) TestSucceedValidationOnFunc() {
 
 	assert.NoError(
 		validationSuite.T(),
-		config2.Validate(config, fooConfigValidation),
+		config.Validate(testConfig, fooConfigValidation),
 	)
 }
 
 func (validationSuite *ValidationTestSuite) TestFailValidationOnFunc() {
-	config := untaggedFooConfig{
+	testConfig := untaggedFooConfig{
 		Bar: untaggedBarConfig{
 			Example:        false,
 			AnotherExample: false,
@@ -71,7 +71,7 @@ func (validationSuite *ValidationTestSuite) TestFailValidationOnFunc() {
 
 	assert.EqualError(
 		validationSuite.T(),
-		config2.Validate(config, fooConfigValidation),
+		config.Validate(testConfig, fooConfigValidation),
 		fmt.Sprintf(
 			"%s%s\n%s%s",
 			"Key: 'untaggedFooConfig.example' Error:Field validation ",
