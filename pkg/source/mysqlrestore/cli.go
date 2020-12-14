@@ -37,7 +37,7 @@ type Flags struct {
 	DefaultsGroupSuffix    string `flag:"--defaults-group-suffix="`
 	Delimiter              string `flag:"--delimiter="`
 	DisableNamedCommands   bool   `flag:"--disable-named-commands"`
-	DnsSrvName             string `flag:"--dns-srv-name"`
+	DNSSrvName             string `flag:"--dns-srv-name"`
 	EnableCleartextPlugin  bool   `flag:"--enable-cleartext-plugin"`
 	Execute                bool   `flag:"--execute"`
 	Force                  bool   `flaf:"--force"`
@@ -82,7 +82,7 @@ type Flags struct {
 	Silent                 bool   `flag:"--silent"`
 	SkipAutoRehash         bool   `flag:"--skip-auto-rehash"`
 	SkipColumnNames        bool   `flags:"--skip-column-names"`
-	skipLineNumbers        bool   `flags:"--skip-line-numbers"`
+	SkipLineNumbers        bool   `flags:"--skip-line-numbers"`
 	SkipNamedCommands      bool   `flags:"--skip-named-commands"`
 	SkipPager              bool   `flag:"--skip-pager"`
 	SkipReconnect          bool   `flag:"--skip-reconnect"`

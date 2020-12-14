@@ -13,7 +13,7 @@ type Options struct {
 
 type Flags struct {
 	Command             string `flag:"--command="`
-	Dbname              string `flag:"--dbname="`
+	Dbname              string `flag:"--dbname=" validate:"min=1"`
 	EchoAll             bool   `flag:"--echo-all"`
 	EchoHidden          bool   `flag:"--echo-hidden"`
 	EchoQueries         bool   `flag:"--echo-queries"`
@@ -22,7 +22,7 @@ type Flags struct {
 	FieldSeparatorZero  bool   `flag:"--field-separator-zero"`
 	File                string `flag:"--file="`
 	Host                string `flag:"--host=" validate:"min=1"`
-	Html                bool   `flag:"--html"`
+	HTML                bool   `flag:"--html"`
 	List                bool   `flag:"--list"`
 	LogFile             string `flag:"--log-file="`
 	NoAllign            bool   `flag:"--no-align"`

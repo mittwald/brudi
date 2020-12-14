@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"context"
-	"github.com/mittwald/brudi/pkg/source/mysqlrestore"
-
-	"github.com/mittwald/brudi/pkg/source"
 
 	"github.com/spf13/cobra"
+
+	"github.com/mittwald/brudi/pkg/source"
+	"github.com/mittwald/brudi/pkg/source/mysqlrestore"
 )
 
 var (
