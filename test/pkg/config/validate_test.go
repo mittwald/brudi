@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	config2 "github.com/mittwald/brudi/pkg/config"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,7 @@ func (validationSuite *ValidationTestSuite) TestSucceedValidationOnTags() {
 
 	assert.NoError(
 		validationSuite.T(),
-		Validate(config),
+		config2.Validate(config),
 	)
 }
 
@@ -38,7 +39,7 @@ func (validationSuite *ValidationTestSuite) TestFailValidationOnTags() {
 
 	assert.EqualError(
 		validationSuite.T(),
-		Validate(config),
+		config2.Validate(config),
 		"Key: 'untaggedFooConfig.Bar.BrudiTest' Error:Field validation for 'BrudiTest' failed on the 'min' tag",
 	)
 }
@@ -54,7 +55,7 @@ func (validationSuite *ValidationTestSuite) TestSucceedValidationOnFunc() {
 
 	assert.NoError(
 		validationSuite.T(),
-		Validate(config, fooConfigValidation),
+		config2.Validate(config, fooConfigValidation),
 	)
 }
 
@@ -69,7 +70,7 @@ func (validationSuite *ValidationTestSuite) TestFailValidationOnFunc() {
 
 	assert.EqualError(
 		validationSuite.T(),
-		Validate(config, fooConfigValidation),
+		config2.Validate(config, fooConfigValidation),
 		fmt.Sprintf(
 			"%s%s\n%s%s",
 			"Key: 'untaggedFooConfig.example' Error:Field validation ",
