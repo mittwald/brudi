@@ -12,14 +12,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func mergeConfigs(cfgFiles []string) []*bytes.Buffer {
+func MergeConfigs(cfgFiles []string) []*bytes.Buffer {
 	home, err := homedir.Dir()
 	if err != nil {
 		log.WithError(err).Fatal("unable to determine homedir for current user")
 	}
 
 	logFields := log.WithField("cfgFiles", cfgFiles)
-
 	// check if default config exists and prepend it to list of configs
 	_, err = os.Stat(path.Join(home, ".brudi.yaml"))
 	if os.IsNotExist(err) {

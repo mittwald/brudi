@@ -3,11 +3,11 @@ package cmd
 import (
 	"strings"
 
-	"github.com/mittwald/brudi/pkg/config/mergeConfigs"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	cfg "github.com/mittwald/brudi/pkg/config/mergeConfigs"
 )
 
 var (
@@ -49,7 +49,7 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	// Merge configs into one
-	cfgsRendered := mergeConfigs(configFiles)
+	cfgsRendered := MergeConfigs(cfgFiles)
 	for _, conf := range cfgsRendered {
 		if err := viper.MergeConfig(conf); err != nil {
 			log.WithError(err).Fatalf("failed while reading config '%s'", conf)
