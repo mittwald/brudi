@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"github.com/mitchellh/go-homedir"
 	"html/template"
 	"io/ioutil"
 	"os"
@@ -10,11 +11,10 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 )
 
-func MergeConfigs(cfgFiles []string) {
+func ReadConfigFiles(cfgFiles []string) [][]byte {
 	home, err := homedir.Dir()
 	if err != nil {
 		log.WithError(err).Fatal("unable to determine homedir for current user")
@@ -44,11 +44,9 @@ func MergeConfigs(cfgFiles []string) {
 	for _, file := range cfgFiles {
 		info, err := os.Stat(file)
 		if os.IsNotExist(err) {
-			logFields.Warnf("config '%s' does not exist", file)
-			return
+			logFields.Fatalf("config '%s' does not exist", file)
 		} else if info.IsDir() {
-			logFields.Warnf("config '%s' is a directory", file)
-			return
+			logFields.Fatalf("config '%s' is a directory", file)
 		}
 	}
 
@@ -60,16 +58,23 @@ func MergeConfigs(cfgFiles []string) {
 		}
 		cfgContent = append(cfgContent, content)
 	}
+	return cfgContent
+}
 
+func TemplateConfigs(configContent [][]byte) []*template.Template {
 	var tpl []*template.Template
 
-	for _, content := range cfgContent {
+	for _, content := range configContent {
 		tpltemp, err := template.New("").Parse(string(content))
 		if err != nil {
 			log.WithError(err).Fatalf("failed while templating config '%s'", content)
 		}
 		tpl = append(tpl, tpltemp)
 	}
+	return tpl
+}
+
+func RenderConfigs(templates []*template.Template) []*bytes.Buffer {
 	type templateData struct {
 		Env map[string]string
 	}
@@ -86,7 +91,7 @@ func MergeConfigs(cfgFiles []string) {
 	}
 
 	var cfgsRendered []*bytes.Buffer
-	for _, template := range tpl {
+	for _, template := range templates {
 		renderedCfg := new(bytes.Buffer)
 		err := template.Execute(renderedCfg, &data)
 		if err != nil {
@@ -94,13 +99,13 @@ func MergeConfigs(cfgFiles []string) {
 		}
 		cfgsRendered = append(cfgsRendered, renderedCfg)
 	}
+	return cfgsRendered
+}
 
-	// Merge configs into one
-	for _, conf := range cfgsRendered {
+func MergeConfigs(renderedConfigs []*bytes.Buffer) {
+	for _, conf := range renderedConfigs {
 		if err := viper.MergeConfig(conf); err != nil {
 			log.WithError(err).Fatalf("failed while reading config '%s'", conf)
 		}
 	}
-
-	log.WithField("config", cfgFiles).Info("configs loaded")
 }

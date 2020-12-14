@@ -2,7 +2,6 @@ package testconfig
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -28,11 +27,35 @@ func (mergeConfigsTestSuite *MergeConfigsTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
-func (mergeConfigsTestSuite *MergeConfigsTestSuite) TestMergeConfigs() {
-	testConfigs := []string{"../..//testdata/configA_1.yaml", "../../testdata/configA_2.yaml"}
-	config.MergeConfigs(testConfigs)
+var testDBConfig = []byte(`
+      mongodump:
+        options:
+          flags:
+            host: 127.0.0.1
+            port: 27017
+            username: root
+            password: mongodbroot
+            gzip: true
+            archive: /tmp/dump.tar.gz
+          additionalArgs: []
+`)
 
-	var expectedConfig = []byte(`
+var testResticConfig = []byte(`
+      restic:
+        global:
+          flags:
+            repo: "s3:s3.eu-central-1.amazonaws.com/your.s3.bucket/myResticRepo"
+        forget:
+          flags:
+            keepLast: 1
+            keepHourly: 0
+            keepDaily: 0
+            keepWeekly: 0
+            keepMonthly: 0
+            keepYearly: 0
+`)
+
+var expectedConfig = []byte(`
       mongodump:
         options:
           flags:
@@ -56,11 +79,14 @@ func (mergeConfigsTestSuite *MergeConfigsTestSuite) TestMergeConfigs() {
             keepMonthly: 0
             keepYearly: 0
 `)
+
+func (mergeConfigsTestSuite *MergeConfigsTestSuite) TestMergeConfigs() {
+	testData := []*bytes.Buffer{bytes.NewBuffer(testDBConfig), bytes.NewBuffer(testResticConfig)}
+	config.MergeConfigs(testData)
 	testResult := viper.AllSettings()
-	fmt.Println(testResult)
+
 	assert.NoError(mergeConfigsTestSuite.T(), viper.ReadConfig(bytes.NewBuffer(expectedConfig)))
 	shouldBeConfig := viper.AllSettings()
-	fmt.Println(shouldBeConfig)
 	assert.Equal(mergeConfigsTestSuite.T(), shouldBeConfig, testResult)
 }
 

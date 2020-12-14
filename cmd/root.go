@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/mittwald/brudi/pkg/config"
+	log "github.com/sirupsen/logrus"
 
 	"strings"
 
@@ -46,5 +47,10 @@ func initConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
-	config.MergeConfigs(cfgFiles)
+	configFiles := config.ReadConfigFiles(cfgFiles)
+	templatedConfigs := config.TemplateConfigs(configFiles)
+	renderedConfigs := config.RenderConfigs(templatedConfigs)
+	config.MergeConfigs(renderedConfigs)
+
+	log.WithField("config", cfgFiles).Info("configs loaded")
 }
