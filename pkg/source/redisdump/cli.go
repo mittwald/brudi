@@ -18,7 +18,7 @@ type Flags struct {
 	DatabaseNumber   int    `flag:"-n"`
 	Delimiter        string `flag:"-d"`
 	Eval             string `flag:"--eval="`
-	Host             string `flag:"-h"`
+	Host             string `flag:"-h" validate:"min=1"`
 	Hotkeys          bool   `flag:"--hotkeys"`
 	Interval         int    `flag:"-i"`
 	IntrinsicLatency int    `flag:"--intrinsic-latency="`
@@ -38,7 +38,7 @@ type Flags struct {
 	PipeTimeout      int    `flag:"--pipe-timeout="`
 	Port             int    `flag:"-p"`
 	Raw              bool   `flag:"--raw"`
-	Rdb              string `flag:"--rdb"validate:"min=1"`
+	Rdb              string `flag:"--rdb" validate:"min=1"`
 	ReadStdin        bool   `flag:"-x"`
 	Repeat           int    `flag:"-r"`
 	Replica          bool   `flag:"--replica"`

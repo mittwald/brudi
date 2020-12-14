@@ -20,6 +20,7 @@ Using `brudi` will save you from finding yourself writing bash-scripts to create
       - [MongoDump](#mongodump)
       - [PgDump](#pgdump)
         - [Limitations](#limitations)
+      - [Redis](#redis)
     - [Restic](#restic)
       - [Forget](#forget)
     - [Sensitive data: Environment variables](#sensitive-data--environment-variables)
@@ -54,7 +55,7 @@ Available Commands:
   mongodump   Creates a mongodump of your desired server
   mysqldump   Creates a mysqldump of your desired server
   pgdump      Creates a pg_dump of your desired postgresql-server
-  redisdump   Creates an rdp dump of your desired server
+  redisdump   Creates an rdb dump of your desired server
   tar         Creates a tar archive of your desired paths
   version     Print the version number of brudi
 
@@ -191,6 +192,13 @@ Becomes the following command:
 
 All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/pgdump/cli.go#L7).
 
+###### Limitations
+
+Unfortunately `PostgreSQL` is very strict when it comes to version-compatibility.  
+Therefore your `pg_dump`-binary requires the exact same version your `PostgreSQL`-server is running.
+
+The Docker-image of `brudi` always has the latest version available for the corresponding alpine-version installed.
+
 ##### Redis
 
 ```yaml
@@ -210,13 +218,6 @@ Becomes the following command:
 
 As `redis-cli` is not a dedicated backup tool but a client for `redis`, only a limited number of flags are available by default,
 as you can see [here](pkg/source/redisdump/cli.go#L7).
-
-###### Limitations
-
-Unfortunately `PostgreSQL` is very strict when it comes to version-compatibility.  
-Therefore your `pg_dump`-binary requires the exact same version your `PostgreSQL`-server is running.
-
-The Docker-image of `brudi` always has the latest version available for the corresponding alpine-version installed.
 
 #### Restic
 
