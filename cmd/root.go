@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"github.com/mitchellh/go-homedir"
+	"os"
+	"path"
 	"strings"
 
 	"github.com/mittwald/brudi/pkg/config"
@@ -47,8 +50,22 @@ func initConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
-	configFiles := config.ReadConfigFiles(cfgFiles)
-	templatedConfigs := config.TemplateConfigs(configFiles)
+	home, err := homedir.Dir()
+	if err != nil {
+		log.WithError(err).Fatal("unable to determine homedir for current user")
+	}
+
+	logFields := log.WithField("cfgFiles", cfgFiles)
+	// check if default config exists and prepend it to list of configs
+	_, err = os.Stat(path.Join(home, ".brudi.yaml"))
+	if os.IsNotExist(err) {
+		logFields.Warn("default config does not exist")
+	} else {
+		cfgFiles = append([]string{path.Join(home, ".brudi.yaml")}, cfgFiles...)
+	}
+
+	configFiles := config.ReadPaths(cfgFiles...)
+	templatedConfigs := config.RawConfigs(configFiles)
 	renderedConfigs := config.RenderConfigs(templatedConfigs)
 	config.MergeConfigs(renderedConfigs)
 

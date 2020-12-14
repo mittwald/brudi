@@ -5,28 +5,14 @@ import (
 	"html/template"
 	"io/ioutil"
 	"os"
-	"path"
 	"strings"
 
-	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
-func ReadConfigFiles(cfgFiles []string) [][]byte {
-	home, err := homedir.Dir()
-	if err != nil {
-		log.WithError(err).Fatal("unable to determine homedir for current user")
-	}
-
+func ReadPaths(cfgFiles ...string) [][]byte {
 	logFields := log.WithField("cfgFiles", cfgFiles)
-	// check if default config exists and prepend it to list of configs
-	_, err = os.Stat(path.Join(home, ".brudi.yaml"))
-	if os.IsNotExist(err) {
-		logFields.Warn("default config does not exist")
-	} else {
-		cfgFiles = append([]string{path.Join(home, ".brudi.yaml")}, cfgFiles...)
-	}
 
 	exists := make(map[string]struct{})
 	var cfgUniques []string
@@ -60,7 +46,7 @@ func ReadConfigFiles(cfgFiles []string) [][]byte {
 	return cfgContent
 }
 
-func TemplateConfigs(configContent [][]byte) []*template.Template {
+func RawConfigs(configContent [][]byte) []*template.Template {
 	var tpl []*template.Template
 
 	for _, content := range configContent {
