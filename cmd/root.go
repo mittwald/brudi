@@ -69,7 +69,7 @@ func initConfig() {
 			exists[val] = struct{}{}
 			cfgUniques = append(cfgUniques, val)
 		} else {
-			logFields.Warnf("Config '%s' has been specified more than once, ignoring additional instances", val)
+			logFields.Warnf("config '%s' has been specified more than once, ignoring additional instances", val)
 		}
 	}
 	cfgFiles = cfgUniques
@@ -99,7 +99,7 @@ func initConfig() {
 	for _, content := range cfgContent {
 		tpltemp, err := template.New("").Parse(string(content))
 		if err != nil {
-			log.WithError(err).Fatalf("Failed while templating config '%s'", content)
+			log.WithError(err).Fatalf("failed while templating config '%s'", content)
 		}
 		tpl = append(tpl, tpltemp)
 	}
@@ -123,7 +123,7 @@ func initConfig() {
 		renderedCfg := new(bytes.Buffer)
 		err := template.Execute(renderedCfg, &data)
 		if err != nil {
-			log.WithError(err).Fatalf("Failed while rendering template '%s'", template)
+			log.WithError(err).Fatalf("failed while rendering template '%s'", template)
 		}
 		cfgsRendered = append(cfgsRendered, renderedCfg)
 	}
