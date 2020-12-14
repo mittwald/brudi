@@ -1,13 +1,8 @@
 package cmd
 
 import (
-	"strings"
-
-	log "github.com/sirupsen/logrus"
+	"github.com/mittwald/brudi/pkg/config"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
-	cfg "github.com/mittwald/brudi/pkg/config/mergeConfigs"
 )
 
 var (
@@ -43,18 +38,6 @@ func Execute() error {
 }
 
 func initConfig() {
+	config.MergeConfigs(cfgFiles)
 
-	viper.SetConfigType("yaml")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-
-	// Merge configs into one
-	cfgsRendered := MergeConfigs(cfgFiles)
-	for _, conf := range cfgsRendered {
-		if err := viper.MergeConfig(conf); err != nil {
-			log.WithError(err).Fatalf("failed while reading config '%s'", conf)
-		}
-	}
-
-	log.WithField("config", cfgFiles).Info("configs loaded")
 }

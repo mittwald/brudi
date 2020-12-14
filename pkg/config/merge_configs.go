@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"github.com/spf13/viper"
 	"html/template"
 	"io/ioutil"
 	"os"
@@ -12,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func MergeConfigs(cfgFiles []string) []*bytes.Buffer {
+func MergeConfigs(cfgFiles []string) {
 	home, err := homedir.Dir()
 	if err != nil {
 		log.WithError(err).Fatal("unable to determine homedir for current user")
@@ -43,8 +44,10 @@ func MergeConfigs(cfgFiles []string) []*bytes.Buffer {
 		info, err := os.Stat(file)
 		if os.IsNotExist(err) {
 			logFields.Warnf("config '%s' does not exist", file)
+			return
 		} else if info.IsDir() {
 			logFields.Warnf("config '%s' is a directory", file)
+			return
 		}
 	}
 
@@ -91,5 +94,16 @@ func MergeConfigs(cfgFiles []string) []*bytes.Buffer {
 		cfgsRendered = append(cfgsRendered, renderedCfg)
 	}
 
-	return cfgsRendered
+	viper.SetConfigType("yaml")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+
+	// Merge configs into one
+	for _, conf := range cfgsRendered {
+		if err := viper.MergeConfig(conf); err != nil {
+			log.WithError(err).Fatalf("failed while reading config '%s'", conf)
+		}
+	}
+
+	log.WithField("config", cfgFiles).Info("configs loaded")
 }
