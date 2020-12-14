@@ -3,12 +3,14 @@ package testconfig
 import (
 	"bytes"
 	"fmt"
+	"strings"
+	"testing"
+
 	"github.com/mittwald/brudi/pkg/config"
+
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"strings"
-	"testing"
 )
 
 type MergeConfigsTestSuite struct {
@@ -27,10 +29,9 @@ func (mergeConfigsTestSuite *MergeConfigsTestSuite) TearDownTest() {
 }
 
 func (mergeConfigsTestSuite *MergeConfigsTestSuite) TestMergeConfigs() {
-
 	testConfigs := []string{"../..//testdata/configA_1.yaml", "../../testdata/configA_2.yaml"}
-
 	config.MergeConfigs(testConfigs)
+
 	var expectedConfig = []byte(`
       mongodump:
         options:
@@ -61,7 +62,6 @@ func (mergeConfigsTestSuite *MergeConfigsTestSuite) TestMergeConfigs() {
 	shouldBeConfig := viper.AllSettings()
 	fmt.Println(shouldBeConfig)
 	assert.Equal(mergeConfigsTestSuite.T(), shouldBeConfig, testResult)
-
 }
 
 func TestMergeConfigsTestSuite(t *testing.T) {

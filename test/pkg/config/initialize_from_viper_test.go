@@ -2,10 +2,11 @@ package testconfig
 
 import (
 	"bytes"
-	"github.com/mittwald/brudi/pkg/config"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/mittwald/brudi/pkg/config"
 
 	"github.com/stretchr/testify/suite"
 

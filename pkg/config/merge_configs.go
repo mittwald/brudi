@@ -2,12 +2,13 @@ package config
 
 import (
 	"bytes"
-	"github.com/spf13/viper"
 	"html/template"
 	"io/ioutil"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/spf13/viper"
 
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
@@ -89,14 +90,10 @@ func MergeConfigs(cfgFiles []string) {
 		renderedCfg := new(bytes.Buffer)
 		err := template.Execute(renderedCfg, &data)
 		if err != nil {
-			log.WithError(err).Fatalf("failed while rendering template '%s'", template)
+			log.WithError(err).Fatalf("failed while rendering template '%s'", template.Name())
 		}
 		cfgsRendered = append(cfgsRendered, renderedCfg)
 	}
-
-	viper.SetConfigType("yaml")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
 
 	// Merge configs into one
 	for _, conf := range cfgsRendered {

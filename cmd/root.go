@@ -2,7 +2,11 @@ package cmd
 
 import (
 	"github.com/mittwald/brudi/pkg/config"
+
+	"strings"
+
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -38,6 +42,9 @@ func Execute() error {
 }
 
 func initConfig() {
-	config.MergeConfigs(cfgFiles)
+	viper.SetConfigType("yaml")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
 
+	config.MergeConfigs(cfgFiles)
 }

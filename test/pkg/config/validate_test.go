@@ -2,8 +2,9 @@ package testconfig
 
 import (
 	"fmt"
-	config2 "github.com/mittwald/brudi/pkg/config"
 	"testing"
+
+	config2 "github.com/mittwald/brudi/pkg/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
