@@ -2,16 +2,15 @@ package config
 
 import (
 	"bytes"
-	"github.com/mitchellh/go-homedir"
 	"html/template"
 	"io/ioutil"
 	"os"
 	"path"
 	"strings"
 
-	"github.com/spf13/viper"
-
+	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 func ReadConfigFiles(cfgFiles []string) [][]byte {
