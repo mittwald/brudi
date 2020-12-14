@@ -1,13 +1,13 @@
 package cmd
 
 import (
-	"github.com/mitchellh/go-homedir"
 	"os"
 	"path"
 	"strings"
 
 	"github.com/mittwald/brudi/pkg/config"
 
+	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
