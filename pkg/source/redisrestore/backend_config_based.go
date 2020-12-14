@@ -3,11 +3,8 @@ package redisrestore
 import (
 	"context"
 	"fmt"
-	"os"
-
 	"github.com/pkg/errors"
 
-	"github.com/mittwald/brudi/internal"
 	"github.com/mittwald/brudi/pkg/cli"
 )
 
@@ -46,27 +43,9 @@ func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {
-	if b.cfg.Options.Flags.Archive != "" {
-		return b.cfg.Options.Flags.Archive
-	}
-
-	return b.cfg.Options.Flags.Out
+	return b.cfg.Options.Flags.Rdb
 }
 
 func (b *ConfigBasedBackend) GetHostname() string {
 	return b.cfg.Options.Flags.Host
-}
-
-func (b *ConfigBasedBackend) CleanUp() error {
-	var fileTypes []string
-
-	if b.cfg.Options.Flags.Archive != "" {
-		return os.Remove(b.cfg.Options.Flags.Archive)
-	} else if b.cfg.Options.Flags.Gzip {
-		fileTypes = append(fileTypes, ".bson.gz", ".json.gz")
-	} else {
-		fileTypes = append(fileTypes, ".bson", ".json")
-	}
-
-	return internal.ClearDirectory(b.GetBackupPath(), fileTypes...)
 }
