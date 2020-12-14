@@ -63,24 +63,24 @@ func initConfig() {
 	}
 
 	exists := make(map[string]struct{})
-	var uniqueCFGs []string
+	var cfgUniques []string
 	for _, val := range cfgFiles {
 		if _, ok := exists[val]; !ok {
 			exists[val] = struct{}{}
-			uniqueCFGs = append(uniqueCFGs, val)
+			cfgUniques = append(cfgUniques, val)
 		} else {
-			logFields.Warnf("Config %s has been specified more than once, ignoring additional instances", val)
+			logFields.Warnf("Config '%s' has been specified more than once, ignoring additional instances", val)
 		}
 	}
-	cfgFiles = uniqueCFGs
+	cfgFiles = cfgUniques
 
 	for _, file := range cfgFiles {
 		info, err := os.Stat(file)
 		if os.IsNotExist(err) {
-			logFields.Warnf("config %s does not exist", file)
+			logFields.Warnf("config '%s' does not exist", file)
 			return
 		} else if info.IsDir() {
-			logFields.Warnf("config %s is a directory", file)
+			logFields.Warnf("config '%s' is a directory", file)
 			return
 		}
 	}
@@ -89,7 +89,7 @@ func initConfig() {
 	for _, file := range cfgFiles {
 		content, err := ioutil.ReadFile(file)
 		if err != nil {
-			log.WithError(err).Fatalf("failed while reading config file %s", file)
+			log.WithError(err).Fatalf("failed while reading config file '%s'", file)
 		}
 		cfgContent = append(cfgContent, content)
 	}
@@ -99,7 +99,7 @@ func initConfig() {
 	for _, content := range cfgContent {
 		tpltemp, err := template.New("").Parse(string(content))
 		if err != nil {
-			log.WithError(err).Fatalf("Failed while templating config %s", content)
+			log.WithError(err).Fatalf("Failed while templating config '%s'", content)
 		}
 		tpl = append(tpl, tpltemp)
 	}
@@ -118,14 +118,14 @@ func initConfig() {
 		}
 	}
 
-	var renderedCFGs []*bytes.Buffer
+	var cfgsRendered []*bytes.Buffer
 	for _, template := range tpl {
 		renderedCfg := new(bytes.Buffer)
 		err := template.Execute(renderedCfg, &data)
 		if err != nil {
-			log.WithError(err).Fatalf("Failed while rendering template %s", template)
+			log.WithError(err).Fatalf("Failed while rendering template '%s'", template)
 		}
-		renderedCFGs = append(renderedCFGs, renderedCfg)
+		cfgsRendered = append(cfgsRendered, renderedCfg)
 	}
 
 	viper.SetConfigType("yaml")
@@ -133,9 +133,9 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	// Merge configs into one
-	for _, conf := range renderedCFGs {
+	for _, conf := range cfgsRendered {
 		if err := viper.MergeConfig(conf); err != nil {
-			log.WithError(err).Fatalf("failed while reading config %s", conf)
+			log.WithError(err).Fatalf("failed while reading config '%s'", conf)
 		}
 	}
 
