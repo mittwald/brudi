@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+//ReadPaths checks if config files exist, creates a list of unique configs and read files from disk
 func ReadPaths(cfgFiles ...string) [][]byte {
 	logFields := log.WithField("cfgFiles", cfgFiles)
 
@@ -46,6 +47,7 @@ func ReadPaths(cfgFiles ...string) [][]byte {
 	return cfgContent
 }
 
+//RawConfigs creates templates for provided configs
 func RawConfigs(configContent [][]byte) []*template.Template {
 	var tpl []*template.Template
 
@@ -59,6 +61,7 @@ func RawConfigs(configContent [][]byte) []*template.Template {
 	return tpl
 }
 
+//RenderConfigs fills templated configs with environment variables
 func RenderConfigs(templates []*template.Template) []*bytes.Buffer {
 	type templateData struct {
 		Env map[string]string
@@ -87,6 +90,7 @@ func RenderConfigs(templates []*template.Template) []*bytes.Buffer {
 	return cfgsRendered
 }
 
+//MergeConfigs merges configs into viper
 func MergeConfigs(renderedConfigs []*bytes.Buffer) {
 	for _, conf := range renderedConfigs {
 		if err := viper.MergeConfig(conf); err != nil {
