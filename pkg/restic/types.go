@@ -155,7 +155,7 @@ type ForgetFlags struct {
 }
 
 type ForgetResponse struct {
-	tag []ForgetTag
+	tags []ForgetTag
 }
 
 type ForgetTag struct {

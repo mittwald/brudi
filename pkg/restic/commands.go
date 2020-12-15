@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -18,8 +17,8 @@ const (
 var (
 	ErrRepoAlreadyInitialized = fmt.Errorf("repo already initialized")
 
-	createBackupSnapshotIDPattern, createBackupParentSnapshotIDPattern, lsSnapshotSep, lsFileSep                    *regexp.Regexp
-	forgetSnapshotStartPattern, forgetSnapshotPattern, forgetConcreteSnapshotPattern, forgetSnapshotFinishedPattern *regexp.Regexp
+	//	createBackupSnapshotIDPattern, createBackupParentSnapshotIDPattern, lsSnapshotSep, lsFileSep                    *regexp.Regexp
+	//	forgetSnapshotStartPattern, forgetSnapshotPattern, forgetConcreteSnapshotPattern, forgetSnapshotFinishedPattern *regexp.Regexp
 
 	cmdTimeout = 6 * time.Hour
 )
@@ -305,44 +304,16 @@ func Forget(
 		return nil, out, err
 	}
 	var deletedSnapshots []string
-
-	lines := strings.Split(string(out), "\n")
-	start := false
-	for _, line := range lines {
-		// check if output prints single remove lines (if concrete snapshot id(s) are given)
-		concreteID := forgetConcreteSnapshotPattern.FindStringSubmatch(line)
-		if len(concreteID) > 0 {
-			deletedSnapshots = append(deletedSnapshots, concreteID[1])
-			continue
-		}
-
-		// check if end of relevant output is reached
-		finish := forgetSnapshotFinishedPattern.MatchString(line)
-		if finish {
-			break
-		}
-
-		// check if deleted snapshots block starts
-		if !start {
-			match := forgetSnapshotStartPattern.MatchString(line)
-			if match {
-				start = true
-			}
-			continue
-		}
-
-		// check if delete snapshots block ends
-		if line == "" {
-			start = false
-		}
-
-		// check if line contains a deleted snapshot id
-		match := forgetSnapshotPattern.FindStringSubmatch(line)
-		if len(match) > 0 {
-			deletedSnapshots = append(deletedSnapshots, match[1])
+	var forgetResponse ForgetResponse
+	err = json.Unmarshal(out, &forgetResponse)
+	if err != nil {
+		return nil, out, err
+	}
+	for _, tag := range forgetResponse.tags {
+		for _, removed := range tag.Remove {
+			deletedSnapshots = append(deletedSnapshots, removed.ID)
 		}
 	}
-
 	return deletedSnapshots, out, nil
 }
 
