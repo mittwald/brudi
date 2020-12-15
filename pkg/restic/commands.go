@@ -34,7 +34,7 @@ func init() {
 
 	// forget snapshots
 	forgetSnapshotStartPattern = regexp.MustCompile(`^remove \d* snapshots:$`)
-	forgetSnapshotFinishedPattern = regexp.MustCompile(`^\d* snapshots have been reved`)
+	forgetSnapshotFinishedPattern = regexp.MustCompile(`^\d* snapshots have been removed`)
 	forgetSnapshotPattern = regexp.MustCompile(`^([0-9a-z]*)[ ].*[0-9]{4}(-[0-9]{2}){2} ([0-9]{2}:){2}[0-9]{2}`)
 	forgetConcreteSnapshotPattern = regexp.MustCompile(`^removed snapshot ([0-9a-z].*)$`)
 }

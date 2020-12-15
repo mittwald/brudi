@@ -1,10 +1,12 @@
-package config
+package testconfig
 
 import (
 	"bytes"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/mittwald/brudi/pkg/config"
 
 	"github.com/stretchr/testify/suite"
 
@@ -47,7 +49,7 @@ func (initializeFromViperTestSuite *InitializeFromViperTestSuite) TestInitialize
 
 	assert.NoError(
 		initializeFromViperTestSuite.T(),
-		InitializeStructFromViper(
+		config.InitializeStructFromViper(
 			"foo",
 			&isConfig,
 		),
@@ -73,7 +75,7 @@ func (initializeFromViperTestSuite *InitializeFromViperTestSuite) TestInitialize
 
 	assert.NoError(
 		initializeFromViperTestSuite.T(),
-		InitializeStructFromViper(
+		config.InitializeStructFromViper(
 			"foo",
 			&isConfig,
 		),
@@ -107,7 +109,7 @@ func (initializeFromViperTestSuite *InitializeFromViperTestSuite) TestInitialize
 
 	assert.NoError(
 		initializeFromViperTestSuite.T(),
-		InitializeStructFromViper(
+		config.InitializeStructFromViper(
 			"foo",
 			&isConfig,
 		),
