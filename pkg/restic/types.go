@@ -7,18 +7,18 @@ type GlobalOptions struct {
 
 // Global restic flags
 type GlobalFlags struct {
-	CaCert        string `flag:"--cacert"`
-	CacheDir      string `flag:"--cache-dir"`
-	CleanupCache  bool   `flag:"--cleanup-cache"`
-	KeyHint       string `flag:"--key-hint"`
-	LimitDownload int    `flag:"--limit-download"`
-	LimitUpload   int    `flag:"--limit-upload"`
-	NoCache       bool   `flag:"--no-cache"`
-	NoLock        bool   `flag:"--no-lock"`
-	PasswordFile  string `flag:"--password-file"`
-	Repo          string `flag:"--repo"`
-	TLSClientCert string `flag:"--tls-client-cert"`
-	//--json                     set output mode to JSON for commands that support it
+	CaCert         string `flag:"--cacert"`
+	CacheDir       string `flag:"--cache-dir"`
+	CleanupCache   bool   `flag:"--cleanup-cache"`
+	KeyHint        string `flag:"--key-hint"`
+	LimitDownload  int    `flag:"--limit-download"`
+	LimitUpload    int    `flag:"--limit-upload"`
+	NoCache        bool   `flag:"--no-cache"`
+	NoLock         bool   `flag:"--no-lock"`
+	PasswordFile   string `flag:"--password-file"`
+	Repo           string `flag:"--repo"`
+	RepositoryFile string `flag:"--repository-file"`
+	TLSClientCert  string `flag:"--tls-client-cert"`
 }
 
 // BackupResult for cmd "restic backup"

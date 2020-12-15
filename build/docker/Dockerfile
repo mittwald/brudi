@@ -7,7 +7,7 @@ ENV         BRUDI_USER="brudi" \
             BRUDI_UID="1000"
 
 COPY        brudi /usr/local/bin/brudi
-COPY        --from=restic/restic:0.9.6 /usr/bin/restic /usr/local/bin/restic
+COPY        --from=restic/restic:0.11.0 /usr/bin/restic /usr/local/bin/restic
 
 RUN         apk add --no-cache --upgrade \
                 mongodb-tools \
