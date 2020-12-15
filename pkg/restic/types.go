@@ -35,16 +35,25 @@ type BackupOptions struct {
 
 // BackupFlags for cmd: "restic backup"
 type BackupFlags struct {
-	Exclude       []string `flag:"-e"`
-	ExcludeCaches bool     `flag:"--exclude-caches"`
-	Force         bool     `flag:"-f"`
-	Host          string   `flag:"--host"`
-	OneFileSystem bool     `flag:"-x"`
-	Parent        string   `flag:"--parent"`
-	Tags          []string `flag:"--tag"`
-	Time          string   `flag:"--time"`
-	Stdin         bool     `flag:"--stdin"`
-	StdinFilename string   `flag:"--stdin-filename"`
+	Exclude           []string `flag:"-e"`
+	ExcludeCaches     bool     `flag:"--exclude-caches"`
+	ExcludeFile       string   `flag:"--exclude-file"`
+	ExcludeLargerThan int      `flag:"exclude-larger-than"`
+	FilesFromFile     []string `flag:"--files-from file"`
+	FilesFromRaw      []string `flag:"--files-from-raw file"`
+	FilesFromVerbatim string   `flag:"--files-from-verbatim file"`
+	Force             bool     `flag:"-f"`
+	Host              string   `flag:"--host"`
+	IexcludeFile      string   `flag:"--iexclude-file"`
+	IexCludePattern   string   `flag:"--iexclude-pattern"`
+	IgnoreInode       bool     `flag:"--ignore-inode"`
+	OneFileSystem     bool     `flag:"-x"`
+	Parent            string   `flag:"--parent"`
+	Stdin             bool     `flag:"--stdin"`
+	StdinFilename     string   `flag:"--stdin-filename"`
+	Tags              []string `flag:"--tag"`
+	Time              string   `flag:"--time"`
+	WithAtime         bool     `flag:"--with-atime"`
 }
 
 // StatsOptions for cmd: "restic stats"
