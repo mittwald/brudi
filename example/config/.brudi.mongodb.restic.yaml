@@ -11,7 +11,7 @@ mongodump:
 restic:
   global:
     flags:
-      repo: "/home/ybramkamp/resticrepos/mongo-repo"
+      repo: "s3:s3.eu-central-1.amazonaws.com/your.s3.bucket/myResticRepo"
   forget:
     flags:
       keepLast: 1
