@@ -70,6 +70,39 @@ type SnapshotOptions struct {
 	IDs   []string
 }
 
+type ResticResponse struct {
+	MessageType string `json:"message_type"`
+	// fields for summary messages
+	FilesNew            int     `json:"flies_new"`
+	FilesChanged        int     `json:"files_changed"`
+	FilesUnmodified     int     `json:"files_unmodified"`
+	DirsNew             int     `json:"dirs_new"`
+	DirsChanged         int     `json:"dirs_changed"`
+	DirsUnmodified      int     `json:"dirs_unmodified"`
+	DataBlobs           int     `json:"data_blobs"`
+	TreeBlobs           int     `json:"tree_blobs"`
+	DataAdded           int     `json:"data_added"`
+	TotalFilesProcessed int     `json:"total_files_processed""`
+	TotalBytesProcessed int     `json:"total_bytes_processed"`
+	TotalDuration       float32 `json:"total_duration"`
+	SnapshotID          string  `json:"snapshot_id"`
+	ParentSnapshotID    string  `json:"parent_snapshot_id"`
+	// fields for status messages
+	PercentDone  int      `json:"percent_done"`
+	TotalFiles   int      `json:"total_files"`
+	FilesDone    int      `json:"files:done"`
+	TotalBytes   int      `json:"total_bytes"`
+	BytesDone    int      `json:"bytes_done"`
+	CurrentFiles []string `json:"current_files"`
+}
+
+type SummaryMessage struct {
+}
+
+type StatusMessage struct {
+	MessageType string `json:"message_type"`
+}
+
 // SnapshotFlags for cmd: "restic snapshots"
 type SnapshotFlags struct {
 	Host  string   `flag:"-H"`

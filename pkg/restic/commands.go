@@ -27,16 +27,16 @@ var (
 
 func init() {
 	// TODO: use json-log option of restic instead 'regex parsing'-foo
-	createBackupSnapshotIDPattern = regexp.MustCompile(`snapshot ([0-9a-z]*) saved\n`)
-	createBackupParentSnapshotIDPattern = regexp.MustCompile(`^using parent snapshot ([0-9a-z]*)\n`)
-	lsSnapshotSep = regexp.MustCompile(`^snapshot ([0-9a-z]*) of \[(.*)\] at (.*):$`)
-	lsFileSep = regexp.MustCompile(`^([-rwxd]{10})[ \t]+([0-9a-zA-Z]+)[ \t]+([0-9a-zA-Z]+)[ \t]+([0-9]+)[ \t]+([0-9-]+ [0-9:]+) (.+)$`)
+	//	createBackupSnapshotIDPattern = regexp.MustCompile(`snapshot ([0-9a-z]*) saved\n`)
+	//	createBackupParentSnapshotIDPattern = regexp.MustCompile(`^using parent snapshot ([0-9a-z]*)\n`)
+	//	lsSnapshotSep = regexp.MustCompile(`^snapshot ([0-9a-z]*) of \[(.*)\] at (.*):$`)
+	//	lsFileSep = regexp.MustCompile(`^([-rwxd]{10})[ \t]+([0-9a-zA-Z]+)[ \t]+([0-9a-zA-Z]+)[ \t]+([0-9]+)[ \t]+([0-9-]+ [0-9:]+) (.+)$`)
 
 	// forget snapshots
-	forgetSnapshotStartPattern = regexp.MustCompile(`^remove [0-9]* snapshots:$`)
-	forgetSnapshotFinishedPattern = regexp.MustCompile(`^[0-9]* snapshots have been removed`)
-	forgetSnapshotPattern = regexp.MustCompile(`^([0-9a-z]*)[ ].*[0-9]{4}(-[0-9]{2}){2} ([0-9]{2}:){2}[0-9]{2}`)
-	forgetConcreteSnapshotPattern = regexp.MustCompile(`^removed snapshot ([0-9a-z].*)$`)
+	//	forgetSnapshotStartPattern = regexp.MustCompile(`^remove [0-9]* snapshots:$`)
+	//	forgetSnapshotFinishedPattern = regexp.MustCompile(`^[0-9]* snapshots have been removed`)
+	//	forgetSnapshotPattern = regexp.MustCompile(`^([0-9a-z]*)[ ].*[0-9]{4}(-[0-9]{2}){2} ([0-9]{2}:){2}[0-9]{2}`)
+	//	forgetConcreteSnapshotPattern = regexp.MustCompile(`^removed snapshot ([0-9a-z].*)$`)
 }
 
 // InitBackup executes "restic init"
@@ -62,18 +62,26 @@ func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) 
 	return out, err
 }
 
-func parseSnapshotOut(str string) (BackupResult, error) {
+func parseSnapshotOut(responses []ResticResponse) (BackupResult, error) {
 	var result BackupResult
 
-	parentSnapshotID := createBackupParentSnapshotIDPattern.FindStringSubmatch(str)
-	snapshotID := createBackupSnapshotIDPattern.FindStringSubmatch(str)
-	if len(parentSnapshotID) > 0 {
-		result.ParentSnapshotID = parentSnapshotID[1]
+	var parentSnapshotID string
+	var snapshotID string
+	for _, resp := range responses {
+		if resp.SnapshotID != "" {
+			snapshotID = resp.SnapshotID
+		}
+		if resp.ParentSnapshotID != "" {
+			parentSnapshotID = resp.SnapshotID
+		}
 	}
-	if len(snapshotID) == 0 {
-		return BackupResult{}, fmt.Errorf("failed to parse snapshotID: %s ", str)
+	if parentSnapshotID != "" {
+		result.ParentSnapshotID = parentSnapshotID
 	}
-	result.SnapshotID = snapshotID[1]
+	if snapshotID == "" {
+		return BackupResult{}, fmt.Errorf("failed to parse snapshotID: %s ", responses)
+	}
+	result.SnapshotID = snapshotID
 	return result, nil
 }
 
@@ -101,14 +109,19 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "backup",
-		Args:    args,
+		Args:    append([]string{"--json"}, args...),
 	}
 	out, err = cli.RunWithTimeout(ctx, cmd, cmdTimeout)
 	if err != nil {
 		return BackupResult{}, out, err
 	}
+	delimited := strings.Replace(string(out), "\n", ",", -1)
 
-	backupRes, err := parseSnapshotOut(fmt.Sprintf("%s", out))
+	final := "[" + strings.TrimSuffix(delimited, ",") + "]"
+	var allMessages []ResticResponse
+	json.Unmarshal([]byte(final), &allMessages)
+
+	backupRes, err := parseSnapshotOut(allMessages)
 	if err != nil {
 		return backupRes, out, err
 	}
@@ -121,7 +134,7 @@ func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "ls",
-		Args:    cli.StructToCLI(opts),
+		Args:    append([]string{"--json"}, cli.StructToCLI(&opts)...),
 	}
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
