@@ -86,7 +86,7 @@ type SummaryResponse struct {
 	DataBlobs           int     `json:"data_blobs"`
 	TreeBlobs           int     `json:"tree_blobs"`
 	DataAdded           int     `json:"data_added"`
-	TotalFilesProcessed int     `json:"total_files_processed""`
+	TotalFilesProcessed int     `json:"total_files_processed"`
 	TotalBytesProcessed int     `json:"total_bytes_processed"`
 	TotalDuration       float32 `json:"total_duration"`
 	SnapshotID          string  `json:"snapshot_id"`
@@ -304,17 +304,17 @@ type LsMessage struct {
 	Username  string   `json:"username"`
 	UID       int      `json:"uid"`
 	GID       int      `json:"gid"`
-	ID        string   `json"id"`
+	ID        string   `json:"id"`
 	ShortID   string   `json:"short-id"`
-	StrucType string   `json:struct-type`
+	StrucType string   `json:"struct-type"`
 	Name      string   `json:"name"`
 	Type      string   `json:"type"`
 	Path      string   `json:"path"`
 	Size      uint64   `json:"size"`
 	Mode      int      `json:"mode"`
-	MTime     string   `json:"mtime""`
-	CTime     string   `json:"ctime""`
-	ATime     string   `json:"atime""`
+	MTime     string   `json:"mtime"`
+	CTime     string   `json:"ctime"`
+	ATime     string   `json:"atime"`
 }
 
 // LsFile for cmd "restic ls"

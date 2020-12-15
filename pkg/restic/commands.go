@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	binary = "restic"
+	binary   = "restic"
+	fileType = "file"
 )
 
 var (
@@ -67,7 +68,8 @@ func parseSnapshotOut(responses Response) (BackupResult, error) {
 
 	var parentSnapshotID string
 	var snapshotID string
-	for _, resp := range responses.ResponseSummary {
+	for idx := range responses.ResponseSummary {
+		resp := &responses.ResponseSummary[idx]
 		if resp.SnapshotID != "" {
 			snapshotID = resp.SnapshotID
 		}
@@ -112,15 +114,18 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	if err != nil {
 		return BackupResult{}, out, err
 	}
-
-	backupRes, err := parseSnapshotOut(ReadJSONFromLines(out))
+	response, err := ReadJSONFromLines(out)
+	if err != nil {
+		return BackupResult{}, out, err
+	}
+	backupRes, err := parseSnapshotOut(response)
 	if err != nil {
 		return backupRes, out, err
 	}
 	return backupRes, nil, nil
 }
 
-func ReadJSONFromLines(data []byte) Response {
+func ReadJSONFromLines(data []byte) (Response, error) {
 	r := bytes.NewReader(data)
 	var responses Response
 	bufReader := bufio.NewReader(r)
@@ -129,15 +134,13 @@ func ReadJSONFromLines(data []byte) Response {
 	for err == nil {
 		jerr := json.Unmarshal(line, &content)
 		if jerr != nil {
-			fmt.Errorf("failed to parse response from restic: %s ", line)
-			continue
+			return Response{}, fmt.Errorf("failed to parse response from restic: %s ", line)
 		}
 		if content["message_type"] == "status" {
 			var resp StatusResponse
 			jerr = json.Unmarshal(line, &resp)
 			if jerr != nil {
-				fmt.Errorf("failed to parse response from restic: %s ", line)
-				continue
+				return Response{}, fmt.Errorf("failed to parse response from restic: %s ", line)
 			}
 			responses.ResponseStatus = append(responses.ResponseStatus, resp)
 		}
@@ -145,14 +148,13 @@ func ReadJSONFromLines(data []byte) Response {
 			var resp SummaryResponse
 			jerr = json.Unmarshal(line, &resp)
 			if jerr != nil {
-				fmt.Errorf("failed to parse response from restic: %s ", line)
-				continue
+				return Response{}, fmt.Errorf("failed to parse response from restic: %s ", line)
 			}
 			responses.ResponseSummary = append(responses.ResponseSummary, resp)
 		}
 		line, _, err = bufReader.ReadLine()
 	}
-	return responses
+	return responses, nil
 }
 
 func newCommand(command string, args ...string) cli.CommandType {
@@ -183,7 +185,11 @@ func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
 	var current LsResult
 	var lsMessages []LsMessage
 	err = json.Unmarshal([]byte(final), &lsMessages)
-	for _, mess := range lsMessages {
+	if err != nil {
+		return nil, err
+	}
+	for idx := range lsMessages {
+		mess := &lsMessages[idx]
 		if mess.ShortID != "" {
 			if current.SnapshotID != "" {
 				result = append(result, current)
@@ -199,14 +205,14 @@ func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
 		}
 
 		if !opts.Flags.Long {
-			if mess.Type == "file" {
+			if mess.Type == fileType {
 				current.Files = append(current.Files, LsFile{
 					Path: mess.Path,
 				})
 				continue
 			}
 		}
-		if mess.Type == "file" {
+		if mess.Type == fileType {
 			current.Size += mess.Size
 			current.Files = append(current.Files, LsFile{
 				Permissions: mess.Mode,
@@ -348,9 +354,9 @@ func Forget(
 	if err != nil {
 		return nil, out, err
 	}
-	for _, tag := range forgetResponse.tags {
-		for _, removed := range tag.Remove {
-			deletedSnapshots = append(deletedSnapshots, removed.ID)
+	for idx := range forgetResponse.tags {
+		for index := range forgetResponse.tags[idx].Remove {
+			deletedSnapshots = append(deletedSnapshots, forgetResponse.tags[idx].Remove[index].ID)
 		}
 	}
 	return deletedSnapshots, out, nil
