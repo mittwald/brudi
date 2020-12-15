@@ -1,6 +1,8 @@
 package restic
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -60,12 +62,12 @@ func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) 
 	return out, err
 }
 
-func parseSnapshotOut(responses []ResticResponse) (BackupResult, error) {
+func parseSnapshotOut(responses Response) (BackupResult, error) {
 	var result BackupResult
 
 	var parentSnapshotID string
 	var snapshotID string
-	for _, resp := range responses {
+	for _, resp := range responses.ResponseSummary {
 		if resp.SnapshotID != "" {
 			snapshotID = resp.SnapshotID
 		}
@@ -77,7 +79,7 @@ func parseSnapshotOut(responses []ResticResponse) (BackupResult, error) {
 		result.ParentSnapshotID = parentSnapshotID
 	}
 	if snapshotID == "" {
-		return BackupResult{}, fmt.Errorf("failed to parse snapshotID: %s ", responses)
+		return BackupResult{}, fmt.Errorf("failed to parse snapshotID")
 	}
 	result.SnapshotID = snapshotID
 	return result, nil
@@ -104,26 +106,62 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	args = cli.StructToCLI(globalOpts)
 	args = append(args, cli.StructToCLI(backupOpts)...)
 
-	cmd := cli.CommandType{
-		Binary:  binary,
-		Command: "backup",
-		Args:    append([]string{"--json"}, args...),
-	}
+	cmd := newCommand("backup", args...)
+
 	out, err = cli.RunWithTimeout(ctx, cmd, cmdTimeout)
 	if err != nil {
 		return BackupResult{}, out, err
 	}
-	delimited := strings.Replace(string(out), "\n", ",", -1)
 
-	final := "[" + strings.TrimSuffix(delimited, ",") + "]"
-	var allMessages []ResticResponse
-	json.Unmarshal([]byte(final), &allMessages)
-
-	backupRes, err := parseSnapshotOut(allMessages)
+	backupRes, err := parseSnapshotOut(ReadJSONFromLines(out))
 	if err != nil {
 		return backupRes, out, err
 	}
 	return backupRes, nil, nil
+}
+
+func ReadJSONFromLines(data []byte) Response {
+	r := bytes.NewReader(data)
+	var responses Response
+	bufReader := bufio.NewReader(r)
+	line, _, err := bufReader.ReadLine()
+	var content map[string]interface{}
+	for err == nil {
+		jerr := json.Unmarshal(line, &content)
+		if jerr != nil {
+			fmt.Errorf("failed to parse response from restic: %s ", line)
+			continue
+		}
+		if content["message_type"] == "status" {
+			var resp StatusResponse
+			jerr = json.Unmarshal(line, &resp)
+			if jerr != nil {
+				fmt.Errorf("failed to parse response from restic: %s ", line)
+				continue
+			}
+			responses.ResponseStatus = append(responses.ResponseStatus, resp)
+		}
+		if content["message_type"] == "summary" {
+			var resp SummaryResponse
+			jerr = json.Unmarshal(line, &resp)
+			if jerr != nil {
+				fmt.Errorf("failed to parse response from restic: %s ", line)
+				continue
+			}
+			responses.ResponseSummary = append(responses.ResponseSummary, resp)
+		}
+		line, _, err = bufReader.ReadLine()
+	}
+	return responses
+}
+
+func newCommand(command string, args ...string) cli.CommandType {
+	defaultArgs := []string{"--json"}
+	return cli.CommandType{
+		Binary:  binary,
+		Command: command,
+		Args:    append(defaultArgs, args...),
+	}
 }
 
 // Ls executes "restic ls"
@@ -191,6 +229,7 @@ func GetSnapshotSize(ctx context.Context, snapshotIDs []string) (size uint64) {
 		Flags: &StatsFlags{},
 		IDs:   snapshotIDs,
 	}
+
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "stats",

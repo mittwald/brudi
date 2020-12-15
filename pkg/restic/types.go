@@ -70,9 +70,13 @@ type SnapshotOptions struct {
 	IDs   []string
 }
 
-type ResticResponse struct {
-	MessageType string `json:"message_type"`
-	// fields for summary messages
+type Response struct {
+	ResponseSummary []SummaryResponse
+	ResponseStatus  []StatusResponse
+}
+
+type SummaryResponse struct {
+	MessageType         string  `json:"message_type"`
 	FilesNew            int     `json:"flies_new"`
 	FilesChanged        int     `json:"files_changed"`
 	FilesUnmodified     int     `json:"files_unmodified"`
@@ -87,20 +91,16 @@ type ResticResponse struct {
 	TotalDuration       float32 `json:"total_duration"`
 	SnapshotID          string  `json:"snapshot_id"`
 	ParentSnapshotID    string  `json:"parent"`
-	// fields for status messages
+}
+
+type StatusResponse struct {
+	MessageType  string   `json:"message_type"`
 	PercentDone  int      `json:"percent_done"`
 	TotalFiles   int      `json:"total_files"`
 	FilesDone    int      `json:"files:done"`
 	TotalBytes   int      `json:"total_bytes"`
 	BytesDone    int      `json:"bytes_done"`
 	CurrentFiles []string `json:"current_files"`
-}
-
-type SummaryMessage struct {
-}
-
-type StatusMessage struct {
-	MessageType string `json:"message_type"`
 }
 
 // SnapshotFlags for cmd: "restic snapshots"
