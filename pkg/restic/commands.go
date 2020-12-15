@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -141,23 +140,21 @@ func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
 		return nil, err
 	}
 
-	lines := strings.Split(string(out), "\n")
+	delimited := strings.Replace(string(out), "\n", ",", -1)
+
+	final := "[" + strings.TrimSuffix(delimited, ",") + "]"
 	var current LsResult
-
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-
-		match := lsSnapshotSep.FindStringSubmatch(line)
-		if len(match) > 0 {
+	var lsMessages []LsMessage
+	err = json.Unmarshal([]byte(final), &lsMessages)
+	for _, mess := range lsMessages {
+		if mess.ShortID != "" {
 			if current.SnapshotID != "" {
 				result = append(result, current)
 			}
 			current = LsResult{
-				SnapshotID: match[1],
-				Paths:      strings.Split(match[2], " "),
-				Time:       match[3],
+				SnapshotID: mess.ShortID,
+				Paths:      mess.Paths,
+				Time:       mess.Time,
 				Files:      []LsFile{},
 			}
 
@@ -165,26 +162,22 @@ func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
 		}
 
 		if !opts.Flags.Long {
-			current.Files = append(current.Files, LsFile{
-				Path: line,
-			})
-			continue
-		}
-
-		fileInfo := lsFileSep.FindStringSubmatch(line)
-		if len(fileInfo) > 0 {
-			size, err := strconv.ParseUint(fileInfo[4], 10, 64)
-			if err != nil {
+			if mess.Type == "file" {
+				current.Files = append(current.Files, LsFile{
+					Path: mess.Path,
+				})
 				continue
 			}
-			current.Size += size
+		}
+		if mess.Type == "file" {
+			current.Size += mess.Size
 			current.Files = append(current.Files, LsFile{
-				Permissions: fileInfo[1],
-				User:        fileInfo[2],
-				Group:       fileInfo[3],
-				Size:        size,
-				Time:        fileInfo[5],
-				Path:        fileInfo[6],
+				Permissions: mess.Mode,
+				User:        mess.UID,
+				Group:       mess.GID,
+				Size:        mess.Size,
+				Time:        mess.Time,
+				Path:        mess.Path,
 			})
 		}
 	}

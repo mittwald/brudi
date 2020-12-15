@@ -86,7 +86,7 @@ type ResticResponse struct {
 	TotalBytesProcessed int     `json:"total_bytes_processed"`
 	TotalDuration       float32 `json:"total_duration"`
 	SnapshotID          string  `json:"snapshot_id"`
-	ParentSnapshotID    string  `json:"parent_snapshot_id"`
+	ParentSnapshotID    string  `json:"parent"`
 	// fields for status messages
 	PercentDone  int      `json:"percent_done"`
 	TotalFiles   int      `json:"total_files"`
@@ -115,7 +115,7 @@ type Snapshot struct {
 	ID       string   `json:"id"`
 	Time     string   `json:"time"`
 	Tree     string   `json:"tree"`
-	Tags     []string `json:"tags,omitempty"`
+	Tags     []string `json:"tags"`
 	Paths    []string `json:"paths"`
 	Hostname string   `json:"hostname"`
 	Username string   `json:"username"`
@@ -152,6 +152,44 @@ type ForgetFlags struct {
 	DryRun      bool     `flag:"-n"`
 	Prune       bool     `flag:"--prune"`
 	Compact     bool     `flag:"--compact"`
+}
+
+type ForgetResponse struct {
+	tag []ForgetTag
+}
+
+type ForgetTag struct {
+	Tags   []string       `json:"tags"`
+	Host   string         `json:"host"`
+	Paths  []string       `json:"paths"`
+	Keep   []Snapshot     `json:"keep"`
+	Remove []Snapshot     `json:"remove"`
+	Resons []ForgetReason `json:"reasons"`
+}
+
+type ForgetReason struct {
+	Snapshot Snapshot `json:"snapshot"`
+	Matches  []string `json:"matches"`
+	Counters Counters `Json:"counters"`
+}
+
+type Counters struct {
+	Last    int `json:"last"`
+	Hourly  int `json:"hourly"`
+	Daily   int `json:"daily"`
+	Weekly  int `json:"weekly"`
+	Monthly int `json:"monthly"`
+	Yearly  int `json:"yearly"`
+}
+
+type ForgetSnapshot struct {
+	Time     string   `json:"time"`
+	Tree     string   `json:"tree"`
+	Paths    []string `json:"paths"`
+	Hostname string   `json:"hostname"`
+	Username string   `json:"username"`
+	UID      int      `json:"uid"`
+	GID      int      `json:"gid"`
 }
 
 // RestoreOptions for cmd: "restic restore"
@@ -258,11 +296,32 @@ type LsResult struct {
 	Size       uint64
 }
 
+type LsMessage struct {
+	Time      string   `json:"time"`
+	Tree      string   `json:"tree"`
+	Paths     []string `json:"paths"`
+	Hostname  string   `json:"hostname"`
+	Username  string   `json:"username"`
+	UID       int      `json:"uid"`
+	GID       int      `json:"gid"`
+	ID        string   `json"id"`
+	ShortID   string   `json:"short-id"`
+	StrucType string   `json:struct-type`
+	Name      string   `json:"name"`
+	Type      string   `json:"type"`
+	Path      string   `json:"path"`
+	Size      uint64   `json:"size"`
+	Mode      int      `json:"mode"`
+	MTime     string   `json:"mtime""`
+	CTime     string   `json:"ctime""`
+	ATime     string   `json:"atime""`
+}
+
 // LsFile for cmd "restic ls"
 type LsFile struct {
-	Permissions string `json:"permissions"`
-	User        string `json:"user"`
-	Group       string `json:"group"`
+	Permissions int    `json:"permissions"`
+	User        int    `json:"user"`
+	Group       int    `json:"group"`
 	Size        uint64 `json:"size"`
 	Time        string `json:"time"`
 	Path        string `json:"path"`
