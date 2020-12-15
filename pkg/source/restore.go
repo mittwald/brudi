@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/source/pgrestore"
 
 	log "github.com/sirupsen/logrus"
 
@@ -18,6 +19,8 @@ func getGenericRestoreBackendForKind(kind string) (GenericRestore, error) {
 		return mongorestore.NewConfigBasedBackend()
 	case mysqlrestore.Kind:
 		return mysqlrestore.NewConfigBasedBackend()
+	case pgrestore.Kind:
+		return pgrestore.NewConfigBasedBackend()
 	default:
 		return nil, fmt.Errorf("unsupported kind '%s'", kind)
 	}
