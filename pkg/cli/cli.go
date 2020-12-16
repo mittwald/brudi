@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -192,7 +194,7 @@ func Run(ctx context.Context, cmd CommandType) ([]byte, error) {
 	var err error
 	commandLine := ParseCommandLine(cmd)
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("executing command")
-
+	fmt.Println(commandLine)
 	if ctx != nil {
 		out, err = exec.CommandContext(ctx, commandLine[0], commandLine[1:]...).CombinedOutput()
 		if ctx.Err() != nil {
@@ -200,6 +202,62 @@ func Run(ctx context.Context, cmd CommandType) ([]byte, error) {
 		}
 	} else {
 		out, err = exec.Command(commandLine[0], commandLine[1:]...).CombinedOutput()
+	}
+	if err != nil {
+		return out, fmt.Errorf("failed to execute command: %s", err)
+	}
+
+	log.WithField("command", strings.Join(commandLine, " ")).Debug("successfully executed command")
+	return out, nil
+}
+
+// RunWithFile executes the given binary with data from a file read into stdin
+func RunWithFile(ctx context.Context, cmd CommandType, infile string) ([]byte, error) {
+	var out []byte
+	var err error
+	commandLine := ParseCommandLine(cmd)
+	log.WithField("command", strings.Join(commandLine, " ")).Debug("executing command")
+	if ctx != nil {
+		fileContent, err := ioutil.ReadFile(infile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		cmd := exec.CommandContext(ctx, commandLine[0], commandLine[1:]...)
+		var stdin io.WriteCloser
+		stdin, err = cmd.StdinPipe()
+		if err != nil {
+			log.Fatal(err)
+		}
+		go func() {
+			defer stdin.Close()
+			_, err = io.WriteString(stdin, string(fileContent))
+			if err != nil {
+				log.Fatal(err)
+			}
+		}()
+		out, err = cmd.CombinedOutput()
+		if ctx.Err() != nil {
+			return out, fmt.Errorf("failed to execute command: timed out or canceled")
+		}
+	} else {
+		fileContent, err := ioutil.ReadFile(infile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		cmd := exec.Command(commandLine[0], commandLine[1:]...)
+		var stdin io.WriteCloser
+		stdin, err = cmd.StdinPipe()
+		if err != nil {
+			log.Fatal(err)
+		}
+		go func() {
+			defer stdin.Close()
+			_, err = io.WriteString(stdin, string(fileContent))
+			if err != nil {
+				log.Fatal(err)
+			}
+		}()
+		out, err = cmd.CombinedOutput()
 	}
 	if err != nil {
 		return out, fmt.Errorf("failed to execute command: %s", err)

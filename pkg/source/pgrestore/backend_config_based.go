@@ -19,7 +19,6 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 		&Options{
 			Flags:          &Flags{},
 			AdditionalArgs: []string{},
-			Command:        "<",
 			SourceFile:     "",
 		},
 	}
@@ -35,10 +34,10 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
 	cmd := cli.CommandType{
 		Binary: binary,
-		Args:   cli.StructToCLI(b.cfg.Options),
+		Args:   append(cli.StructToCLI(b.cfg.Options.Flags), b.cfg.Options.AdditionalArgs...),
 	}
 
-	out, err := cli.Run(ctx, cmd)
+	out, err := cli.RunWithFile(ctx, cmd, b.cfg.Options.SourceFile)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
 	}

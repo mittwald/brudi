@@ -3,14 +3,13 @@ package source
 import (
 	"context"
 	"fmt"
-	"github.com/mittwald/brudi/pkg/source/pgrestore"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/mittwald/brudi/pkg/restic"
-
 	"github.com/mittwald/brudi/pkg/source/mongorestore"
 	"github.com/mittwald/brudi/pkg/source/mysqlrestore"
+	"github.com/mittwald/brudi/pkg/source/pgrestore"
 )
 
 func getGenericRestoreBackendForKind(kind string) (GenericRestore, error) {

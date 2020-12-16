@@ -12,8 +12,8 @@ import (
 
 var (
 	pgRestoreCmd = &cobra.Command{
-		Use:   "mongorestore",
-		Short: "restores from mongodump ",
+		Use:   "pgrestore",
+		Short: "restores from pgdump",
 		Long:  "Restores a given database server with given arguments",
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := context.WithCancel(context.Background())

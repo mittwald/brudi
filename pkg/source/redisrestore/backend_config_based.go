@@ -3,6 +3,7 @@ package redisrestore
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 
 	"github.com/mittwald/brudi/pkg/cli"

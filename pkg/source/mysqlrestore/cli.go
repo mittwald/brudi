@@ -7,7 +7,6 @@ const (
 type Options struct {
 	Flags          *Flags
 	AdditionalArgs []string
-	Command        string
 	SourceFile     string
 }
 
