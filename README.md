@@ -9,6 +9,8 @@ Under the hood, `brudi` uses the given binaries like `mysqldump`, `mongodump`, `
 
 Using `brudi` will save you from finding yourself writing bash-scripts to create your backups.
 
+Besides creating backups, `brudi` can also be used to restore your data from backup in an emergency.
+
 ## Table of contents
 
 - [Usage](#usage)
@@ -24,6 +26,10 @@ Using `brudi` will save you from finding yourself writing bash-scripts to create
     - [Restic](#restic)
       - [Forget](#forget)
     - [Sensitive data: Environment variables](#sensitive-data--environment-variables)
+    - [Restoring from backup](#restoring-from-backup)
+      - [MongoRestore](#mongorestore)
+      - [MySQLRestore](#mysqlrestore)
+      - [PgRestore](#pgrestore)
 - [Featurestate](#featurestate)
   - [Source backup methods](#source-backup-methods)
   - [Incremental backup of the source backups](#incremental-backup-of-the-source-backups)
@@ -51,13 +57,16 @@ Usage:
   brudi [command]
 
 Available Commands:
-  help        Help about any command
-  mongodump   Creates a mongodump of your desired server
-  mysqldump   Creates a mysqldump of your desired server
-  pgdump      Creates a pg_dump of your desired postgresql-server
-  redisdump   Creates an rdb dump of your desired server
-  tar         Creates a tar archive of your desired paths
-  version     Print the version number of brudi
+  help           Help about any command
+  mongodump      Creates a mongodump of your desired server
+  mongorestore   Restores a server from a mongodump
+  mysqldump      Creates a mysqldump of your desired server
+  mysqlrestore   Restores a database from an sqldump
+  pgdump         Creates a pg_dump of your desired postgresql-server
+  pgrestore      Restores a database from a pgdump
+  redisdump      Creates an rdb dump of your desired server
+  tar            Creates a tar archive of your desired paths
+  version        Print the version number of brudi
 
 Flags:
       --cleanup         cleanup backup files afterwards
@@ -289,6 +298,93 @@ export MONGODUMP_OPTIONS_FLAGS_PASSWORD="mongodbroot"
 
 As soon as a variable for a key exists in your environment, the value of this environment-variable is used in favour of your `.yaml`-config.
 
+#### Restoring from backup
+
+##### MongoRestore
+
+ ```yaml
+ mongorestore:
+   options:
+     flags:
+       host: 127.0.0.1
+       port: 27017
+       username: root
+       password: mongodbroot
+       gzip: true
+       archive: /tmp/dump.tar.gz
+     additionalArgs: []
+ ```
+ 
+ Running: `brudi mongorestore -c ${HOME}/.brudi.yml `
+ 
+ Becomes the following command:  
+ `mongorestore --host=127.0.0.1 --port=27017 --username=root --password=mongodbroot --gzip --archive=/tmp/dump.tar.gz`  
+ 
+ All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/mongorestore/cli.go#L7).
+
+#### MySQLRestore
+
+```yaml
+mysqlrestore:
+  options:
+    flags:
+      host: 127.0.0.1
+      port: 3306
+      password: mysqlroot
+      user: root
+      Database: test
+    additionalArgs: []
+    sourceFile: /tmp/test.sqldump
+```
+
+Running: `brudi mysqlrestore -c ${HOME}/.brudi.yml`
+
+Becomes the following command:  
+`mysql --database=test --host=127.0.0.1 --password=mysqlroot --port=3306 --user=root < /tmp/test.sqldump`  
+
+All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/mysqlrestore/cli.go#L7).
+
+#### PgRestore
+
+```yaml
+pgrestore:
+  options:
+    flags:
+      host: 127.0.0.1
+      port: 5432
+      password: postgresroot
+      username: postgresuser
+      dbName: postgres
+    additionalArgs: []
+    sourcefile: /tmp/postgres.dump
+```
+
+Running: `brudi pgrestore -c ${HOME}/.brudi.yml`
+
+Becomes the following command:  
+`psql --database=postgress --host=127.0.0.1 --password=mysqlroot --port=3306 --user=root < /tmp/postgress.dump`  
+
+All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/pgrestore/cli.go#L7).
+
+#### Restoring using restic
+
+Backups can be pulled from a `restic` repository and applied to your server by using the `--restic` flag in your brudi command. 
+Example configuration for `mongorestore`:
+```yaml
+restic:
+  global:
+    flags:
+      repo: "s3:s3.eu-central-1.amazonaws.com/your.s3.bucket/myResticRepo"
+  restore:
+    flags:
+      target: "/"
+      path: /tmp/dump.tar.gz
+    id: "latest"
+```
+
+This will pull the latest snapshot of `/tmp/dump.tar.gz` from the repository, which `mongorestore` then uses to restore the server.
+It is also possible to specify concrete snapshot-ids instead of `latest`.      
+
 ## Featurestate
 
 ### Source backup methods
@@ -297,12 +393,21 @@ As soon as a variable for a key exists in your environment, the value of this en
 - [x] `mongodump`
 - [x] `tar`
 - [x] `pg_dump`
+- [x] `redisdump`
 
+### Restore backup methods
+
+- [x] `mysqlrestore` 
+- [x] `mongorestore`
+- [x] `pgrestore`
+- []  `redisrestore`
+ 
 ### Incremental backup of the source backups
 
 - [x] `restic`
   - [x] `commands`
     - [x] `restic backup`
     - [x] `restic forget`
+    - [x] `restic restore`
   - [x] `storage`
     - [x] `s3`
