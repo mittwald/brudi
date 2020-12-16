@@ -6,9 +6,9 @@ const (
 
 type Options struct {
 	Flags          *Flags
+	AdditionalArgs []string
 	Command        string
 	SourceFile     string
-	AdditionalArgs []string
 }
 
 type Flags struct {
@@ -26,7 +26,7 @@ type Flags struct {
 	CompressionAlgorithms  string `flag:"--compression-algorithms="`
 	ConnectExpiredPassword bool   `flag:"--connect-expired-password"`
 	ConnectTimeout         int    `flag:"--connect-timeout"`
-	Database               string `flag:"--database" valiudate:"min=1"`
+	Database               string `flag:"--database=" validate:"min=1"`
 	Debug                  string `flag:"--debug="`
 	DebugCheck             bool   `flag:"--debug-check"`
 	DebugInfo              bool   `flag:"--debug-info"`
