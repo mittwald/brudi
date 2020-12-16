@@ -48,7 +48,13 @@ func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
 		Binary: binary,
 		Args:   cli.StructToCLI(b.cfg.Options),
 	}
-	// shutdown redis
+	// shutdown redis via redis-cli
+	out, err = cli.Run(ctx, cmd)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
+	}
+
+	// shutdown redis service, copy files and restart
 	fmt.Println(b.cfg.Options.Flags)
 	out, err = cli.RunRedisRestore(ctx, b.cfg.Options.Flags.Rdb, runtime.GOOS)
 	if err != nil {
