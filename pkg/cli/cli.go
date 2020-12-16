@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -263,6 +264,60 @@ func RunWithFile(ctx context.Context, cmd CommandType, infile string) ([]byte, e
 	}
 
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("successfully executed command")
+	return out, nil
+}
+
+// RunRedisRestore executes commands to restore a redis backup, including stopping and restarting the server service
+func RunRedisRestore(ctx context.Context, backupPath string, goos string) ([]byte, error) {
+	var out []byte
+	var err error
+	switch goos {
+	case "windows":
+
+	case "linux":
+		cmd := exec.CommandContext(ctx, "sudo", []string{"systemctl", "stop", "redis"}...)
+		cmd.Stderr = os.Stderr
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		err = cmd.Run()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		cmd = exec.CommandContext(ctx, "sudo", []string{"mv", "/var/lib/redis/dump.rdb", "/var/lib/redis/dump.rdb.old"}...)
+		cmd.Stderr = os.Stderr
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		err = cmd.Run()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		cmd = exec.CommandContext(ctx, "sudo", []string{"mv", "/var/lib/redis/*.aof", "/var/lib/redis/appendonly.aof.old"}...)
+		cmd.Stdin = os.Stdin
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		cmd = exec.CommandContext(ctx, "sudo", []string{"cp", "-p", backupPath, "/var/lib/redis/dump.rdb"}...)
+		cmd.Stdin = os.Stdin
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		cmd = exec.CommandContext(ctx, "sudo", []string{"systemctl", "start", "redis"}...)
+		cmd.Stdin = os.Stdin
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			fmt.Println(err)
+		}
+	case "darwin":
+
+	default:
+		log.Fatalf("Unsupported os: %s", goos)
+	}
 	return out, nil
 }
 

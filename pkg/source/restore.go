@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/source/redisrestore"
 
 	log "github.com/sirupsen/logrus"
 
@@ -20,6 +21,8 @@ func getGenericRestoreBackendForKind(kind string) (GenericRestore, error) {
 		return mysqlrestore.NewConfigBasedBackend()
 	case pgrestore.Kind:
 		return pgrestore.NewConfigBasedBackend()
+	case redisrestore.Kind:
+		return redisrestore.NewConfigBasedBackend()
 	default:
 		return nil, fmt.Errorf("unsupported kind '%s'", kind)
 	}
