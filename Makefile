@@ -57,3 +57,10 @@ upTestPostgres: downTestPostgres
 
 downTestPostgres:
 	docker-compose --file example/docker-compose/postgresql.yml down -v --remove-orphans
+
+upTestRedis: downTestRedis
+	trap 'cd $(CURDIR) && make downTestRedis' 0 1 2 3 6 9 15
+	docker-compose --file example/docker-compose/redis.yml up -d
+
+downTestRedis:
+	docker-compose --file example/docker-compose/redis.yml down -v --remove-orphans
