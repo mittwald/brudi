@@ -8,12 +8,12 @@ ENV         BRUDI_USER="brudi" \
 
 COPY        brudi /usr/local/bin/brudi
 COPY        --from=restic/restic:0.9.6 /usr/bin/restic /usr/local/bin/restic
+COPY        --from=redis:alpine /usr/local/bin/redis-cli /usr/local/bin/redis-cli
 
 RUN         apk add --no-cache --upgrade \
                 mongodb-tools \
                 mysql-client \
                 postgresql-client \
-                redis \
             && \
             addgroup \
                 -S "${BRUDI_USER}" \
