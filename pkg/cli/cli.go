@@ -268,7 +268,7 @@ func RunWithFile(ctx context.Context, cmd CommandType, infile string) ([]byte, e
 }
 
 // RunRedisRestore executes commands to restore a redis backup, including stopping and restarting the server service
-func RunRedisRestore(ctx context.Context, backupPath string, goos string) ([]byte, error) {
+func RunRedisRestore(ctx context.Context, backupPath, goos string) ([]byte, error) {
 	var out []byte
 	var err error
 	switch goos {
@@ -297,21 +297,21 @@ func RunRedisRestore(ctx context.Context, backupPath string, goos string) ([]byt
 		cmd.Stdin = os.Stdin
 		out, err = cmd.CombinedOutput()
 		if err != nil {
-			fmt.Println(err)
+			return out, err
 		}
 
 		cmd = exec.CommandContext(ctx, "sudo", []string{"cp", "-p", backupPath, "/var/lib/redis/dump.rdb"}...)
 		cmd.Stdin = os.Stdin
 		out, err = cmd.CombinedOutput()
 		if err != nil {
-			fmt.Println(err)
+			return out, err
 		}
 
 		cmd = exec.CommandContext(ctx, "sudo", []string{"systemctl", "start", "redis"}...)
 		cmd.Stdin = os.Stdin
 		out, err = cmd.CombinedOutput()
 		if err != nil {
-			fmt.Println(err)
+			return out, err
 		}
 	case "darwin":
 

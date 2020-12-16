@@ -3,8 +3,9 @@ package mongorestore
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
+
+	"github.com/pkg/errors"
 
 	"github.com/mittwald/brudi/internal"
 	"github.com/mittwald/brudi/pkg/cli"

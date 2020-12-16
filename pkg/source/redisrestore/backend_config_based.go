@@ -55,7 +55,6 @@ func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
 	}
 
 	// shutdown redis service, copy files and restart
-	fmt.Println(b.cfg.Options.Flags)
 	out, err = cli.RunRedisRestore(ctx, b.cfg.Options.Flags.Rdb, runtime.GOOS)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))

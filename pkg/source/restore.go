@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"fmt"
-	"github.com/mittwald/brudi/pkg/source/redisrestore"
 
 	log "github.com/sirupsen/logrus"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/mittwald/brudi/pkg/source/mongorestore"
 	"github.com/mittwald/brudi/pkg/source/mysqlrestore"
 	"github.com/mittwald/brudi/pkg/source/pgrestore"
+	"github.com/mittwald/brudi/pkg/source/redisrestore"
 )
 
 func getGenericRestoreBackendForKind(kind string) (GenericRestore, error) {
