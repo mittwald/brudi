@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	Kind = "mongorestore"
+	Kind = "redisrestore"
 )
 
 type Config struct {

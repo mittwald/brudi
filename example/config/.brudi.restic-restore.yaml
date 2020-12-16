@@ -1,0 +1,9 @@
+restic:
+  global:
+    flags:
+      repo: "s3:s3.eu-central-1.amazonaws.com/your.s3.bucket/myResticRepo"
+  restore:
+    flags:
+      target: "/"
+      path: /tmp/dump.tar.gz
+    id: "latest"
