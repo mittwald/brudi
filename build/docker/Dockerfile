@@ -13,6 +13,7 @@ RUN         apk add --no-cache --upgrade \
                 mongodb-tools \
                 mysql-client \
                 postgresql-client \
+                redis \
             && \
             addgroup \
                 -S "${BRUDI_USER}" \
