@@ -365,9 +365,22 @@ func RebuildIndex(ctx context.Context) ([]byte, error) {
 }
 
 // RestoreBackup executes "restic restore"
-func RestoreBackup(ctx context.Context, glob *GlobalOptions, opts *RestoreOptions) ([]byte, error) {
+func RestoreBackup(ctx context.Context, glob *GlobalOptions, opts *RestoreOptions, unlock bool) ([]byte, error) {
 	args := cli.StructToCLI(glob)
 	args = append(args, cli.StructToCLI(opts)...)
+
+	if unlock {
+		unlockOpts := UnlockOptions{
+			Flags: &UnlockFlags{
+				RemoveAll: false,
+			},
+		}
+		_, err := Unlock(ctx, glob, &unlockOpts)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "restore",

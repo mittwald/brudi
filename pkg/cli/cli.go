@@ -194,7 +194,6 @@ func Run(ctx context.Context, cmd CommandType) ([]byte, error) {
 	var err error
 	commandLine := ParseCommandLine(cmd)
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("executing command")
-	fmt.Println(commandLine)
 	if ctx != nil {
 		out, err = exec.CommandContext(ctx, commandLine[0], commandLine[1:]...).CombinedOutput()
 		if ctx.Err() != nil {
