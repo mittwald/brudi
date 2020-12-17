@@ -33,6 +33,7 @@ Besides creating backups, `brudi` can also be used to restore your data from bac
       - [PgRestore](#pgrestore)
 - [Featurestate](#featurestate)
   - [Source backup methods](#source-backup-methods)
+  - [Restore backup methods](#restore-backup-methods)
   - [Incremental backup of the source backups](#incremental-backup-of-the-source-backups)
 
 ## Usage
