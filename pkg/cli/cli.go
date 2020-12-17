@@ -17,6 +17,10 @@ import (
 )
 
 const flagTag = "flag"
+const redisDumpLocation = "/var/lib/redis/dump.rdb"
+const redisDumpRenameLocation = "/var/lib/redis/dump.rdb.old"
+const redisAofLocation = "/var/lib/redis/*.aof"
+const redisAofRenameLocation = "/var/lib/redis/appendonly.aof.old"
 
 // includeFlag returns an string slice of [<flag>, <val>], or [<val>]
 func includeFlag(flag, val string) []string {
@@ -220,44 +224,50 @@ func RunWithFile(ctx context.Context, cmd CommandType, infile string) ([]byte, e
 	if ctx != nil {
 		fileContent, err := ioutil.ReadFile(infile)
 		if err != nil {
-			log.Fatal(err)
+			return out, err
 		}
+
 		cmd := exec.CommandContext(ctx, commandLine[0], commandLine[1:]...)
 		var stdin io.WriteCloser
 		stdin, err = cmd.StdinPipe()
 		if err != nil {
-			log.Fatal(err)
+			return out, err
 		}
-		go func() {
-			defer stdin.Close()
-			_, err = io.WriteString(stdin, string(fileContent))
-			if err != nil {
-				log.Fatal(err)
-			}
-		}()
+
+		err = readFileToStdIn(fileContent, stdin)
+		if err != nil {
+			return nil, err
+		}
+
 		out, err = cmd.CombinedOutput()
 		if ctx.Err() != nil {
 			return out, fmt.Errorf("failed to execute command: timed out or canceled")
 		}
+		if err != nil {
+			return out, err
+		}
 	} else {
 		fileContent, err := ioutil.ReadFile(infile)
 		if err != nil {
-			log.Fatal(err)
+			return out, err
 		}
+
 		cmd := exec.Command(commandLine[0], commandLine[1:]...)
 		var stdin io.WriteCloser
 		stdin, err = cmd.StdinPipe()
 		if err != nil {
-			log.Fatal(err)
+			return out, err
 		}
-		go func() {
-			defer stdin.Close()
-			_, err = io.WriteString(stdin, string(fileContent))
-			if err != nil {
-				log.Fatal(err)
-			}
-		}()
+
+		err = readFileToStdIn(fileContent, stdin)
+		if err != nil {
+			return nil, err
+		}
+
 		out, err = cmd.CombinedOutput()
+		if err != nil {
+			return out, err
+		}
 	}
 	if err != nil {
 		return out, fmt.Errorf("failed to execute command: %s", err)
@@ -265,6 +275,16 @@ func RunWithFile(ctx context.Context, cmd CommandType, infile string) ([]byte, e
 
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("successfully executed command")
 	return out, nil
+}
+
+func readFileToStdIn(content []byte, stdin io.WriteCloser) error {
+	var err error
+	go func() {
+		defer stdin.Close()
+		_, err = io.WriteString(stdin, string(content))
+	}()
+
+	return err
 }
 
 // RunRedisRestore executes commands to restore a redis backup, including stopping and restarting the server service
@@ -275,41 +295,7 @@ func RunRedisRestore(ctx context.Context, backupPath, goos string) ([]byte, erro
 	case "windows":
 
 	case "linux":
-		cmd := exec.CommandContext(ctx, "sudo", []string{"systemctl", "stop", "redis"}...)
-		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		err = cmd.Run()
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		cmd = exec.CommandContext(ctx, "sudo", []string{"mv", "/var/lib/redis/dump.rdb", "/var/lib/redis/dump.rdb.old"}...)
-		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		err = cmd.Run()
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		cmd = exec.CommandContext(ctx, "sudo", []string{"mv", "/var/lib/redis/*.aof", "/var/lib/redis/appendonly.aof.old"}...)
-		cmd.Stdin = os.Stdin
-		out, err = cmd.CombinedOutput()
-		if err != nil {
-			return out, err
-		}
-
-		cmd = exec.CommandContext(ctx, "sudo", []string{"cp", "-p", backupPath, "/var/lib/redis/dump.rdb"}...)
-		cmd.Stdin = os.Stdin
-		out, err = cmd.CombinedOutput()
-		if err != nil {
-			return out, err
-		}
-
-		cmd = exec.CommandContext(ctx, "sudo", []string{"systemctl", "start", "redis"}...)
-		cmd.Stdin = os.Stdin
-		out, err = cmd.CombinedOutput()
+		out, err = restoreRedisLinux(ctx, backupPath)
 		if err != nil {
 			return out, err
 		}
@@ -317,6 +303,52 @@ func RunRedisRestore(ctx context.Context, backupPath, goos string) ([]byte, erro
 
 	default:
 		log.Fatalf("Unsupported os: %s", goos)
+	}
+	log.Info("Successfully restored redis server from backup")
+	return out, nil
+}
+
+func restoreRedisLinux(ctx context.Context, backupPath string) ([]byte, error) {
+	var out []byte
+	var err error
+	log.Infof("attempting to shut down redis service with 'sudo systemctl stop redis`")
+	cmd := exec.CommandContext(ctx, "sudo", []string{"systemctl", "stop", "redis"}...)
+	cmd.Stdin = os.Stdin
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return out, err
+	}
+
+	log.Infof("attempting to rename old dump.rdb with 'sudo mv %s %s`", redisDumpLocation, redisDumpRenameLocation)
+	cmd = exec.CommandContext(ctx, "sudo", []string{"mv", redisDumpLocation, redisDumpRenameLocation}...)
+	cmd.Stdin = os.Stdin
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return out, err
+	}
+
+	log.Infof("attempting to rename old .aof file with 'sudo mv %s %s`", redisAofLocation, redisAofRenameLocation)
+	cmd = exec.CommandContext(ctx, "sudo", []string{"mv", redisAofLocation, redisAofRenameLocation}...)
+	cmd.Stdin = os.Stdin
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		log.WithField("output", string(out)).Warnf("Unable to rename old aof file: %s", err)
+	}
+
+	log.Infof("attempting to copy new rdb with 'sudo cp -p %s %s`", backupPath, redisDumpLocation)
+	cmd = exec.CommandContext(ctx, "sudo", []string{"cp", "-p", backupPath, redisDumpLocation}...)
+	cmd.Stdin = os.Stdin
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return out, err
+	}
+
+	log.Infof("Starting redis service with 'sudo systemctl start redis`")
+	cmd = exec.CommandContext(ctx, "sudo", []string{"systemctl", "start", "redis"}...)
+	cmd.Stdin = os.Stdin
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return out, err
 	}
 	return out, nil
 }
