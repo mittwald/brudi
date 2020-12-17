@@ -14,6 +14,7 @@ import (
 
 	"github.com/mittwald/brudi/pkg/source/mongodump"
 	"github.com/mittwald/brudi/pkg/source/mysqldump"
+	"github.com/mittwald/brudi/pkg/source/redisdump"
 )
 
 func getGenericBackendForKind(kind string) (Generic, error) {
@@ -24,6 +25,8 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 		return mongodump.NewConfigBasedBackend()
 	case mysqldump.Kind:
 		return mysqldump.NewConfigBasedBackend()
+	case redisdump.Kind:
+		return redisdump.NewConfigBasedBackend()
 	case tar.Kind:
 		return tar.NewConfigBasedBackend()
 	default:
