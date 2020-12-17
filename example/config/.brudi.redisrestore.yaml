@@ -1,6 +1,0 @@
-  options:
-    flags:
-      host: 127.0.0.1
-      password: redisdb
-      rdb: /tmp/redisdump.rdb
-    additionalArgs: []
