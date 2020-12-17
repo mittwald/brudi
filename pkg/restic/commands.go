@@ -42,13 +42,13 @@ func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) 
 	return out, err
 }
 
-func parseSnapshotOut(responses Response) (BackupResult, error) {
+func (response *Response) parseSnapshotOut() (BackupResult, error) {
 	var result BackupResult
 
 	var parentSnapshotID string
 	var snapshotID string
-	for idx := range responses.ResponseSummary {
-		resp := &responses.ResponseSummary[idx]
+	for idx := range response.ResponseSummary {
+		resp := &response.ResponseSummary[idx]
 		if resp.SnapshotID != "" {
 			snapshotID = resp.SnapshotID
 		}
@@ -94,33 +94,33 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 		return BackupResult{}, out, err
 	}
 	var response Response
-	err = response.ReadResponseFromLines(out)
+	response, err = NewResponseFromResticOutput(out)
 	if err != nil {
 		return BackupResult{}, out, err
 	}
-	backupRes, err := parseSnapshotOut(response)
+	backupRes, err := response.parseSnapshotOut()
 	if err != nil {
 		return backupRes, out, err
 	}
 	return backupRes, nil, nil
 }
 
-func (response *Response) ReadResponseFromLines(data []byte) error {
+func NewResponseFromResticOutput(data []byte) (Response, error) {
 	reader := bytes.NewReader(data)
 	bufReader := bufio.NewReader(reader)
-
+	var response Response
 	var content map[string]interface{}
 	line, _, err := bufReader.ReadLine()
 	for err == nil {
 		jerr := json.Unmarshal(line, &content)
 		if jerr != nil {
-			return fmt.Errorf("failed to parse response from restic: %s ", line)
+			return Response{}, fmt.Errorf("failed to parse response from restic: %s ", line)
 		}
 		if content["message_type"] == "status" {
 			var resp StatusResponse
 			jerr = json.Unmarshal(line, &resp)
 			if jerr != nil {
-				return fmt.Errorf("failed to parse response from restic: %s ", line)
+				return Response{}, fmt.Errorf("failed to parse response from restic: %s ", line)
 			}
 			response.ResponseStatus = append(response.ResponseStatus, resp)
 		}
@@ -128,13 +128,13 @@ func (response *Response) ReadResponseFromLines(data []byte) error {
 			var resp SummaryResponse
 			jerr = json.Unmarshal(line, &resp)
 			if jerr != nil {
-				return fmt.Errorf("failed to parse response from restic: %s ", line)
+				return Response{}, fmt.Errorf("failed to parse response from restic: %s ", line)
 			}
 			response.ResponseSummary = append(response.ResponseSummary, resp)
 		}
 		line, _, err = bufReader.ReadLine()
 	}
-	return nil
+	return response, nil
 }
 
 func newCommand(command string, args ...string) cli.CommandType {
