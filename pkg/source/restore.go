@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/source/tarrestore"
 
 	log "github.com/sirupsen/logrus"
 
@@ -23,6 +24,8 @@ func getGenericRestoreBackendForKind(kind string) (GenericRestore, error) {
 		return pgrestore.NewConfigBasedBackend()
 	case redisrestore.Kind:
 		return redisrestore.NewConfigBasedBackend()
+	case tarrestore.Kind:
+		return tarrestore.NewConfigBasedBackend()
 	default:
 		return nil, fmt.Errorf("unsupported kind '%s'", kind)
 	}
