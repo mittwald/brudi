@@ -371,6 +371,16 @@ All available flags to be set in the `.yaml`-configuration can be found [here](p
 Backups can be pulled from a `restic` repository and applied to your server by using the `--restic` flag in your brudi command. 
 Example configuration for `mongorestore`:
 ```yaml
+mongorestore:
+  options:
+    flags:
+      host: 127.0.0.1
+      port: 27017
+      username: root
+      password: mongodbroot
+      gzip: true
+      archive: /tmp/dump.tar.gz
+    additionalArgs: []
 restic:
   global:
     flags:
@@ -378,7 +388,6 @@ restic:
   restore:
     flags:
       target: "/"
-      path: /tmp/dump.tar.gz
     id: "latest"
 ```
 

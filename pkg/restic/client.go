@@ -43,7 +43,7 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 
 	conf.Backup.Paths = append(conf.Backup.Paths, backupPaths...)
 	resticLogger := logger.WithField("cmd", "restic")
-
+	conf.Restore.Flags.Path = backupPaths[0]
 	return &Client{
 		Logger: resticLogger,
 		Config: conf,
@@ -72,7 +72,7 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) DoResticRestore(ctx context.Context) error {
+func (c *Client) DoResticRestore(ctx context.Context, backupPath string) error {
 	c.Logger.Info("running 'restic restore'")
 	_, err := RestoreBackup(ctx, c.Config.Global, c.Config.Restore, false)
 	if err != nil {

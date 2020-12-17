@@ -47,7 +47,7 @@ func DoRestoreForKind(ctx context.Context, kind string, cleanup, useRestic, useR
 			return err
 		}
 
-		err = resticClient.DoResticRestore(ctx)
+		err = resticClient.DoResticRestore(ctx, backend.GetBackupPath())
 		if err != nil {
 			return err
 		}

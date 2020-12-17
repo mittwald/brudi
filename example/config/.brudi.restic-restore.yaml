@@ -5,5 +5,4 @@ restic:
   restore:
     flags:
       target: "/"
-      path: /tmp/dump.tar.gz
     id: "latest"
