@@ -94,7 +94,7 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 		return BackupResult{}, out, err
 	}
 	var response Response
-	err = response.ReadJSONFromLines(out)
+	err = response.ReadResponseFromLines(out)
 	if err != nil {
 		return BackupResult{}, out, err
 	}
@@ -105,9 +105,9 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	return backupRes, nil, nil
 }
 
-func (response *Response) ReadJSONFromLines(data []byte) error {
-	r := bytes.NewReader(data)
-	bufReader := bufio.NewReader(r)
+func (response *Response) ReadResponseFromLines(data []byte) error {
+	reader := bytes.NewReader(data)
+	bufReader := bufio.NewReader(reader)
 
 	var content map[string]interface{}
 	line, _, err := bufReader.ReadLine()
@@ -117,7 +117,6 @@ func (response *Response) ReadJSONFromLines(data []byte) error {
 			return fmt.Errorf("failed to parse response from restic: %s ", line)
 		}
 		if content["message_type"] == "status" {
-
 			var resp StatusResponse
 			jerr = json.Unmarshal(line, &resp)
 			if jerr != nil {
@@ -157,17 +156,17 @@ func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
 		return nil, err
 	}
 
-	delimited := strings.Replace(string(out), "\n", ",", -1)
-
-	final := "[" + strings.TrimSuffix(delimited, ",") + "]"
+	reader := bytes.NewReader(out)
+	bufReader := bufio.NewReader(reader)
 	var current LsResult
-	var lsMessages []LsMessage
-	err = json.Unmarshal([]byte(final), &lsMessages)
-	if err != nil {
-		return nil, err
-	}
-	for idx := range lsMessages {
-		mess := &lsMessages[idx]
+	line, _, err := bufReader.ReadLine()
+
+	for err != nil {
+		var mess LsMessage
+		jerr := json.Unmarshal(line, &mess)
+		if jerr != nil {
+			return nil, jerr
+		}
 		if mess.ShortID != "" {
 			if current.SnapshotID != "" {
 				result = append(result, current)
@@ -178,7 +177,7 @@ func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
 				Time:       mess.Time,
 				Files:      []LsFile{},
 			}
-
+			line, _, err = bufReader.ReadLine()
 			continue
 		}
 
@@ -187,6 +186,7 @@ func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
 				current.Files = append(current.Files, LsFile{
 					Path: mess.Path,
 				})
+				line, _, err = bufReader.ReadLine()
 				continue
 			}
 		}
@@ -201,6 +201,7 @@ func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
 				Path:        mess.Path,
 			})
 		}
+		line, _, err = bufReader.ReadLine()
 	}
 	result = append(result, current)
 
