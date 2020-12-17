@@ -10,7 +10,6 @@ import (
 	"github.com/mittwald/brudi/pkg/source/mongorestore"
 	"github.com/mittwald/brudi/pkg/source/mysqlrestore"
 	"github.com/mittwald/brudi/pkg/source/pgrestore"
-	"github.com/mittwald/brudi/pkg/source/redisrestore"
 	"github.com/mittwald/brudi/pkg/source/tarrestore"
 )
 
@@ -22,8 +21,6 @@ func getGenericRestoreBackendForKind(kind string) (GenericRestore, error) {
 		return mysqlrestore.NewConfigBasedBackend()
 	case pgrestore.Kind:
 		return pgrestore.NewConfigBasedBackend()
-	case redisrestore.Kind:
-		return redisrestore.NewConfigBasedBackend()
 	case tarrestore.Kind:
 		return tarrestore.NewConfigBasedBackend()
 	default:
