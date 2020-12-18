@@ -7,7 +7,9 @@ import (
 	"github.com/mittwald/brudi/pkg/source"
 	"github.com/spf13/viper"
 	"github.com/testcontainers/testcontainers-go"
-	"log"
+	"go.mongodb.org/mongo-driver/bson"
+	"gotest.tools/assert"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -30,7 +32,7 @@ func TestBasicMongoDBDump(t *testing.T) {
 			"MONGO_INITDB_ROOT_PASSWORD": "mongodbroot",
 		},
 	}
-	mongoC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	mongoBackupTarget, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
@@ -38,44 +40,46 @@ func TestBasicMongoDBDump(t *testing.T) {
 		t.Error(err)
 	}
 
-	ip, err := mongoC.Host(ctx)
+	mongoBackupIP, err := mongoBackupTarget.Host(ctx)
 	if err != nil {
 		t.Error(err)
 	}
 
-	mongoPort, err := mongoC.MappedPort(ctx, "27017/tcp")
+	mongoBackupPort, err := mongoBackupTarget.MappedPort(ctx, "27017/tcp")
 	if err != nil {
 		t.Error(err)
 	}
-	mongoPortStr := fmt.Sprint(mongoPort.Int())
+	mongoBackupPortStr := fmt.Sprint(mongoBackupPort.Int())
 
-	defer mongoC.Terminate(ctx)
+	defer mongoBackupTarget.Terminate(ctx)
 
-	clientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", ip, mongoPortStr))
+	backupClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", mongoBackupIP, mongoBackupPortStr))
 	clientAuth := options.Client().SetAuth(options.Credential{Username: "root", Password: "mongodbroot"})
 	// Connect to MongoDB
-	client, err := mongo.Connect(context.TODO(), clientOptions, clientAuth)
+	backupClient, err := mongo.Connect(context.TODO(), backupClientOptions, clientAuth)
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
 
 	// Check the connection
-	err = client.Ping(context.TODO(), nil)
+	err = backupClient.Ping(context.TODO(), nil)
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
+
 	fooColl := TestColl{"Foo", 10}
 	barColl := TestColl{"Bar", 13}
 	gopherColl := TestColl{"Gopher", 42}
-
 	testData := []interface{}{fooColl, barColl, gopherColl}
 
-	collection := client.Database("test").Collection("testColl")
+	collection := backupClient.Database("test").Collection("testColl")
 
 	_, err = collection.InsertMany(context.TODO(), testData)
 	if err != nil {
-		log.Fatal(err)
+		t.Error(err)
 	}
+
+	backupClient.Disconnect(context.TODO())
 
 	var testMongoConfig = []byte(fmt.Sprintf(`
       mongodump:
@@ -88,7 +92,7 @@ func TestBasicMongoDBDump(t *testing.T) {
             gzip: true
             archive: /tmp/dump.tar.gz
           additionalArgs: []
-`, ip, fmt.Sprint(mongoPort.Int())))
+`, mongoBackupIP, fmt.Sprint(mongoBackupPort.Int())))
 	viper.Reset()
 	viper.SetConfigType("yaml")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -102,33 +106,73 @@ func TestBasicMongoDBDump(t *testing.T) {
 		t.Error(err)
 	}
 
-	//ctxTest := context.Background()
-	//reqTest := testcontainers.ContainerRequest{
-	//	Image:        "mongo:latest",
-	//	ExposedPorts: []string{"27017/tcp"},
-	//	Env: map[string]string{
-	//		"MONGO_INITDB_ROOT_USERNAME": "root",
-	//		"MONGO_INITDB_ROOT_PASSWORD": "mongodbroot",
-	//	},
-	//}
-	//mongoTest, err := testcontainers.GenericContainer(ctxTest, testcontainers.GenericContainerRequest{
-	//	ContainerRequest: reqTest,
-	//	Started:          true,
-	//})
-	//if err != nil {
-	//	t.Error(err)
-	//}
-	//
-	//mongoTestIP, err := mongoTest.Host(ctx)
-	//if err != nil {
-	//	t.Error(err)
-	//}
-	//
-	//mongoTestPort, err := mongoTest.MappedPort(ctx, "27017/tcp")
-	//if err != nil {
-	//	t.Error(err)
-	//}
-	//mongoTestPortStr := fmt.Sprint(mongoPort.Int())
-	//
-	//defer mongoTest.Terminate(ctx)
+	mongoBackupTarget.Terminate(ctx)
+
+	reqRestore := testcontainers.ContainerRequest{
+		Image:        "mongo:latest",
+		ExposedPorts: []string{"27017/tcp"},
+		Env: map[string]string{
+			"MONGO_INITDB_ROOT_USERNAME": "root",
+			"MONGO_INITDB_ROOT_PASSWORD": "mongodbroot",
+		},
+	}
+	mongoRestoreTarget, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: reqRestore,
+		Started:          true,
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	mongoRestoreIP, err := mongoRestoreTarget.Host(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+
+	mongoRestorePort, err := mongoRestoreTarget.MappedPort(ctx, "27017/tcp")
+	if err != nil {
+		t.Error(err)
+	}
+	mongoRestorePortStr := fmt.Sprint(mongoRestorePort.Int())
+
+	defer mongoRestoreTarget.Terminate(ctx)
+
+	cmd := exec.CommandContext(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreIP), fmt.Sprintf("--port=%s", mongoRestorePortStr),
+		"--archive=/tmp/dump.tar.gz", "--gzip", "--username=root", "--password=mongodbroot")
+	_, err = cmd.CombinedOutput()
+	if err != nil {
+		t.Error(err)
+	}
+
+	var results []interface{}
+	findOptions := options.Find()
+
+	restoreClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", mongoRestoreIP, mongoRestorePortStr))
+	// Connect to MongoDB
+	restoreClient, err := mongo.Connect(context.TODO(), restoreClientOptions, clientAuth)
+	if err != nil {
+		t.Error(err)
+	}
+
+	restoredCollection := restoreClient.Database("test").Collection("testColl")
+
+	cur, err := restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for cur.Next(context.TODO()) {
+		var elem TestColl
+		err := cur.Decode(&elem)
+		if err != nil {
+			t.Error(err)
+		}
+		results = append(results, elem)
+	}
+	if err := cur.Err(); err != nil {
+		t.Error(err)
+	}
+	cur.Close(context.TODO())
+
+	assert.DeepEqual(t, testData, results)
 }
