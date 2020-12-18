@@ -3,6 +3,7 @@ module github.com/mittwald/brudi
 go 1.15
 
 require (
+	github.com/docker/go-connections v0.4.0
 	github.com/fsnotify/fsnotify v1.4.8 // indirect
 	github.com/go-playground/validator/v10 v10.2.0
 	github.com/mitchellh/go-homedir v1.1.0

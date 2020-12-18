@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/docker/go-connections/nat"
 	"github.com/mittwald/brudi/pkg/source"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
@@ -23,12 +24,60 @@ type TestColl struct {
 	Age  int
 }
 
+type TestContainerSetup struct {
+	Container testcontainers.Container
+	Address   string
+	Port      string
+}
+
 type MongoDumpTestSuite struct {
 	suite.Suite
 }
 
 type TestLogConsumer struct {
 	Msgs []string
+}
+
+var mongoRequest = testcontainers.ContainerRequest{
+	Image:        "mongo:latest",
+	ExposedPorts: []string{"27017/tcp"},
+	Env: map[string]string{
+		"MONGO_INITDB_ROOT_USERNAME": "root",
+		"MONGO_INITDB_ROOT_PASSWORD": "mongodbroot",
+	},
+}
+
+var resticReq = testcontainers.ContainerRequest{
+	Image:        "restic/rest-server:latest",
+	ExposedPorts: []string{"8000/tcp"},
+	Env: map[string]string{
+		"OPTIONS":         "--no-auth",
+		"RESTIC_PASSWORD": "mongorepo",
+	},
+}
+
+func newTestContainerSetup(ctx context.Context, request testcontainers.ContainerRequest, port nat.Port) (TestContainerSetup, error) {
+	result := TestContainerSetup{}
+	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: request,
+		Started:          true,
+	})
+	if err != nil {
+		return TestContainerSetup{}, err
+	}
+	result.Container = container
+	contPort, err := container.MappedPort(ctx, port)
+	if err != nil {
+		return TestContainerSetup{}, err
+	}
+	result.Port = fmt.Sprint(contPort.Int())
+	host, err := container.Host(ctx)
+	if err != nil {
+		return TestContainerSetup{}, err
+	}
+	result.Address = host
+
+	return result, nil
 }
 
 func (g *TestLogConsumer) Accept(l testcontainers.Log) {
@@ -46,38 +95,66 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
+func execCommand(ctx context.Context, cmd string, args ...string) ([]byte, error) {
+	command := exec.CommandContext(ctx, cmd, args...)
+	out, err := command.CombinedOutput()
+	if err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func createMongoConfig(container TestContainerSetup, useRestic bool, resticIP string, resticPort string) []byte {
+	if !useRestic {
+		return []byte(fmt.Sprintf(`
+      mongodump:
+        options:
+          flags:
+            host: %s
+            port: %s
+            username: root
+            password: mongodbroot
+            gzip: true
+            archive: /tmp/dump.tar.gz
+          additionalArgs: []
+`, container.Address, container.Port))
+	} else {
+		return []byte(fmt.Sprintf(`
+      mongodump:
+        options:
+          flags:
+            host: %s
+            port: %s
+            username: root
+            password: mongodbroot
+            gzip: true
+            archive: /tmp/dump.tar.gz
+          additionalArgs: []
+      restic:
+        global:
+          flags:
+            repo: rest:http://%s:%s/
+        forget:
+          flags:
+            keepLast: 1
+            keepHourly: 0
+            keepDaily: 0
+            keepWeekly: 0
+            keepMonthly: 0
+            keepYearly: 0
+`, container.Address, container.Port, resticIP, resticPort))
+	}
+}
+
 func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	ctx := context.Background()
-	req := testcontainers.ContainerRequest{
-		Image:        "mongo:latest",
-		ExposedPorts: []string{"27017/tcp"},
-		Env: map[string]string{
-			"MONGO_INITDB_ROOT_USERNAME": "root",
-			"MONGO_INITDB_ROOT_PASSWORD": "mongodbroot",
-		},
-	}
-	mongoBackupTarget, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
+	mongoBackupTarget, err := newTestContainerSetup(ctx, mongoRequest, "27017/tcp")
 	if err != nil {
 		mongoDumpTestSuite.Error(err)
 	}
 
-	mongoBackupIP, err := mongoBackupTarget.Host(ctx)
-	if err != nil {
-		mongoDumpTestSuite.Error(err)
-	}
-
-	mongoBackupPort, err := mongoBackupTarget.MappedPort(ctx, "27017/tcp")
-	if err != nil {
-		mongoDumpTestSuite.Error(err)
-	}
-	mongoBackupPortStr := fmt.Sprint(mongoBackupPort.Int())
-
-	defer mongoBackupTarget.Terminate(ctx)
-
-	backupClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", mongoBackupIP, mongoBackupPortStr))
+	backupClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", mongoBackupTarget.Address,
+		mongoBackupTarget.Port))
 	clientAuth := options.Client().SetAuth(options.Credential{Username: "root", Password: "mongodbroot"})
 	// Connect to MongoDB
 	backupClient, err := mongo.Connect(context.TODO(), backupClientOptions, clientAuth)
@@ -105,18 +182,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 
 	backupClient.Disconnect(context.TODO())
 
-	var testMongoConfig = []byte(fmt.Sprintf(`
-      mongodump:
-        options:
-          flags:
-            host: %s
-            port: %s
-            username: root
-            password: mongodbroot
-            gzip: true
-            archive: /tmp/dump.tar.gz
-          additionalArgs: []
-`, mongoBackupIP, fmt.Sprint(mongoBackupPort.Int())))
+	testMongoConfig := createMongoConfig(mongoBackupTarget, false, "", "")
+
 	err = viper.ReadConfig(bytes.NewBuffer(testMongoConfig))
 	if err != nil {
 		mongoDumpTestSuite.Error(err)
@@ -126,40 +193,16 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 		mongoDumpTestSuite.Error(err)
 	}
 
-	mongoBackupTarget.Terminate(ctx)
+	mongoBackupTarget.Container.Terminate(ctx)
 
-	reqRestore := testcontainers.ContainerRequest{
-		Image:        "mongo:latest",
-		ExposedPorts: []string{"27017/tcp"},
-		Env: map[string]string{
-			"MONGO_INITDB_ROOT_USERNAME": "root",
-			"MONGO_INITDB_ROOT_PASSWORD": "mongodbroot",
-		},
-	}
-	mongoRestoreTarget, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: reqRestore,
-		Started:          true,
-	})
+	mongoRestoreTarget, err := newTestContainerSetup(ctx, mongoRequest, "27017/tcp")
 	if err != nil {
 		mongoDumpTestSuite.Error(err)
 	}
 
-	mongoRestoreIP, err := mongoRestoreTarget.Host(ctx)
-	if err != nil {
-		mongoDumpTestSuite.Error(err)
-	}
-
-	mongoRestorePort, err := mongoRestoreTarget.MappedPort(ctx, "27017/tcp")
-	if err != nil {
-		mongoDumpTestSuite.Error(err)
-	}
-	mongoRestorePortStr := fmt.Sprint(mongoRestorePort.Int())
-
-	defer mongoRestoreTarget.Terminate(ctx)
-
-	cmd := exec.CommandContext(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreIP), fmt.Sprintf("--port=%s", mongoRestorePortStr),
-		"--archive=/tmp/dump.tar.gz", "--gzip", "--username=root", "--password=mongodbroot")
-	_, err = cmd.CombinedOutput()
+	_, err = execCommand(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
+		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port), "--archive=/tmp/dump.tar.gz", "--gzip", "--username=root",
+		"--password=mongodbroot")
 	if err != nil {
 		mongoDumpTestSuite.Error(err)
 	}
@@ -167,7 +210,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	var results []interface{}
 	findOptions := options.Find()
 
-	restoreClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", mongoRestoreIP, mongoRestorePortStr))
+	restoreClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", mongoRestoreTarget.Address,
+		mongoRestoreTarget.Port))
 	// Connect to MongoDB
 	restoreClient, err := mongo.Connect(context.TODO(), restoreClientOptions, clientAuth)
 	if err != nil {
@@ -195,67 +239,24 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	cur.Close(context.TODO())
 
 	assert.DeepEqual(mongoDumpTestSuite.T(), testData, results)
+	mongoRestoreTarget.Container.Terminate(ctx)
 }
 
 func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	ctx := context.Background()
-	req := testcontainers.ContainerRequest{
-		Image:        "mongo:latest",
-		ExposedPorts: []string{"27017/tcp"},
-		Env: map[string]string{
-			"MONGO_INITDB_ROOT_USERNAME": "root",
-			"MONGO_INITDB_ROOT_PASSWORD": "mongodbroot",
-		},
-	}
-	mongoBackupTarget, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
+
+	mongoBackupTarget, err := newTestContainerSetup(ctx, mongoRequest, "27017/tcp")
 	if err != nil {
 		mongoDumpTestSuite.Error(err)
 	}
 
-	mongoBackupIP, err := mongoBackupTarget.Host(ctx)
+	resticContainer, err := newTestContainerSetup(ctx, resticReq, "8000/tcp")
 	if err != nil {
 		mongoDumpTestSuite.Error(err)
 	}
 
-	mongoBackupPort, err := mongoBackupTarget.MappedPort(ctx, "27017/tcp")
-	if err != nil {
-		mongoDumpTestSuite.Error(err)
-	}
-	mongoBackupPortStr := fmt.Sprint(mongoBackupPort.Int())
-
-	resticReq := testcontainers.ContainerRequest{
-		Image:        "restic/rest-server:latest",
-		ExposedPorts: []string{"8000/tcp"},
-		Env: map[string]string{
-			"OPTIONS":         "--no-auth",
-			"RESTIC_PASSWORD": "mongorepo",
-		},
-	}
-	resticContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: resticReq,
-		Started:          true,
-	})
-	if err != nil {
-		mongoDumpTestSuite.Error(err)
-	}
-
-	//resticIP, err := resticContainer.Host(ctx)
-	//if err != nil {
-	//	mongoDumpTestSuite.Error(err)
-	//}
-
-	resticPort, err := resticContainer.MappedPort(ctx, "8000/tcp")
-	if err != nil {
-		mongoDumpTestSuite.Error(err)
-	}
-	resticPortStr := fmt.Sprint(resticPort.Int())
-
-	defer resticContainer.Terminate(ctx)
-
-	backupClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", mongoBackupIP, mongoBackupPortStr))
+	backupClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", mongoBackupTarget.Address,
+		mongoBackupTarget.Port))
 	clientAuth := options.Client().SetAuth(options.Credential{Username: "root", Password: "mongodbroot"})
 	backupClient, err := mongo.Connect(context.TODO(), backupClientOptions, clientAuth)
 	if err != nil {
@@ -281,30 +282,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 
 	backupClient.Disconnect(context.TODO())
 
-	var testMongoConfig = []byte(fmt.Sprintf(`
-      mongodump:
-        options:
-          flags:
-            host: %s
-            port: %s
-            username: root
-            password: mongodbroot
-            gzip: true
-            archive: /tmp/dump.tar.gz
-          additionalArgs: []
-      restic:
-        global:
-          flags:
-            repo: rest:http://127.0.0.1:%s/
-        forget:
-          flags:
-            keepLast: 1
-            keepHourly: 0
-            keepDaily: 0
-            keepWeekly: 0
-            keepMonthly: 0
-            keepYearly: 0
-`, mongoBackupIP, mongoBackupPortStr, resticPortStr))
+	testMongoConfig := createMongoConfig(mongoBackupTarget, true, resticContainer.Address, resticContainer.Port)
 
 	err = viper.ReadConfig(bytes.NewBuffer(testMongoConfig))
 	if err != nil {
@@ -316,50 +294,32 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 		mongoDumpTestSuite.Error(err)
 	}
 
-	mongoBackupTarget.Terminate(ctx)
+	mongoBackupTarget.Container.Terminate(ctx)
 
-	reqRestore := testcontainers.ContainerRequest{
-		Image:        "mongo:latest",
-		ExposedPorts: []string{"27017/tcp"},
-		Env: map[string]string{
-			"MONGO_INITDB_ROOT_USERNAME": "root",
-			"MONGO_INITDB_ROOT_PASSWORD": "mongodbroot",
-		},
-	}
-	mongoRestoreTarget, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: reqRestore,
-		Started:          true,
-	})
+	mongoRestoreTarget, err := newTestContainerSetup(ctx, mongoRequest, "27017/tcp")
 	if err != nil {
 		mongoDumpTestSuite.Error(err)
 	}
 
-	mongoRestoreIP, err := mongoRestoreTarget.Host(ctx)
-	if err != nil {
-		mongoDumpTestSuite.Error(err)
-	}
+	defer mongoRestoreTarget.Container.Terminate(ctx)
 
-	mongoRestorePort, err := mongoRestoreTarget.MappedPort(ctx, "27017/tcp")
-	if err != nil {
-		mongoDumpTestSuite.Error(err)
-	}
-	mongoRestorePortStr := fmt.Sprint(mongoRestorePort.Int())
-
-	defer mongoRestoreTarget.Terminate(ctx)
-
-	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://127.0.0.1:%s/", resticPortStr),
+	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
+		resticContainer.Address, resticContainer.Port),
 		"--target", "data", "latest")
-	_, err = cmd.CombinedOutput()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		mongoDumpTestSuite.Error(err)
 	}
+	fmt.Println(string(out))
 
-	cmd = exec.CommandContext(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreIP), fmt.Sprintf("--port=%s", mongoRestorePortStr),
+	cmd = exec.CommandContext(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
+		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port),
 		"--archive=data/tmp/dump.tar.gz", "--gzip", "--username=root", "--password=mongodbroot")
-	_, err = cmd.CombinedOutput()
+	out, err = cmd.CombinedOutput()
 	if err != nil {
 		mongoDumpTestSuite.Error(err)
 	}
+	fmt.Println(string(out))
 
 	cmd = exec.CommandContext(ctx, "rm", "-rf", "data")
 	_, err = cmd.CombinedOutput()
@@ -370,7 +330,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	var results []interface{}
 	findOptions := options.Find()
 
-	restoreClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", mongoRestoreIP, mongoRestorePortStr))
+	restoreClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s",
+		mongoRestoreTarget.Address, mongoRestoreTarget.Port))
 	restoreClient, err := mongo.Connect(context.TODO(), restoreClientOptions, clientAuth)
 	if err != nil {
 		mongoDumpTestSuite.Error(err)
@@ -397,6 +358,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	cur.Close(context.TODO())
 
 	assert.DeepEqual(mongoDumpTestSuite.T(), testData, results)
+	resticContainer.Container.Terminate(ctx)
 }
 
 func TestMongoDumpTestSuite(t *testing.T) {
