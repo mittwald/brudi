@@ -5,17 +5,21 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"strings"
+	"testing"
+
+	"github.com/mittwald/brudi/pkg/source"
+
 	"github.com/docker/go-connections/nat"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/mittwald/brudi/pkg/source"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"gotest.tools/assert"
-	"io/ioutil"
-	"strings"
-	"testing"
 )
 
 type MySQLDumpTestSuite struct {
@@ -95,6 +99,8 @@ func newTestContainerSetup(ctx context.Context, request *testcontainers.Containe
 
 // createMongoConfig creates a brudi config for the mongodump command
 func createMySQLConfig(container TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
+	fmt.Println(resticIP)
+	fmt.Println(resticPort)
 	if !useRestic {
 		return []byte(fmt.Sprintf(`
 mysqldump:
@@ -134,14 +140,123 @@ restic:
       keepWeekly: 0
       keepMonthly: 0
       keepYearly: 0
-`, container.Address, container.Port, resticIP, resticPort))
+`, "127.0.0.1", container.Port, resticIP, resticPort))
+}
+
+func prepareTestData(database *sql.DB) ([]TestStruct, error) {
+	var err error
+	testStruct1 := TestStruct{2, "TEST"}
+	testData := []TestStruct{testStruct1}
+	var insert *sql.Rows
+	for idx := range testData {
+		insert, err = database.Query(fmt.Sprintf("INSERT INTO test VALUES ( %d, '%s' )", testData[idx].ID, testData[idx].Name))
+		if err != nil {
+			return []TestStruct{}, err
+		}
+		if insert.Err() != nil {
+			return []TestStruct{}, insert.Err()
+		}
+	}
+	err = insert.Close()
+	if err != nil {
+		return []TestStruct{}, err
+	}
+	return testData, nil
+}
+
+func restoreSQLFromBackup(filename string, database *sql.DB) error {
+	file, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	requests := strings.Split(string(file), ";\n")
+
+	for _, request := range requests {
+		_, err := database.Exec(request)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	ctx := context.Background()
 
-	// create a mongo container to test backup function
+	// create a mysql container to test backup function
 	mySQLBackupTarget, err := newTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	// connect to mysql database using the driver
+	connectionString := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
+		mySQLBackupTarget.Address, mySQLBackupTarget.Port, "mysql")
+	db, err := sql.Open("mysql", connectionString)
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	// Create test table
+	_, err = db.Exec("CREATE TABLE test(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));")
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	// create test data and write it to database
+	testData, err := prepareTestData(db)
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	err = db.Close()
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	testMySQLConfig := createMySQLConfig(mySQLBackupTarget, false, "", "")
+	err = viper.ReadConfig(bytes.NewBuffer(testMySQLConfig))
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	// perform backup action on first mysql container
+	err = source.DoBackupForKind(ctx, "mysqldump", false, false, false)
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	err = mySQLBackupTarget.Container.Terminate(ctx)
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	// setup second mysql container to test if correct data is restored
+	mySQLRestoreTarget, err := newTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	connectionString2 := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
+		mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, "mysql")
+	dbRestore, err := sql.Open("mysql", connectionString2)
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	// restore server from mysqldump
+	err = restoreSQLFromBackup("/tmp/test.sqldump", dbRestore)
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	err = os.Remove("/tmp/test.sqldump")
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	// check if data was restored correctly
+	result, err := dbRestore.Query("SELECT * FROM test")
+	mySQLDumpTestSuite.Require().NoError(err)
+	mySQLDumpTestSuite.Require().NoError(result.Err())
+	defer result.Close()
+
+	var restoreResult []TestStruct
+	for result.Next() {
+		var test TestStruct
+		err := result.Scan(&test.ID, &test.Name)
+		mySQLDumpTestSuite.Require().NoError(err)
+		restoreResult = append(restoreResult, test)
+	}
+
+	assert.DeepEqual(mySQLDumpTestSuite.T(), testData, restoreResult)
+}
+
+func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDumpRestic() {
+	ctx := context.Background()
+
+	mySQLBackupTarget, err := newTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
+	mySQLDumpTestSuite.Require().NoError(err)
+
+	// setup a container running the restic rest-server
+	resticContainer, err := newTestContainerSetup(ctx, &resticReq, "8000/tcp")
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	connectionString := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
@@ -152,50 +267,43 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	_, err = db.Exec("CREATE TABLE test(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));")
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	testStruct1 := TestStruct{2, "TEST"}
-	testData := []TestStruct{testStruct1}
-	var insert *sql.Rows
-	for idx := range testData {
-		insert, err = db.Query(fmt.Sprintf("INSERT INTO test VALUES ( %d, '%s' )", testData[idx].ID, testData[idx].Name))
-		mySQLDumpTestSuite.Require().NoError(insert.Err())
-		mySQLDumpTestSuite.Require().NoError(err)
-	}
-	err = insert.Close()
+	testData, err := prepareTestData(db)
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	err = db.Close()
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	testMySQLConfig := createMySQLConfig(mySQLBackupTarget, false, "", "")
+	testMySQLConfig := createMySQLConfig(mySQLBackupTarget, true, resticContainer.Address, resticContainer.Port)
 	err = viper.ReadConfig(bytes.NewBuffer(testMySQLConfig))
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	// perform backup action on first mongo container
-	err = source.DoBackupForKind(ctx, "mysqldump", false, false, false)
+	err = source.DoBackupForKind(ctx, "mysqldump", false, true, false)
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	mySQLBackupTarget.Container.Terminate(ctx)
+	err = mySQLBackupTarget.Container.Terminate(ctx)
+	mySQLDumpTestSuite.Require().NoError(err)
 
 	mySQLRestoreTarget, err := newTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
-	mySQLDumpTestSuite.Require().NoError(err)
-
-	_, err = mySQLRestoreTarget.Container.Exec(context.TODO(), []string{"mysql", "--user=root",
-		"--database=mysql", "--password=mysqlroot", "<", "/tmp/test.sqldump"})
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	connectionString2 := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
 		mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, "mysql")
 	dbRestore, err := sql.Open("mysql", connectionString2)
 	mySQLDumpTestSuite.Require().NoError(err)
-	file, err := ioutil.ReadFile("/tmp/test.sqldump")
+
+	// restore backup file from restic repository
+	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
+		resticContainer.Address, resticContainer.Port),
+		"--target", "data", "latest")
+	_, err = cmd.CombinedOutput()
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	requests := strings.Split(string(file), ";\n")
+	err = restoreSQLFromBackup("data/tmp/test.sqldump", dbRestore)
+	mySQLDumpTestSuite.Require().NoError(err)
 
-	for _, request := range requests {
-		_, err := dbRestore.Exec(request)
-		mySQLDumpTestSuite.Require().NoError(err)
-	}
+	// delete folder with backup file
+	err = os.RemoveAll("data")
+	mySQLDumpTestSuite.Require().NoError(err)
 
 	result, err := dbRestore.Query("SELECT * FROM test")
 	mySQLDumpTestSuite.Require().NoError(err)
