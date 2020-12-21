@@ -36,8 +36,15 @@ type MongoDumpTestSuite struct {
 	suite.Suite
 }
 
-type TestLogConsumer struct {
-	Msgs []string
+func (mongoDumpTestSuite *MongoDumpTestSuite) SetupTest() {
+	viper.Reset()
+	viper.SetConfigType("yaml")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+}
+
+func (mongoDumpTestSuite *MongoDumpTestSuite) TearDownTest() {
+	viper.Reset()
 }
 
 var mongoRequest = testcontainers.ContainerRequest{
@@ -81,17 +88,6 @@ func newTestContainerSetup(ctx context.Context, request *testcontainers.Containe
 	result.Address = host
 
 	return result, nil
-}
-
-func (mongoDumpTestSuite *MongoDumpTestSuite) SetupTest() {
-	viper.Reset()
-	viper.SetConfigType("yaml")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-}
-
-func (mongoDumpTestSuite *MongoDumpTestSuite) TearDownTest() {
-	viper.Reset()
 }
 
 // execCommand executes a given command within a context and with specified arguments
