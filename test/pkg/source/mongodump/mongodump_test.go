@@ -251,65 +251,6 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	mongoDumpTestSuite.Require().NoError(err)
 }
 
-func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpCleanup() {
-	ctx := context.Background()
-
-	// create a mongo container to test backup function
-	mongoBackupTarget, err := newTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
-	mongoDumpTestSuite.Require().NoError(err)
-
-	backupClient, err := newMongoClient(&mongoBackupTarget)
-	mongoDumpTestSuite.Require().NoError(err)
-
-	// write test data into database and retain it for later assertion
-	testData, err := prepareTestData(&backupClient)
-	mongoDumpTestSuite.Require().NoError(err)
-
-	err = backupClient.Disconnect(context.TODO())
-	mongoDumpTestSuite.Require().NoError(err)
-
-	testMongoConfig := createMongoConfig(mongoBackupTarget, false, "", "")
-	err = viper.ReadConfig(bytes.NewBuffer(testMongoConfig))
-	mongoDumpTestSuite.Require().NoError(err)
-
-	// perform backup action on first mongo container
-	err = source.DoBackupForKind(ctx, "mongodump", true, false, false)
-	mongoDumpTestSuite.Require().NoError(err)
-
-	err = mongoBackupTarget.Container.Terminate(ctx)
-	mongoDumpTestSuite.Require().NoError(err)
-
-	// setup a new mongo container which will be used to ensure data was backed up correctly
-	mongoRestoreTarget, err := newTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
-	mongoDumpTestSuite.Require().NoError(err)
-
-	// use `mongorestore` to restore backed up data to new container
-	_, err = execCommand(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
-		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port), "--archive=/tmp/dump.tar.gz", "--gzip", "--username=root",
-		"--password=mongodbroot")
-	mongoDumpTestSuite.Require().NoError(err)
-
-	restoreClient, err := newMongoClient(&mongoRestoreTarget)
-	mongoDumpTestSuite.Require().NoError(err)
-
-	restoredCollection := restoreClient.Database("test").Collection("testColl")
-
-	findOptions := options.Find()
-	cur, err := restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)
-	mongoDumpTestSuite.Require().NoError(err)
-
-	results, err := getResultsFromCursor(cur)
-	mongoDumpTestSuite.Require().NoError(err)
-
-	// check if the original data was restored
-	assert.DeepEqual(mongoDumpTestSuite.T(), testData, results)
-
-	err = mongoRestoreTarget.Container.Terminate(ctx)
-	mongoDumpTestSuite.Require().NoError(err)
-	err = restoreClient.Disconnect(context.TODO())
-	mongoDumpTestSuite.Require().NoError(err)
-}
-
 func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	ctx := context.Background()
 
