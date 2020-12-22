@@ -14,7 +14,6 @@ import (
 	"github.com/mittwald/brudi/pkg/source"
 	commons "github.com/mittwald/brudi/test/pkg/source/internal"
 
-	"github.com/docker/go-connections/nat"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
@@ -23,7 +22,7 @@ import (
 	"gotest.tools/assert"
 )
 
-const pgPort = "5432"
+const pgPort = "5432/tcp"
 
 type PGDumpTestSuite struct {
 	suite.Suite
@@ -36,7 +35,7 @@ type TestStruct struct {
 
 var pgRequest = testcontainers.ContainerRequest{
 	Image:        "postgres:12",
-	ExposedPorts: []string{fmt.Sprintf("%s/tcp", pgPort)},
+	ExposedPorts: []string{pgPort},
 	Env: map[string]string{
 		"POSTGRES_PASSWORD": "postgresroot",
 		"POSTGRES_USER":     "postgresuser",
@@ -136,11 +135,9 @@ func scanResult(result *sql.Rows) ([]TestStruct, error) {
 
 func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	ctx := context.Background()
-	port, err := nat.NewPort("tcp", pgPort)
-	pgDumpTestSuite.Require().NoError(err)
 
 	// create a mysql container to test backup function
-	pgBackupTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, port)
+	pgBackupTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
 	pgDumpTestSuite.Require().NoError(err)
 	// connect to mysql database using the driver
 	connectionString := fmt.Sprintf("user=postgresuser password=postgresroot host=%s port=%s database=%s sslmode=disable",
@@ -176,7 +173,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	pgDumpTestSuite.Require().NoError(err)
 
 	// setup second pgsql container to test if correct data is restored
-	pgRestoreTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, port)
+	pgRestoreTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
 	pgDumpTestSuite.Require().NoError(err)
 
 	connectionString2 := fmt.Sprintf("user=postgresuser password=postgresroot host=%s port=%s database=%s sslmode=disable",
@@ -211,15 +208,13 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 
 func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 	ctx := context.Background()
-	port, err := nat.NewPort("tcp", pgPort)
-	pgDumpTestSuite.Require().NoError(err)
 
 	// setup a container running the restic rest-server
-	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, "8000/tcp")
+	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
 	pgDumpTestSuite.Require().NoError(err)
 
 	// create a mysql container to test backup function
-	pgBackupTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, port)
+	pgBackupTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
 	pgDumpTestSuite.Require().NoError(err)
 	// connect to mysql database using the driver
 	connectionString := fmt.Sprintf("user=postgresuser password=postgresroot host=%s port=%s database=%s sslmode=disable",
@@ -255,7 +250,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 	pgDumpTestSuite.Require().NoError(err)
 
 	// setup second pgsql container to test if correct data is restored
-	pgRestoreTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, port)
+	pgRestoreTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
 	pgDumpTestSuite.Require().NoError(err)
 
 	connectionString2 := fmt.Sprintf("user=postgresuser password=postgresroot host=%s port=%s database=%s sslmode=disable",

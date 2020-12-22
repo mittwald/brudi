@@ -12,7 +12,6 @@ import (
 	"github.com/mittwald/brudi/pkg/source"
 	commons "github.com/mittwald/brudi/test/pkg/source/internal"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/go-redis/redis"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
@@ -21,7 +20,7 @@ import (
 	"gotest.tools/assert"
 )
 
-const redisPort = "6379"
+const redisPort = "6379/tcp"
 const testName = "test"
 const testType = "gopher"
 const backupPath = "/tmp/redisdump.rdb"
@@ -33,13 +32,13 @@ type RedisDumpTestSuite struct {
 
 var redisRequest = testcontainers.ContainerRequest{
 	Image:        "redis:alpine",
-	ExposedPorts: []string{fmt.Sprintf("%s/tcp", redisPort)},
+	ExposedPorts: []string{redisPort},
 	WaitingFor:   wait.ForLog("Ready to accept connections"),
 }
 
 var redisRestoreRequest = testcontainers.ContainerRequest{
 	Image:        "redis:alpine",
-	ExposedPorts: []string{fmt.Sprintf("%s/tcp", redisPort)},
+	ExposedPorts: []string{redisPort},
 	//BindMounts: map[string]string{
 	//   backupPath:"/data/dump.rdb" ,
 	//},
@@ -48,7 +47,7 @@ var redisRestoreRequest = testcontainers.ContainerRequest{
 
 var redisRestoreRequestRestic = testcontainers.ContainerRequest{
 	Image:        "redis:alpine",
-	ExposedPorts: []string{fmt.Sprintf("%s/tcp", redisPort)},
+	ExposedPorts: []string{redisPort},
 	WaitingFor:   wait.ForLog("Ready to accept connections"),
 }
 
@@ -102,11 +101,9 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TearDownTest() {
 
 func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	ctx := context.Background()
-	port, err := nat.NewPort("tcp", redisPort)
-	redisDumpTestSuite.Require().NoError(err)
 
 	// create a redis container to test backup function
-	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, port)
+	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, redisPort)
 	redisDumpTestSuite.Require().NoError(err)
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", redisBackupTarget.Address, redisBackupTarget.Port),
@@ -169,11 +166,9 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	}
 
 	ctx := context.Background()
-	port, err := nat.NewPort("tcp", redisPort)
-	redisDumpTestSuite.Require().NoError(err)
 
 	// create a redis container to test backup function
-	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, port)
+	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, redisPort)
 	redisDumpTestSuite.Require().NoError(err)
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", redisBackupTarget.Address, redisBackupTarget.Port),
@@ -182,7 +177,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	redisDumpTestSuite.Require().NoError(err)
 
 	// setup a container running the restic rest-server
-	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, "8000/tcp")
+	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
 	redisDumpTestSuite.Require().NoError(err)
 
 	err = redisClient.Set("name", testName, 0).Err()
@@ -209,7 +204,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	redisDumpTestSuite.Require().NoError(err)
 
 	// create second redis container to test dumped values. link dump.rdb as volume
-	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, &redisRestoreRequestRestic, port)
+	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, &redisRestoreRequestRestic, redisPort)
 	redisDumpTestSuite.Require().NoError(err)
 	redisRestoreClient := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", redisRestoreTarget.Address, redisRestoreTarget.Port),

@@ -22,6 +22,9 @@ import (
 	"gotest.tools/assert"
 )
 
+const sqlPort = "3306/tcp"
+const backupPath = "/tmp/test.sqldump"
+
 type MySQLDumpTestSuite struct {
 	suite.Suite
 }
@@ -33,7 +36,7 @@ type TestStruct struct {
 
 var mySQLRequest = testcontainers.ContainerRequest{
 	Image:        "mysql:8",
-	ExposedPorts: []string{"3306/tcp"},
+	ExposedPorts: []string{sqlPort},
 	Env: map[string]string{
 		"MYSQL_ROOT_PASSWORD": "mysqlroot",
 		"MYSQL_DATABASE":      "mysql",
@@ -55,7 +58,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
-// createMongoConfig creates a brudi config for the mongodump command
+// createMongoConfig creates a brudi config for the mongodump command.
 func createMySQLConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
 	fmt.Println(resticIP)
 	fmt.Println(resticPort)
@@ -70,9 +73,9 @@ mysqldump:
       user: root
       opt: true
       allDatabases: true
-      resultFile: /tmp/test.sqldump
+      resultFile: %s
     additionalArgs: []
-`, "127.0.0.1", container.Port))
+`, "127.0.0.1", container.Port, backupPath)) // address is hardcoded because the sql driver doesn't like 'localhost'
 	}
 	return []byte(fmt.Sprintf(`
 mysqldump:
@@ -84,7 +87,7 @@ mysqldump:
       user: root
       opt: true
       allDatabases: true
-      resultFile: /tmp/test.sqldump
+      resultFile: %s
     additionalArgs: []
 restic:
   global:
@@ -98,7 +101,7 @@ restic:
       keepWeekly: 0
       keepMonthly: 0
       keepYearly: 0
-`, "127.0.0.1", container.Port, resticIP, resticPort))
+`, "127.0.0.1", container.Port, backupPath, resticIP, resticPort))
 }
 
 func prepareTestData(database *sql.DB) ([]TestStruct, error) {
@@ -143,7 +146,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	ctx := context.Background()
 
 	// create a mysql container to test backup function
-	mySQLBackupTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
+	mySQLBackupTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	// connect to mysql database using the driver
@@ -175,7 +178,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	// setup second mysql container to test if correct data is restored
-	mySQLRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
+	mySQLRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	connectionString2 := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
@@ -184,10 +187,10 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	// restore server from mysqldump
-	err = restoreSQLFromBackup("/tmp/test.sqldump", dbRestore)
+	err = restoreSQLFromBackup(backupPath, dbRestore)
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	err = os.Remove("/tmp/test.sqldump")
+	err = os.Remove(backupPath)
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	// check if data was restored correctly
@@ -210,11 +213,11 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDumpRestic() {
 	ctx := context.Background()
 
-	mySQLBackupTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
+	mySQLBackupTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	// setup a container running the restic rest-server
-	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, "8000/tcp")
+	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	connectionString := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
@@ -241,7 +244,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDumpRestic() {
 	err = mySQLBackupTarget.Container.Terminate(ctx)
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	mySQLRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
+	mySQLRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	connectionString2 := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
@@ -256,7 +259,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDumpRestic() {
 	_, err = cmd.CombinedOutput()
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	err = restoreSQLFromBackup("data/tmp/test.sqldump", dbRestore)
+	err = restoreSQLFromBackup(fmt.Sprintf("data/%s", backupPath), dbRestore)
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	// delete folder with backup file

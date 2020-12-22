@@ -21,6 +21,9 @@ import (
 	"gotest.tools/assert"
 )
 
+const mongoPort = "27017/tcp"
+const backupPath = "/tmp/dump.tar.gz"
+
 type TestColl struct {
 	Name string
 	Age  int
@@ -43,7 +46,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TearDownTest() {
 
 var mongoRequest = testcontainers.ContainerRequest{
 	Image:        "mongo:latest",
-	ExposedPorts: []string{"27017/tcp"},
+	ExposedPorts: []string{mongoPort},
 	Env: map[string]string{
 		"MONGO_INITDB_ROOT_USERNAME": "root",
 		"MONGO_INITDB_ROOT_PASSWORD": "mongodbroot",
@@ -89,9 +92,9 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
             username: root
             password: mongodbroot
             gzip: true
-            archive: /tmp/dump.tar.gz
+            archive: %s
           additionalArgs: []
-`, container.Address, container.Port))
+`, container.Address, container.Port, backupPath))
 	}
 	return []byte(fmt.Sprintf(`
       mongodump:
@@ -102,7 +105,7 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
             username: root
             password: mongodbroot
             gzip: true
-            archive: /tmp/dump.tar.gz
+            archive: %s
           additionalArgs: []
       restic:
         global:
@@ -116,7 +119,7 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
             keepWeekly: 0
             keepMonthly: 0
             keepYearly: 0
-`, container.Address, container.Port, resticIP, resticPort))
+`, container.Address, container.Port, backupPath, resticIP, resticPort))
 }
 
 // prepareTestData creates test data and writes it into a database using the provided client
@@ -156,7 +159,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	ctx := context.Background()
 
 	// create a mongo container to test backup function
-	mongoBackupTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
+	mongoBackupTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	backupClient, err := newMongoClient(&mongoBackupTarget)
@@ -181,12 +184,13 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// setup a new mongo container which will be used to ensure data was backed up correctly
-	mongoRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
+	mongoRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// use `mongorestore` to restore backed up data to new container
 	_, err = execCommand(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
-		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port), "--archive=/tmp/dump.tar.gz", "--gzip", "--username=root",
+		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port), fmt.Sprintf("--archive=%s", backupPath),
+		"--gzip", "--username=root",
 		"--password=mongodbroot")
 	mongoDumpTestSuite.Require().NoError(err)
 
@@ -197,6 +201,9 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 
 	findOptions := options.Find()
 	cur, err := restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)
+	mongoDumpTestSuite.Require().NoError(err)
+
+	err = os.Remove(backupPath)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	results, err := getResultsFromCursor(cur)
@@ -213,12 +220,11 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 
 func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	ctx := context.Background()
-
-	mongoBackupTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
+	mongoBackupTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// create a container running the restic rest-server
-	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, "8000/tcp")
+	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	backupClient, err := newMongoClient(&mongoBackupTarget)
@@ -239,13 +245,15 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// do backup using restic
-	err = source.DoBackupForKind(ctx, "mongodump", true, true, false)
+	err = source.DoBackupForKind(ctx, "mongodump", false, true, false)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	err = mongoBackupTarget.Container.Terminate(ctx)
 	mongoDumpTestSuite.Require().NoError(err)
 
-	mongoRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
+	fmt.Println(mongoPort)
+	mongoRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
+
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// restore backed up data from restic repository
@@ -257,7 +265,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 
 	cmd = exec.CommandContext(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
 		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port),
-		"--archive=data/tmp/dump.tar.gz", "--gzip", "--username=root", "--password=mongodbroot")
+		fmt.Sprintf("--archive=data/%s", backupPath), "--gzip", "--username=root", "--password=mongodbroot")
 	_, err = cmd.CombinedOutput()
 	mongoDumpTestSuite.Require().NoError(err)
 

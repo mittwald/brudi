@@ -7,19 +7,21 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 )
 
-var ResticReq = testcontainers.ContainerRequest{
-	Image:        "restic/rest-server:latest",
-	ExposedPorts: []string{"8000/tcp"},
-	Env: map[string]string{
-		"OPTIONS":         "--no-auth",
-		"RESTIC_PASSWORD": "mongorepo",
-	},
-}
+const ResticPort = "8000/tcp"
 
 type TestContainerSetup struct {
 	Container testcontainers.Container
 	Address   string
 	Port      string
+}
+
+var ResticReq = testcontainers.ContainerRequest{
+	Image:        "restic/rest-server:latest",
+	ExposedPorts: []string{ResticPort},
+	Env: map[string]string{
+		"OPTIONS":         "--no-auth",
+		"RESTIC_PASSWORD": "mongorepo",
+	},
 }
 
 func NewTestContainerSetup(ctx context.Context, request *testcontainers.ContainerRequest, port nat.Port) (TestContainerSetup, error) {
