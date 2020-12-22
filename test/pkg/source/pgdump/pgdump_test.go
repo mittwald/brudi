@@ -205,8 +205,8 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	err = db.Close()
 	pgDumpTestSuite.Require().NoError(err)
 
-	testMySQLConfig := createPGConfig(pgBackupTarget, false, "", "")
-	err = viper.ReadConfig(bytes.NewBuffer(testMySQLConfig))
+	testPGConfig := createPGConfig(pgBackupTarget, false, "", "")
+	err = viper.ReadConfig(bytes.NewBuffer(testPGConfig))
 	pgDumpTestSuite.Require().NoError(err)
 
 	// perform backup action on first pgsql container
@@ -284,8 +284,8 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 	err = db.Close()
 	pgDumpTestSuite.Require().NoError(err)
 
-	testMySQLConfig := createPGConfig(pgBackupTarget, true, resticContainer.Address, resticContainer.Port)
-	err = viper.ReadConfig(bytes.NewBuffer(testMySQLConfig))
+	testPGConfig := createPGConfig(pgBackupTarget, true, resticContainer.Address, resticContainer.Port)
+	err = viper.ReadConfig(bytes.NewBuffer(testPGConfig))
 	pgDumpTestSuite.Require().NoError(err)
 
 	// perform backup action on first pgsql container
