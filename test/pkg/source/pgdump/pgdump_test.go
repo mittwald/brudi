@@ -162,6 +162,19 @@ func prepareTestData(database *sql.DB) ([]TestStruct, error) {
 	return testData, nil
 }
 
+func scanResult(result *sql.Rows) ([]TestStruct, error) {
+	var restoreResult []TestStruct
+	for result.Next() {
+		var test TestStruct
+		err := result.Scan(&test.ID, &test.Name)
+		if err != nil {
+			return []TestStruct{}, err
+		}
+		restoreResult = append(restoreResult, test)
+	}
+	return restoreResult, nil
+}
+
 func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	ctx := context.Background()
 	port, err := nat.NewPort("tcp", pgPort)
@@ -231,13 +244,8 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	pgDumpTestSuite.Require().NoError(result.Err())
 	defer result.Close()
 
-	var restoreResult []TestStruct
-	for result.Next() {
-		var test TestStruct
-		err := result.Scan(&test.ID, &test.Name)
-		pgDumpTestSuite.Require().NoError(err)
-		restoreResult = append(restoreResult, test)
-	}
+	restoreResult, err := scanResult(result)
+	pgDumpTestSuite.Require().NoError(err)
 
 	assert.DeepEqual(pgDumpTestSuite.T(), testData, restoreResult)
 }
@@ -322,13 +330,8 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 	pgDumpTestSuite.Require().NoError(result.Err())
 	defer result.Close()
 
-	var restoreResult []TestStruct
-	for result.Next() {
-		var test TestStruct
-		err := result.Scan(&test.ID, &test.Name)
-		pgDumpTestSuite.Require().NoError(err)
-		restoreResult = append(restoreResult, test)
-	}
+	restoreResult, err := scanResult(result)
+	pgDumpTestSuite.Require().NoError(err)
 
 	assert.DeepEqual(pgDumpTestSuite.T(), testData, restoreResult)
 }
