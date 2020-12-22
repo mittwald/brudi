@@ -5,20 +5,19 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/mittwald/brudi/pkg/source"
-	"io/ioutil"
-	"os"
-	"strings"
-	"testing"
-	"time"
-
 	"github.com/docker/go-connections/nat"
 	_ "github.com/jackc/pgx/stdlib"
+	"github.com/mittwald/brudi/pkg/source"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"gotest.tools/assert"
+	"os"
+	"os/exec"
+	"strings"
+	"testing"
+	"time"
 )
 
 const pgPort = "5432"
@@ -110,7 +109,8 @@ pgdump:
       password: postgresroot
       username: postgresuser
       dbName: postgres
-      file: /tmp/postgres.dump
+      file: /tmp/postgres.dump.tar
+      format: tar
     additionalArgs: []
 `, "127.0.0.1", container.Port))
 	}
@@ -123,7 +123,8 @@ pgdump:
       password: postgresroot
       username: postgresuser
       dbName: postgres
-      file: /tmp/postgres.dump
+	  format: tar
+      file: /tmp/postgres.dump.tar
     additionalArgs: []
 restic:
   global:
@@ -161,24 +162,6 @@ func prepareTestData(database *sql.DB) ([]TestStruct, error) {
 	return testData, nil
 }
 
-func restorePGFromBackup(filename string, database *sql.DB) error {
-	file, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return err
-	}
-
-	requests := strings.Split(string(file), ";\n")
-
-	for _, request := range requests {
-		fmt.Println(request)
-		_, err := database.Exec(request)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	ctx := context.Background()
 	port, err := nat.NewPort("tcp", fmt.Sprintf("%s", pgPort))
@@ -187,13 +170,13 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	// create a mysql container to test backup function
 	pgBackupTarget, err := newTestContainerSetup(ctx, &pgRequest, port)
 	pgDumpTestSuite.Require().NoError(err)
-	fmt.Println(pgBackupTarget.Port)
 	// connect to mysql database using the driver
 	connectionString := fmt.Sprintf("user=postgresuser password=postgresroot host=%s port=%s database=%s sslmode=disable",
 		pgBackupTarget.Address, pgBackupTarget.Port, "postgres")
-	fmt.Println(connectionString)
 	db, err := sql.Open("pgx", connectionString)
 	pgDumpTestSuite.Require().NoError(err)
+
+	// these are necessary, otherwise pgserver resets connections
 	time.Sleep(1 * time.Second)
 	err = db.Ping()
 	pgDumpTestSuite.Require().NoError(err)
@@ -202,8 +185,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	pgDumpTestSuite.Require().NoError(err)
 
 	// Create test table
-	out, err := db.Exec("CREATE TABLE test(id serial PRIMARY KEY, name VARCHAR(100) NOT NULL)")
-	fmt.Println(out)
+	_, err = db.Exec("CREATE TABLE test(id serial PRIMARY KEY, name VARCHAR(100) NOT NULL)")
 	pgDumpTestSuite.Require().NoError(err)
 
 	// create test data and write it to database
@@ -217,14 +199,14 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	err = viper.ReadConfig(bytes.NewBuffer(testMySQLConfig))
 	pgDumpTestSuite.Require().NoError(err)
 
-	// perform backup action on first mysql container
+	// perform backup action on first pgsql container
 	err = source.DoBackupForKind(ctx, "pgdump", false, false, false)
 	pgDumpTestSuite.Require().NoError(err)
 
 	err = pgBackupTarget.Container.Terminate(ctx)
 	pgDumpTestSuite.Require().NoError(err)
 
-	// setup second mysql container to test if correct data is restored
+	// setup second pgsql container to test if correct data is restored
 	pgRestoreTarget, err := newTestContainerSetup(ctx, &pgRequest, port)
 	pgDumpTestSuite.Require().NoError(err)
 
@@ -237,17 +219,16 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	err = dbRestore.Ping()
 	pgDumpTestSuite.Require().NoError(err)
 
-	fmt.Println("select pre restore")
 	_, err = dbRestore.Exec("SELECT * FROM pg_catalog.pg_tables;")
 	pgDumpTestSuite.Require().NoError(err)
 
-	fmt.Println("execute restore")
-	// restore server from mysqldump
-	err = restorePGFromBackup("/tmp/postgres.dump", dbRestore)
+	// restore server from pgdump
+	command := exec.CommandContext(ctx, "pg_restore", "--dbname=postgres",
+		"--host=127.0.0.1", fmt.Sprintf("--port=%s", pgRestoreTarget.Port), "--username=postgresuser", "/tmp/postgres.dump.tar")
+	_, err = command.CombinedOutput()
 	pgDumpTestSuite.Require().NoError(err)
-	fmt.Println("finished restore")
 
-	err = os.Remove("/tmp/postgres.dump")
+	err = os.Remove("/tmp/postgres.dump.tar")
 	pgDumpTestSuite.Require().NoError(err)
 
 	// check if data was restored correctly

@@ -31,6 +31,12 @@ type TestStruct struct {
 	Name string
 }
 
+type TestContainerSetup struct {
+	Container testcontainers.Container
+	Address   string
+	Port      string
+}
+
 var mySQLRequest = testcontainers.ContainerRequest{
 	Image:        "mysql:8",
 	ExposedPorts: []string{"3306/tcp"},
@@ -54,12 +60,6 @@ var resticReq = testcontainers.ContainerRequest{
 	VolumeMounts: map[string]string{
 		"mysql-data": "/var/lib/mysql",
 	},
-}
-
-type TestContainerSetup struct {
-	Container testcontainers.Container
-	Address   string
-	Port      string
 }
 
 func (mySQLDumpTestSuite *MySQLDumpTestSuite) SetupTest() {
