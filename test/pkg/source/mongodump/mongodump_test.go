@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/mittwald/brudi/pkg/source"
+	commons "github.com/mittwald/brudi/test/pkg/source/internal"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
@@ -24,12 +24,6 @@ import (
 type TestColl struct {
 	Name string
 	Age  int
-}
-
-type TestContainerSetup struct {
-	Container testcontainers.Container
-	Address   string
-	Port      string
 }
 
 type MongoDumpTestSuite struct {
@@ -56,40 +50,6 @@ var mongoRequest = testcontainers.ContainerRequest{
 	},
 }
 
-var resticReq = testcontainers.ContainerRequest{
-	Image:        "restic/rest-server:latest",
-	ExposedPorts: []string{"8000/tcp"},
-	Env: map[string]string{
-		"OPTIONS":         "--no-auth",
-		"RESTIC_PASSWORD": "mongorepo",
-	},
-}
-
-// newTestContainerSetup creates a new TestContainerSetup with the specified context, request and mapped port
-func newTestContainerSetup(ctx context.Context, request *testcontainers.ContainerRequest, port nat.Port) (TestContainerSetup, error) {
-	result := TestContainerSetup{}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: *request,
-		Started:          true,
-	})
-	if err != nil {
-		return TestContainerSetup{}, err
-	}
-	result.Container = container
-	contPort, err := container.MappedPort(ctx, port)
-	if err != nil {
-		return TestContainerSetup{}, err
-	}
-	result.Port = fmt.Sprint(contPort.Int())
-	host, err := container.Host(ctx)
-	if err != nil {
-		return TestContainerSetup{}, err
-	}
-	result.Address = host
-
-	return result, nil
-}
-
 // execCommand executes a given command within a context and with specified arguments
 func execCommand(ctx context.Context, cmd string, args ...string) ([]byte, error) {
 	command := exec.CommandContext(ctx, cmd, args...)
@@ -101,7 +61,7 @@ func execCommand(ctx context.Context, cmd string, args ...string) ([]byte, error
 }
 
 // newMongoClient creates a mongo client connected to the database specified by the provided TestContainerSetup
-func newMongoClient(target *TestContainerSetup) (mongo.Client, error) {
+func newMongoClient(target *commons.TestContainerSetup) (mongo.Client, error) {
 	backupClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", target.Address,
 		target.Port))
 	clientAuth := options.Client().SetAuth(options.Credential{Username: "root", Password: "mongodbroot"})
@@ -118,7 +78,7 @@ func newMongoClient(target *TestContainerSetup) (mongo.Client, error) {
 }
 
 // createMongoConfig creates a brudi config for the mongodump command
-func createMongoConfig(container TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
+func createMongoConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
 	if !useRestic {
 		return []byte(fmt.Sprintf(`
       mongodump:
@@ -196,7 +156,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	ctx := context.Background()
 
 	// create a mongo container to test backup function
-	mongoBackupTarget, err := newTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
+	mongoBackupTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
 	mongoDumpTestSuite.Require().NoError(err)
 
 	backupClient, err := newMongoClient(&mongoBackupTarget)
@@ -221,7 +181,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// setup a new mongo container which will be used to ensure data was backed up correctly
-	mongoRestoreTarget, err := newTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
+	mongoRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// use `mongorestore` to restore backed up data to new container
@@ -254,11 +214,11 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	ctx := context.Background()
 
-	mongoBackupTarget, err := newTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
+	mongoBackupTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// create a container running the restic rest-server
-	resticContainer, err := newTestContainerSetup(ctx, &resticReq, "8000/tcp")
+	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, "8000/tcp")
 	mongoDumpTestSuite.Require().NoError(err)
 
 	backupClient, err := newMongoClient(&mongoBackupTarget)
@@ -285,7 +245,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	err = mongoBackupTarget.Container.Terminate(ctx)
 	mongoDumpTestSuite.Require().NoError(err)
 
-	mongoRestoreTarget, err := newTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
+	mongoRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, "27017/tcp")
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// restore backed up data from restic repository

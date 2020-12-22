@@ -12,8 +12,8 @@ import (
 	"testing"
 
 	"github.com/mittwald/brudi/pkg/source"
+	commons "github.com/mittwald/brudi/test/pkg/source/internal"
 
-	"github.com/docker/go-connections/nat"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
@@ -31,12 +31,6 @@ type TestStruct struct {
 	Name string
 }
 
-type TestContainerSetup struct {
-	Container testcontainers.Container
-	Address   string
-	Port      string
-}
-
 var mySQLRequest = testcontainers.ContainerRequest{
 	Image:        "mysql:8",
 	ExposedPorts: []string{"3306/tcp"},
@@ -50,18 +44,6 @@ var mySQLRequest = testcontainers.ContainerRequest{
 	WaitingFor: wait.ForLog("port: 3306  MySQL Community Server - GPL"),
 }
 
-var resticReq = testcontainers.ContainerRequest{
-	Image:        "restic/rest-server:latest",
-	ExposedPorts: []string{"8000/tcp"},
-	Env: map[string]string{
-		"OPTIONS":         "--no-auth",
-		"RESTIC_PASSWORD": "mongorepo",
-	},
-	VolumeMounts: map[string]string{
-		"mysql-data": "/var/lib/mysql",
-	},
-}
-
 func (mySQLDumpTestSuite *MySQLDumpTestSuite) SetupTest() {
 	viper.Reset()
 	viper.SetConfigType("yaml")
@@ -73,32 +55,8 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
-func newTestContainerSetup(ctx context.Context, request *testcontainers.ContainerRequest, port nat.Port) (TestContainerSetup, error) {
-	result := TestContainerSetup{}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: *request,
-		Started:          true,
-	})
-	if err != nil {
-		return TestContainerSetup{}, err
-	}
-	result.Container = container
-	contPort, err := container.MappedPort(ctx, port)
-	if err != nil {
-		return TestContainerSetup{}, err
-	}
-	result.Port = fmt.Sprint(contPort.Int())
-	host, err := container.Host(ctx)
-	if err != nil {
-		return TestContainerSetup{}, err
-	}
-	result.Address = host
-
-	return result, nil
-}
-
 // createMongoConfig creates a brudi config for the mongodump command
-func createMySQLConfig(container TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
+func createMySQLConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
 	fmt.Println(resticIP)
 	fmt.Println(resticPort)
 	if !useRestic {
@@ -185,7 +143,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	ctx := context.Background()
 
 	// create a mysql container to test backup function
-	mySQLBackupTarget, err := newTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
+	mySQLBackupTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	// connect to mysql database using the driver
@@ -217,7 +175,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	// setup second mysql container to test if correct data is restored
-	mySQLRestoreTarget, err := newTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
+	mySQLRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	connectionString2 := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
@@ -252,11 +210,11 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDumpRestic() {
 	ctx := context.Background()
 
-	mySQLBackupTarget, err := newTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
+	mySQLBackupTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	// setup a container running the restic rest-server
-	resticContainer, err := newTestContainerSetup(ctx, &resticReq, "8000/tcp")
+	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, "8000/tcp")
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	connectionString := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
@@ -283,7 +241,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDumpRestic() {
 	err = mySQLBackupTarget.Container.Terminate(ctx)
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	mySQLRestoreTarget, err := newTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
+	mySQLRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, "3306/tcp")
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	connectionString2 := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",

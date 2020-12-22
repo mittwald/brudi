@@ -4,18 +4,21 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+	"testing"
+
+	"github.com/mittwald/brudi/pkg/source"
+	commons "github.com/mittwald/brudi/test/pkg/source/internal"
+
 	"github.com/docker/go-connections/nat"
 	"github.com/go-redis/redis"
-	"github.com/mittwald/brudi/pkg/source"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"gotest.tools/assert"
-	"os"
-	"os/exec"
-	"strings"
-	"testing"
 )
 
 const redisPort = "6379"
@@ -26,21 +29,6 @@ const implemented = false
 
 type RedisDumpTestSuite struct {
 	suite.Suite
-}
-
-type TestContainerSetup struct {
-	Container testcontainers.Container
-	Address   string
-	Port      string
-}
-
-var resticReq = testcontainers.ContainerRequest{
-	Image:        "restic/rest-server:latest",
-	ExposedPorts: []string{"8000/tcp"},
-	Env: map[string]string{
-		"OPTIONS":         "--no-auth",
-		"RESTIC_PASSWORD": "mongorepo",
-	},
 }
 
 var redisRequest = testcontainers.ContainerRequest{
@@ -64,31 +52,7 @@ var redisRestoreRequestRestic = testcontainers.ContainerRequest{
 	WaitingFor:   wait.ForLog("Ready to accept connections"),
 }
 
-func newTestContainerSetup(ctx context.Context, request *testcontainers.ContainerRequest, port nat.Port) (TestContainerSetup, error) {
-	result := TestContainerSetup{}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: *request,
-		Started:          true,
-	})
-	if err != nil {
-		return TestContainerSetup{}, err
-	}
-	result.Container = container
-	contPort, err := container.MappedPort(ctx, port)
-	if err != nil {
-		return TestContainerSetup{}, err
-	}
-	result.Port = fmt.Sprint(contPort.Int())
-	host, err := container.Host(ctx)
-	if err != nil {
-		return TestContainerSetup{}, err
-	}
-	result.Address = host
-
-	return result, nil
-}
-
-func createRedisConfig(container TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
+func createRedisConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
 	if !useRestic {
 		return []byte(fmt.Sprintf(`
 redisdump:
@@ -142,7 +106,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	redisDumpTestSuite.Require().NoError(err)
 
 	// create a redis container to test backup function
-	redisBackupTarget, err := newTestContainerSetup(ctx, &redisRequest, port)
+	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, port)
 	redisDumpTestSuite.Require().NoError(err)
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", redisBackupTarget.Address, redisBackupTarget.Port),
@@ -209,7 +173,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	redisDumpTestSuite.Require().NoError(err)
 
 	// create a redis container to test backup function
-	redisBackupTarget, err := newTestContainerSetup(ctx, &redisRequest, port)
+	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, port)
 	redisDumpTestSuite.Require().NoError(err)
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", redisBackupTarget.Address, redisBackupTarget.Port),
@@ -218,7 +182,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	redisDumpTestSuite.Require().NoError(err)
 
 	// setup a container running the restic rest-server
-	resticContainer, err := newTestContainerSetup(ctx, &resticReq, "8000/tcp")
+	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, "8000/tcp")
 	redisDumpTestSuite.Require().NoError(err)
 
 	err = redisClient.Set("name", testName, 0).Err()
@@ -245,7 +209,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	redisDumpTestSuite.Require().NoError(err)
 
 	// create second redis container to test dumped values. link dump.rdb as volume
-	redisRestoreTarget, err := newTestContainerSetup(ctx, &redisRestoreRequestRestic, port)
+	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, &redisRestoreRequestRestic, port)
 	redisDumpTestSuite.Require().NoError(err)
 	redisRestoreClient := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", redisRestoreTarget.Address, redisRestoreTarget.Port),
