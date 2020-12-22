@@ -10,6 +10,7 @@ import (
 	"github.com/mittwald/brudi/pkg/source/mongorestore"
 	"github.com/mittwald/brudi/pkg/source/mysqlrestore"
 	"github.com/mittwald/brudi/pkg/source/pgrestore"
+	"github.com/mittwald/brudi/pkg/source/psql"
 	"github.com/mittwald/brudi/pkg/source/tarrestore"
 )
 
@@ -23,6 +24,8 @@ func getGenericRestoreBackendForKind(kind string) (GenericRestore, error) {
 		return pgrestore.NewConfigBasedBackend()
 	case tarrestore.Kind:
 		return tarrestore.NewConfigBasedBackend()
+	case psql.Kind:
+		return psql.NewConfigBasedBackend()
 	default:
 		return nil, fmt.Errorf("unsupported kind '%s'", kind)
 	}

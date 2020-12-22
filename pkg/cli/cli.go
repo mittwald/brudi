@@ -234,6 +234,7 @@ func RunWithFile(ctx context.Context, cmd CommandType, infile string) ([]byte, e
 			return nil, err
 		}
 
+		fmt.Println(cmd.String())
 		out, err = cmd.CombinedOutput()
 		if ctx.Err() != nil {
 			return out, fmt.Errorf("failed to execute command: timed out or canceled")

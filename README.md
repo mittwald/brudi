@@ -374,9 +374,7 @@ pgrestore:
     flags:
       host: 127.0.0.1
       port: 5432
-      password: postgresroot
       username: postgresuser
-      dbName: postgres
     additionalArgs: []
     sourcefile: /tmp/postgres.dump
 ```
@@ -384,7 +382,7 @@ pgrestore:
 Running: `brudi pgrestore -c ${HOME}/.brudi.yml`
 
 Becomes the following command:  
-`psql --database=postgress --host=127.0.0.1 --password=mysqlroot --port=3306 --user=root < /tmp/postgress.dump`  
+`psql  --host=127.0.0.1  --port=3306 --user=postgresuser < /tmp/postgress.dump`  
 
 All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/pgrestore/cli.go#L7).
 

@@ -1,48 +1,62 @@
 package pgrestore
 
 const (
-	binary = "psql"
+	binary = "pg_restore"
 )
 
 type Options struct {
 	Flags          *Flags
 	Command        string
 	SourceFile     string
+	PGRestore      bool
 	AdditionalArgs []string
 }
 
 type Flags struct {
-	Command             string `flag:"--command="`
-	Dbname              string `flag:"--dbname=" validate:"min=1"`
-	EchoAll             bool   `flag:"--echo-all"`
-	EchoHidden          bool   `flag:"--echo-hidden"`
-	EchoQueries         bool   `flag:"--echo-queries"`
-	Expanded            bool   `flag:"--expanded"`
-	FieldSeparator      string `flag:"--field-separator="`
-	FieldSeparatorZero  bool   `flag:"--field-separator-zero"`
-	File                string `flag:"--file="`
-	Host                string `flag:"--host=" validate:"min=1"`
-	HTML                bool   `flag:"--html"`
-	List                bool   `flag:"--list"`
-	LogFile             string `flag:"--log-file="`
-	NoAllign            bool   `flag:"--no-align"`
-	NoPassword          bool   `flag:"--no-password"`
-	NoPsqlrc            bool   `flag:"--no-psqlrc"`
-	NoReafline          bool   `flag:"--no-readline"`
-	Output              string `flag:"--output="`
-	Password            bool   `flag:"--password"`
-	Port                int    `flag:"--port="`
-	Pset                string `flag:"--pset="`
-	Quiet               bool   `flag:"--quiet"`
-	RecordSeparator     string `flag:"--record-separator="`
-	RecordSeparatorZero bool   `flag:"--record-separator-zero"`
-	SingleLine          bool   `flag:"--single-line"`
-	SingleStep          bool   `flag:"--single-step"`
-	SingleTransaction   bool   `flag:"--single-transaction"`
-	Set                 string `flag:"--set="`
-	TableAttr           string `flag:"--table-attr="`
-	TuplesOnly          bool   `flag:"--tuples-only"`
-	User                string `flag:"--username="`
-	Variable            string `flag:"--variable="`
-	Version             bool   `flsg:"--version"`
+	BinaryUpgrade         bool   `flag:"--binary-upgrade"`
+	Blobs                 bool   `flag:"--blobs"`
+	Clean                 bool   `flag:"--clean"`
+	ColumnInserts         bool   `flag:"--column-inserts"`
+	Compress              int    `flag:"--compress="`
+	Create                bool   `flag:"--create"`
+	DataOnly              bool   `flag:"--data-only"`
+	DBName                string `flag:"--dbname="`
+	DisableTriggers       bool   `flag:"--disable-triggers"`
+	ExitOnError           bool   `flag:--exit-on-error`
+	File                  string `flag:"--file="`
+	Format                string `flag:"--format="`
+	Function              string `flag:"--function="`
+	Host                  string `flag:"--host="`
+	IgnoreVersion         bool   `flag:"--ignore-version"`
+	Index                 string `flag:"--index="`
+	Inserts               bool   `flag:"--inserts"`
+	Jobs                  int    `flag:"--jobs="`
+	List                  bool   `flag:"--list"`
+	ListFile              string `flag:--use-List=`
+	LoadViaPartitionRoot  bool   `flag:"--load-via-partition-root"`
+	LockWaitTimeout       string `flag:"--lock-wait-timeout="`
+	NoACL                 bool   `flag:"--no-acl"`
+	NoComments            bool   `flag:"--no-comments"`
+	NoDataForFailedTables bool   `flag:"--no-data-for-failed-tables"`
+	NoOwner               bool   `flag:"--no-owner"`
+	NoPassword            bool   `flag:"--no-password"`
+	NoPrivileges          bool   `flag:"--no-privileges"`
+	noReconnect           bool   `flag:"--no-reconnect"`
+	NoSecurityLabels      bool   `flag:"--no-security-labels"`
+	NoTablespaces         bool   `flag:"--no-tablespaces"`
+	// unfortunately pg_dump has no cli-option to specify the password
+	// therefore we have to workaround by setting the corresponding password env-var
+	Password                   string `flag:"-" env:"PGPASSWORD"`
+	Port                       int    `flag:"--port="`
+	QuoteAllIdentifiers        bool   `flag:"--quote-all-identifiers"`
+	Role                       string `flag:"--role="`
+	Schema                     string `flag:"--schema="`
+	SchemaOnly                 bool   `flag:"--schema-only"`
+	Section                    string `flag:"--section="`
+	Superuser                  string `flag:"--superuser="`
+	Table                      string `flag:"--table="`
+	Trigger                    string `flag:"--trigger="`
+	Username                   string `flag:"--username="`
+	UseSetSessionAuthorization bool   `flag:"--use-set-session-authorization"`
+	Verbose                    bool   `flag:"--verbose"`
 }

@@ -1,4 +1,4 @@
-package pgrestore
+package psql
 
 import (
 	"context"
@@ -20,7 +20,6 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 			Flags:          &Flags{},
 			AdditionalArgs: []string{},
 			SourceFile:     "",
-			PGRestore:      false,
 		},
 	}
 
@@ -33,14 +32,11 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 }
 
 func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
-	args := append(cli.StructToCLI(b.cfg.Options.Flags), b.cfg.Options.AdditionalArgs...)
-	args = append(args, b.cfg.Options.SourceFile)
-	fmt.Println(args)
 	cmd := cli.CommandType{
 		Binary: binary,
-		Args:   args,
+		Args:   append(cli.StructToCLI(b.cfg.Options.Flags), b.cfg.Options.AdditionalArgs...),
 	}
-	out, err := cli.Run(ctx, cmd)
+	out, err := cli.RunWithFile(ctx, cmd, b.cfg.Options.SourceFile)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
 	}
