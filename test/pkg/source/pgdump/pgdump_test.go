@@ -51,9 +51,6 @@ var resticReq = testcontainers.ContainerRequest{
 		"OPTIONS":         "--no-auth",
 		"RESTIC_PASSWORD": "mongorepo",
 	},
-	VolumeMounts: map[string]string{
-		"mysql-data": "/var/lib/mysql",
-	},
 }
 
 type TestContainerSetup struct {
