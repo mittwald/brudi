@@ -41,7 +41,7 @@ type Flags struct {
 	NoOwner               bool   `flag:"--no-owner"`
 	NoPassword            bool   `flag:"--no-password"`
 	NoPrivileges          bool   `flag:"--no-privileges"`
-	noReconnect           bool   `flag:"--no-reconnect"`
+	NoReconnect           bool   `flag:"--no-reconnect"`
 	NoSecurityLabels      bool   `flag:"--no-security-labels"`
 	NoTablespaces         bool   `flag:"--no-tablespaces"`
 	// unfortunately pg_dump has no cli-option to specify the password
