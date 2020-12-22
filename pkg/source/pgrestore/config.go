@@ -1,7 +1,6 @@
 package pgrestore
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 
 	"github.com/mittwald/brudi/pkg/config"
@@ -20,7 +19,7 @@ func (c *Config) InitFromViper() error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	fmt.Println(*c.Options.Flags)
+
 	err = config.EnsureEnv(*c.Options.Flags)
 	if err != nil {
 		return errors.WithStack(err)

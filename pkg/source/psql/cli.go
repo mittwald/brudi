@@ -13,7 +13,7 @@ type Options struct {
 
 type Flags struct {
 	Command             string `flag:"--command="`
-	Dbname              string `flag:"--dbname=" validate:"min=1"`
+	Dbname              string `flag:"--dbname="`
 	EchoAll             bool   `flag:"--echo-all"`
 	EchoHidden          bool   `flag:"--echo-hidden"`
 	EchoQueries         bool   `flag:"--echo-queries"`
@@ -30,7 +30,7 @@ type Flags struct {
 	NoPsqlrc            bool   `flag:"--no-psqlrc"`
 	NoReafline          bool   `flag:"--no-readline"`
 	Output              string `flag:"--output="`
-	Password            bool   `flag:"--password"`
+	Password            bool   `flag:"-" env:"PGPASSWORD"`
 	Port                int    `flag:"--port="`
 	Pset                string `flag:"--pset="`
 	Quiet               bool   `flag:"--quiet"`

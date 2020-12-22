@@ -20,5 +20,10 @@ func (c *Config) InitFromViper() error {
 		return errors.WithStack(err)
 	}
 
+	err = config.EnsureEnv(*c.Options.Flags)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	return config.Validate(c)
 }

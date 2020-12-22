@@ -31,6 +31,8 @@ Besides creating backups, `brudi` can also be used to restore your data from bac
       - [MongoRestore](#mongorestore)
       - [MySQLRestore](#mysqlrestore)
       - [PgRestore](#pgrestore)
+        - [Restore using pg_restore](#restore-using-pg_restore)
+        - [Restore using psql](#restore-using-psql)
 - [Featurestate](#featurestate)
   - [Source backup methods](#source-backup-methods)
   - [Restore backup methods](#restore-backup-methods)
@@ -65,7 +67,8 @@ Available Commands:
   mysqldump      Creates a mysqldump of your desired server
   mysqlrestore   Restores a database from an sqldump
   pgdump         Creates a pg_dump of your desired postgresql-server
-  pgrestore      Restores a database from a pgdump
+  pgrestore      Restores a database from a pgdump using pg_restore
+  psql           Restores a database from a plain-text pgdump using psql
   redisdump      Creates an rdb dump of your desired server
   tar            Creates a tar archive of your desired 
   tarrestore     Restores files from a tar archive
@@ -368,6 +371,14 @@ All available flags to be set in the `.yaml`-configuration can be found [here](p
 
 #### PgRestore
 
+Restoration for PostgreSQL databases is split into two commands, `psql` and `pgrestore`. Which one to use depends on the format of the dump created with `pg_dump`:
+
+`psql` can be used to restore plain-text dumps, which is the default format.
+
+`pgrestore` can be used if the `format` option of `pg_dump` was set to `tar`, `directory` or `custom`.
+
+##### Restore using pg_restore
+
 ```yaml
 pgrestore:
   options:
@@ -375,6 +386,8 @@ pgrestore:
       host: 127.0.0.1
       port: 5432
       username: postgresuser
+      password: postgresroot
+      dbname: postgres
     additionalArgs: []
     sourcefile: /tmp/postgres.dump
 ```
@@ -382,9 +395,35 @@ pgrestore:
 Running: `brudi pgrestore -c ${HOME}/.brudi.yml`
 
 Becomes the following command:  
-`psql  --host=127.0.0.1  --port=3306 --user=postgresuser < /tmp/postgress.dump`  
+`pg_restore  --host=127.0.0.1  --port=5432 --user=postgresuser --db-name=postgres /tmp/postgress.dump`  
+
+This command has to be used if the `format` option was set to `tar`, `directory` or `custom` in `pg_dump`.
 
 All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/pgrestore/cli.go#L7).
+
+##### Restore using psql
+
+```yaml
+psql:
+  options:
+    flags:
+      host: 127.0.0.1
+      port: 5432
+      username: postgresuser
+      password: postgresroot
+      dbname: postgres
+    additionalArgs: []
+    sourcefile: /tmp/postgres.dump
+```
+
+Running: `brudi pgrestore -c ${HOME}/.brudi.yml`
+
+Becomes the following command: 
+`psql  --host=127.0.0.1  --port=5432 --user=postgresuser --db-name=postgres < /tmp/postgress.dump`  
+
+This command has to be used if the `format` option was set to `plain` in `pg_dump`, which is the default.
+
+All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/psql/cli.go#L7).
 
 #### Restoring using restic
 
