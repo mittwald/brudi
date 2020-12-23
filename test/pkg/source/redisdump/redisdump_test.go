@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+
 	"os"
 	"os/exec"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	commons "github.com/mittwald/brudi/test/pkg/source/internal"
 
 	"github.com/go-redis/redis"
+	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
@@ -24,28 +26,12 @@ const redisPort = "6379/tcp"
 const testName = "test"
 const testType = "gopher"
 const backupPath = "/tmp/redisdump.rdb"
-const implemented = false
 
 type RedisDumpTestSuite struct {
 	suite.Suite
 }
 
 var redisRequest = testcontainers.ContainerRequest{
-	Image:        "redis:alpine",
-	ExposedPorts: []string{redisPort},
-	WaitingFor:   wait.ForLog("Ready to accept connections"),
-}
-
-var redisRestoreRequest = testcontainers.ContainerRequest{
-	Image:        "redis:alpine",
-	ExposedPorts: []string{redisPort},
-	//BindMounts: map[string]string{
-	//   backupPath:"/data/dump.rdb" ,
-	//},
-	WaitingFor: wait.ForLog("Ready to accept connections"),
-}
-
-var redisRestoreRequestRestic = testcontainers.ContainerRequest{
 	Image:        "redis:alpine",
 	ExposedPorts: []string{redisPort},
 	WaitingFor:   wait.ForLog("Ready to accept connections"),
@@ -99,15 +85,40 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
+func createContainerFromCompose() (*testcontainers.LocalDockerCompose, error) {
+	composeFilePaths := []string{"../../../testdata/testredis.yml"}
+	identifier := strings.ToLower(uuid.New().String())
+
+	compose := testcontainers.NewLocalDockerCompose(composeFilePaths, identifier)
+	execError := compose.
+		WithCommand([]string{"up", "-d"}).
+		Invoke()
+	err := execError.Error
+	if err != nil {
+		return &testcontainers.LocalDockerCompose{}, err
+	}
+	return compose, nil
+}
+
 func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	ctx := context.Background()
 
 	// create a redis container to test backup function
 	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, redisPort)
 	redisDumpTestSuite.Require().NoError(err)
+	defer func() {
+		err = redisBackupTarget.Container.Terminate(ctx)
+		redisDumpTestSuite.Require().NoError(err)
+	}()
+
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", redisBackupTarget.Address, redisBackupTarget.Port),
 	})
+	defer func() {
+		err = redisClient.Close()
+		redisDumpTestSuite.Require().NoError(err)
+	}()
+
 	_, err = redisClient.Ping().Result()
 	redisDumpTestSuite.Require().NoError(err)
 
@@ -115,9 +126,6 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	redisDumpTestSuite.Require().NoError(err)
 
 	err = redisClient.Set("type", testType, 0).Err()
-	redisDumpTestSuite.Require().NoError(err)
-
-	err = redisClient.Close()
 	redisDumpTestSuite.Require().NoError(err)
 
 	testRedisConfig := createRedisConfig(redisBackupTarget, false, "", "")
@@ -128,57 +136,65 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	err = source.DoBackupForKind(ctx, "redisdump", false, false, false)
 	redisDumpTestSuite.Require().NoError(err)
 
-	redisBackupTarget.Container.Terminate(ctx)
+	compose, err := createContainerFromCompose()
+	redisDumpTestSuite.Require().NoError(err)
+	defer func() {
+		err = compose.Down().Error
+		redisDumpTestSuite.Require().NoError(err)
+	}()
 
-	// Checking of backed up data is currently unavailable due to implementation issues
+	redisRestoreClient := redis.NewClient(&redis.Options{Password: "redisdb",
+		Addr: fmt.Sprintf("%s:%s", "0.0.0.0", "6379"),
+	})
+	defer func() {
+		err = redisRestoreClient.Close()
+		redisDumpTestSuite.Require().NoError(err)
+	}()
 
-	// create second redis container to test dumped values. link dump.rdb as volume
-	//redisRestoreTarget, err := newTestContainerSetup(ctx, &redisRestoreRequest, port)
-	//redisDumpTestSuite.Require().NoError(err)
-	//redisRestoreClient := redis.NewClient(&redis.Options{
-	//	Addr: fmt.Sprintf("%s:%s", redisRestoreTarget.Address, redisRestoreTarget.Port),
-	//})
-	//
-	//_, err = redisRestoreClient.Ping().Result()
-	//redisDumpTestSuite.Require().NoError(err)
-	//
-	//nameVal, err := redisRestoreClient.Get("name").Result()
-	//redisDumpTestSuite.Require().NoError(err)
-	//
-	//typeVal, err := redisRestoreClient.Get("type").Result()
-	//redisDumpTestSuite.Require().NoError(err)
-	//
-	//assert.Equal(redisDumpTestSuite.T(), testName, nameVal)
-	//assert.Equal(redisDumpTestSuite.T(), testType, typeVal)
-	//
-	//err = redisRestoreClient.Close()
-	//redisDumpTestSuite.Require().NoError(err)
-	//
-	//err = redisRestoreTarget.Container.Terminate(ctx)
-	//redisDumpTestSuite.Require().NoError(err)
+	_, err = redisRestoreClient.Ping().Result()
+	redisDumpTestSuite.Require().NoError(err)
+
+	nameVal, err := redisRestoreClient.Get("name").Result()
+	redisDumpTestSuite.Require().NoError(err)
+
+	typeVal, err := redisRestoreClient.Get("type").Result()
+	redisDumpTestSuite.Require().NoError(err)
+
+	assert.Equal(redisDumpTestSuite.T(), testName, nameVal)
+	assert.Equal(redisDumpTestSuite.T(), testType, typeVal)
+
 	err = os.Remove(backupPath)
 	redisDumpTestSuite.Require().NoError(err)
 }
 
 func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
-	if !implemented {
-		return
-	}
-
 	ctx := context.Background()
 
 	// create a redis container to test backup function
 	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, redisPort)
 	redisDumpTestSuite.Require().NoError(err)
+	defer func() {
+		err = redisBackupTarget.Container.Terminate(ctx)
+		redisDumpTestSuite.Require().NoError(err)
+	}()
+
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", redisBackupTarget.Address, redisBackupTarget.Port),
 	})
 	_, err = redisClient.Ping().Result()
 	redisDumpTestSuite.Require().NoError(err)
+	defer func() {
+		err = redisClient.Close()
+		redisDumpTestSuite.Require().NoError(err)
+	}()
 
 	// setup a container running the restic rest-server
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
 	redisDumpTestSuite.Require().NoError(err)
+	defer func() {
+		err = resticContainer.Container.Terminate(ctx)
+		redisDumpTestSuite.Require().NoError(err)
+	}()
 
 	err = redisClient.Set("name", testName, 0).Err()
 	redisDumpTestSuite.Require().NoError(err)
@@ -186,10 +202,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	err = redisClient.Set("type", testType, 0).Err()
 	redisDumpTestSuite.Require().NoError(err)
 
-	err = redisClient.Close()
-	redisDumpTestSuite.Require().NoError(err)
-
-	testRedisConfig := createRedisConfig(redisBackupTarget, false, resticContainer.Address, resticContainer.Port)
+	testRedisConfig := createRedisConfig(redisBackupTarget, true, resticContainer.Address, resticContainer.Port)
 	err = viper.ReadConfig(bytes.NewBuffer(testRedisConfig))
 	redisDumpTestSuite.Require().NoError(err)
 
@@ -204,11 +217,20 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	redisDumpTestSuite.Require().NoError(err)
 
 	// create second redis container to test dumped values. link dump.rdb as volume
-	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, &redisRestoreRequestRestic, redisPort)
+	compose, err := createContainerFromCompose()
 	redisDumpTestSuite.Require().NoError(err)
-	redisRestoreClient := redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("%s:%s", redisRestoreTarget.Address, redisRestoreTarget.Port),
+	defer func() {
+		err = compose.Down().Error
+		redisDumpTestSuite.Require().NoError(err)
+	}()
+
+	redisRestoreClient := redis.NewClient(&redis.Options{Password: "redisdb",
+		Addr: fmt.Sprintf("%s:%s", "0.0.0.0", "6379"),
 	})
+	defer func() {
+		err = redisRestoreClient.Close()
+		redisDumpTestSuite.Require().NoError(err)
+	}()
 
 	_, err = redisRestoreClient.Ping().Result()
 	redisDumpTestSuite.Require().NoError(err)
@@ -221,7 +243,6 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 
 	assert.Equal(redisDumpTestSuite.T(), testName, nameVal)
 	assert.Equal(redisDumpTestSuite.T(), testType, typeVal)
-
 }
 
 func TestRedisDumpTestSuite(t *testing.T) {

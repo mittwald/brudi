@@ -17,7 +17,7 @@ type TestContainerSetup struct {
 	Port      string
 }
 
-// ResticRequest is a testcontainers request for a restic container
+// ResticReq is a testcontainers request for a restic container
 var ResticReq = testcontainers.ContainerRequest{
 	Image:        "restic/rest-server:latest",
 	ExposedPorts: []string{ResticPort},
