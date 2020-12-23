@@ -1,4 +1,4 @@
-package sqldump_test
+package mysqldump_test
 
 import (
 	"bytes"
@@ -29,11 +29,13 @@ type MySQLDumpTestSuite struct {
 	suite.Suite
 }
 
+// struct for test data
 type TestStruct struct {
 	ID   int
 	Name string
 }
 
+// testcontainer request for a mysql container
 var mySQLRequest = testcontainers.ContainerRequest{
 	Image:        "mysql:8",
 	ExposedPorts: []string{sqlPort},
@@ -58,7 +60,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
-// createMongoConfig creates a brudi config for the mongodump command.
+// createMySQLConfig creates a brudi config for the mysqlodump command.
 func createMySQLConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
 	fmt.Println(resticIP)
 	fmt.Println(resticPort)
@@ -104,6 +106,7 @@ restic:
 `, "127.0.0.1", container.Port, backupPath, resticIP, resticPort))
 }
 
+// prepareTestData creates test data and inserts it into the given database
 func prepareTestData(database *sql.DB) ([]TestStruct, error) {
 	var err error
 	testStruct1 := TestStruct{2, "TEST"}
@@ -125,6 +128,7 @@ func prepareTestData(database *sql.DB) ([]TestStruct, error) {
 	return testData, nil
 }
 
+// restoreSQLFromBackup restores the given database from sqldump file
 func restoreSQLFromBackup(filename string, database *sql.DB) error {
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -142,6 +146,7 @@ func restoreSQLFromBackup(filename string, database *sql.DB) error {
 	return nil
 }
 
+// TestBasicMySQLDump performs an integration test for mysqldump, without restic
 func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	ctx := context.Background()
 
@@ -208,9 +213,15 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	}
 
 	assert.DeepEqual(mySQLDumpTestSuite.T(), testData, restoreResult)
+
+	err = mySQLRestoreTarget.Container.Terminate(ctx)
+	mySQLDumpTestSuite.Require().NoError(err)
+	err = dbRestore.Close()
+	mySQLDumpTestSuite.Require().NoError(err)
 }
 
-func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDumpRestic() {
+// TestMySQLDumpRestic performs an integration test for mysqldump with restic
+func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 	ctx := context.Background()
 
 	mySQLBackupTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)

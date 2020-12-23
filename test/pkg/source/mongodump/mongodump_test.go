@@ -289,10 +289,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 
 	err = resticContainer.Container.Terminate(ctx)
 	mongoDumpTestSuite.Require().NoError(err)
-
 	err = restoreClient.Disconnect(context.TODO())
 	mongoDumpTestSuite.Require().NoError(err)
-
 	err = mongoRestoreTarget.Container.Terminate(ctx)
 	mongoDumpTestSuite.Require().NoError(err)
 }
