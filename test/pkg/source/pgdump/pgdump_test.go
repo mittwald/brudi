@@ -157,7 +157,6 @@ func restorePGDump(ctx context.Context, resticContainer, restoreTarget commons.T
 
 func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic bool,
 	resticContainer commons.TestContainerSetup) []TestStruct {
-
 	// create a postgres container to test backup function
 	pgBackupTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
 	pgDumpTestSuite.Require().NoError(err)
