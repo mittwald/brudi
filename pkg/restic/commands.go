@@ -42,6 +42,7 @@ func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) 
 	return out, err
 }
 
+// parseSnapshotOut retrieves snapshot-id and, if available, parent-id from json logs
 func (response *Response) parseSnapshotOut() (BackupResult, error) {
 	var result BackupResult
 
@@ -105,6 +106,7 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	return backupRes, nil, nil
 }
 
+// NEwResponseFromResticOutput unmarshals restic's cl response into Response struct
 func NewResponseFromResticOutput(data []byte) (Response, error) {
 	reader := bytes.NewReader(data)
 	bufReader := bufio.NewReader(reader)
@@ -137,6 +139,7 @@ func NewResponseFromResticOutput(data []byte) (Response, error) {
 	return response, nil
 }
 
+// newCommand initializes an instance of cli.CommandType with given parameters
 func newCommand(command string, args ...string) cli.CommandType {
 	defaultArgs := []string{"--json"}
 	return cli.CommandType{
