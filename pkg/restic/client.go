@@ -124,3 +124,14 @@ func (c *Client) PruneRepo(ctx context.Context) error {
 	fmt.Println(string(output))
 	return nil
 }
+
+func (c *Client) RebuildIndex(ctx context.Context) error {
+	c.Logger.Info("running 'restic rebuild-index'")
+
+	output, err := RebuildIndex(ctx, c.Config.Global)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("%s - %s", err.Error(), output))
+	}
+	fmt.Println(string(output))
+	return nil
+}

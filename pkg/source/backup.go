@@ -35,7 +35,7 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 }
 
 func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useResticForget, listResticSnapshots,
-	resticCheck, resticPrune bool) error {
+	resticCheck, resticPrune, rebuildIndex bool) error {
 	logKind := log.WithFields(
 		log.Fields{
 			"kind": kind,
@@ -100,6 +100,13 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 
 	if resticPrune {
 		err = resticClient.PruneRepo(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	if rebuildIndex {
+		err = resticClient.RebuildIndex(ctx)
 		if err != nil {
 			return err
 		}

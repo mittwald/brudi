@@ -20,7 +20,7 @@ var (
 			defer cancel()
 
 			err := source.DoBackupForKind(ctx, redisdump.Kind, cleanup, useRestic, useResticForget, listResticSnapshots,
-				doResticCheck, doResticPrune)
+				doResticCheck, doResticPrune, rebuildResticIndex)
 			if err != nil {
 				panic(err)
 			}

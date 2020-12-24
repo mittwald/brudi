@@ -354,13 +354,13 @@ func Prune(ctx context.Context, glob *GlobalOptions) ([]byte, error) {
 }
 
 // RebuildIndex executes "restic rebuild-index"
-func RebuildIndex(ctx context.Context) ([]byte, error) {
+func RebuildIndex(ctx context.Context, glob *GlobalOptions) ([]byte, error) {
 	nice := 19
 	ionice := 2
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "rebuild-index",
-		Args:    nil,
+		Args:    cli.StructToCLI(glob),
 		Nice:    &nice,
 		IONice:  &ionice,
 	}
