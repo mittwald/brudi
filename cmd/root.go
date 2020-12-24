@@ -23,6 +23,7 @@ var (
 	doResticCheck       bool
 	doResticPrune       bool
 	rebuildResticIndex  bool
+	resticTags          bool
 
 	rootCmd = &cobra.Command{
 		Use:   "brudi",
@@ -48,6 +49,8 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&doResticPrune, "restic-prune", false, "perform 'restic prune' on the repository")
 
 	rootCmd.PersistentFlags().BoolVar(&rebuildResticIndex, "restic-rebuild-index", false, "perform 'restic rebuild-index' on the repository")
+
+	rootCmd.PersistentFlags().BoolVar(&resticTags, "restic-tags", false, "executes 'restic tags' after backing up things with restic")
 
 	rootCmd.PersistentFlags().StringSliceVarP(&cfgFiles, "config", "c", []string{}, "config file (default is ${HOME}/.brudi.yaml)")
 }

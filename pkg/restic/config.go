@@ -13,6 +13,7 @@ type Config struct {
 	Backup    *BackupOptions
 	Forget    *ForgetOptions
 	Snapshots *SnapshotOptions
+	Tags      *TagOptions
 	Check     *CheckFlags
 }
 

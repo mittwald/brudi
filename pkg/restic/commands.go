@@ -392,11 +392,11 @@ func Unlock(ctx context.Context, globalOpts *GlobalOptions, unlockOpts *UnlockOp
 }
 
 // Tag executes "restic tag"
-func Tag(ctx context.Context, opts *TagOptions) ([]byte, error) {
+func Tag(ctx context.Context, glob *GlobalOptions, opts *TagOptions) ([]byte, error) {
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "tag",
-		Args:    cli.StructToCLI(opts),
+		Args:    append(cli.StructToCLI(glob), cli.StructToCLI(opts)...),
 	}
 	return cli.Run(ctx, cmd)
 }

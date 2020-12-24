@@ -29,6 +29,10 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 			Flags: &SnapshotFlags{},
 			IDs:   []string{},
 		},
+		Tags: &TagOptions{
+			Flags: &TagFlags{},
+			IDs:   []string{},
+		},
 		Check: &CheckFlags{},
 	}
 
@@ -129,6 +133,17 @@ func (c *Client) RebuildIndex(ctx context.Context) error {
 	c.Logger.Info("running 'restic rebuild-index'")
 
 	output, err := RebuildIndex(ctx, c.Config.Global)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("%s - %s", err.Error(), output))
+	}
+	fmt.Println(string(output))
+	return nil
+}
+
+func (c *Client) ResticTag(ctx context.Context) error {
+	c.Logger.Info("running 'restic rebuild-index'")
+
+	output, err := Tag(ctx, c.Config.Global, c.Config.Tags)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%s - %s", err.Error(), output))
 	}
