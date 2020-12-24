@@ -344,11 +344,11 @@ func Forget(
 }
 
 // Prune executes "restic prune"
-func Prune(ctx context.Context) ([]byte, error) {
+func Prune(ctx context.Context, glob *GlobalOptions) ([]byte, error) {
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "prune",
-		Args:    nil,
+		Args:    cli.StructToCLI(glob),
 	}
 	return cli.Run(ctx, cmd)
 }
