@@ -23,6 +23,11 @@ Using `brudi` will save you from finding yourself writing bash-scripts to create
       - [Redis](#redis)
     - [Restic](#restic)
       - [Forget](#forget)
+      - [Snapshots](#snapshots)
+      - [Check](#check)
+      - [Prune](#prune)
+      - [Rebuild-Index](#rebuild-index)
+      - [Tags](#tags)
     - [Sensitive data: Environment variables](#sensitive-data--environment-variables)
 - [Featurestate](#featurestate)
   - [Source backup methods](#source-backup-methods)
@@ -262,6 +267,82 @@ restic:
     ids: []
 ```
 
+##### Snapshots
+
+It's possible to run `restic snapshots`-cmd after executing `restic backup` with `brudi` by using `--restic-snapshots`.
+The `snapshots`-options are defined in the configuration `.yaml` for brudi.
+
+```yaml
+restic:
+    global:
+      flags:
+        # you can provide the repository also via RESTIC_REPOSITORY
+        repo: "s3:s3.eu-central-1.amazonaws.com/your.s3.bucket/myResticRepo"
+    backup:
+      flags:
+        # in case there is no hostname given, the hostname from source backup is used
+        hostname: "MyHost"
+      # these paths are backuped additionally to your given source backup
+      paths: []
+    snapshots:
+      flags:
+        host: "MyHost" 
+```
+
+##### Check
+
+It's possible to run `restic check`-cmd after executing `restic backup` with `brudi` by using `--restic-check`.
+The `check`-options are defined in the configuration `.yaml` for brudi.
+
+```yaml
+restic:
+    global:
+      flags:
+        # you can provide the repository also via RESTIC_REPOSITORY
+        repo: "s3:s3.eu-central-1.amazonaws.com/your.s3.bucket/myResticRepo"
+    backup:
+      flags:
+        # in case there is no hostname given, the hostname from source backup is used
+        hostname: "MyHost"
+      # these paths are backuped additionally to your given source backup
+      paths: []
+    check:
+      checkUnused: true
+```
+
+##### Prune
+
+It's possible to run `restic prune`-cmd after executing `restic backup` with `brudi` by using `--restic-prune`.
+The `prune`-cmd has no specific options
+
+##### Rebuild-Index
+It's possible to run `restic rebuild-index`-cmd after executing `restic backup` with `brudi` by using `--restic-rebuild-index`.
+he `rebuild-index`-cmd has no specific options
+
+##### Tags
+
+It's possible to run `restic tags`-cmd after executing `restic backup` with `brudi` by using `--restic-tags`.
+The `tags`-options are defined in the configuration `.yaml` for brudi.
+
+```yaml
+restic:
+    global:
+      flags:
+        # you can provide the repository also via RESTIC_REPOSITORY
+        repo: "s3:s3.eu-central-1.amazonaws.com/your.s3.bucket/myResticRepo"
+    backup:
+      flags:
+        # in case there is no hostname given, the hostname from source backup is used
+        hostname: "MyHost"
+      # these paths are backuped additionally to your given source backup
+      paths: []
+    tags:
+      flags:
+        add: ["TestTag"]
+        host: "MyHost" 
+      ids: []
+```
+
 #### Sensitive data: Environment variables
 
 In case you don't want to provide data directly in the `.yaml`-file, e.g. sensitive data like passwords, you can use environment-variables.
@@ -304,5 +385,10 @@ As soon as a variable for a key exists in your environment, the value of this en
   - [x] `commands`
     - [x] `restic backup`
     - [x] `restic forget`
+    - [x] `restic snapshots`
+    - [x] `restic prune`
+    - [x] `restic check`
+    - [x] `restic rebuild index`
+    - [x] `restic taga`
   - [x] `storage`
     - [x] `s3`
