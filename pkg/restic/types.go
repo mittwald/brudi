@@ -68,7 +68,7 @@ type StatsFlags struct {
 	Mode string `flag:"--mode"`
 }
 
-// Stats for "restic stats" json logging
+// Stats for "restic stats" json-logging
 type Stats struct {
 	TotalSize      uint64 `json:"total_size"`
 	TotalFileCount uint64 `json:"total_file_count"`
@@ -87,7 +87,7 @@ type Response struct {
 	ResponseStatus  []StatusResponse
 }
 
-// SummaryResponse struct for "restic backup" json logging
+// SummaryResponse struct for "restic backup" json-logging
 type SummaryResponse struct {
 	MessageType         string  `json:"message_type"`
 	FilesNew            int     `json:"flies_new"`
@@ -106,7 +106,7 @@ type SummaryResponse struct {
 	ParentSnapshotID    string  `json:"parent"`
 }
 
-// StatusResponse for "restic backup" json logging
+// StatusResponse for "restic backup" json-logging
 type StatusResponse struct {
 	MessageType  string   `json:"message_type"`
 	PercentDone  int      `json:"percent_done"`
@@ -168,12 +168,12 @@ type ForgetFlags struct {
 	Compact     bool     `flag:"--compact"`
 }
 
-// ForgetResponse for "restic forget" json logging
+// ForgetResponse for "restic forget" json-logging
 type ForgetResponse struct {
 	Tags []ForgetTag
 }
 
-// ForgetTag for "restic forget" json logging
+// ForgetTag for "restic forget" json-logging
 type ForgetTag struct {
 	Tags   []string       `json:"tags"`
 	Host   string         `json:"host"`
@@ -183,14 +183,14 @@ type ForgetTag struct {
 	Resons []ForgetReason `json:"reasons"`
 }
 
-// ForgetReason for "restic forget" json logging
+// ForgetReason for "restic forget" json-logging
 type ForgetReason struct {
 	Snapshot Snapshot `json:"snapshot"`
 	Matches  []string `json:"matches"`
 	Counters Counters `Json:"counters"`
 }
 
-// Counters for "restic forget" json logging
+// Counters for "restic forget" json-logging
 type Counters struct {
 	Last    int `json:"last"`
 	Hourly  int `json:"hourly"`
@@ -200,7 +200,7 @@ type Counters struct {
 	Yearly  int `json:"yearly"`
 }
 
-// ForgetSnapshot for "restic forget" json logging
+// ForgetSnapshot for "restic forget" json-logging
 type ForgetSnapshot struct {
 	Time     string   `json:"time"`
 	Tree     string   `json:"tree"`
@@ -315,7 +315,7 @@ type LsResult struct {
 	Size       uint64
 }
 
-// LsMessage for "resitc ls" json logging
+// LsMessage for "resitc ls" json-logging
 type LsMessage struct {
 	Time      string   `json:"time"`
 	Tree      string   `json:"tree"`

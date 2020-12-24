@@ -141,6 +141,7 @@ func NewResponseFromResticOutput(data []byte) (Response, error) {
 
 // newCommand initializes an instance of cli.CommandType with given parameters
 func newCommand(command string, args ...string) cli.CommandType {
+	// enable json-logging
 	defaultArgs := []string{"--json"}
 	return cli.CommandType{
 		Binary:  binary,
