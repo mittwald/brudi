@@ -43,6 +43,7 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 
 	conf.Backup.Paths = append(conf.Backup.Paths, backupPaths...)
 	resticLogger := logger.WithField("cmd", "restic")
+	// obtain backup path for restic
 	conf.Restore.Flags.Path = backupPaths[0]
 	return &Client{
 		Logger: resticLogger,

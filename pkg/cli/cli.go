@@ -224,6 +224,7 @@ func RunWithFile(ctx context.Context, cmd CommandType, infile string) ([]byte, e
 
 		cmd := exec.CommandContext(ctx, commandLine[0], commandLine[1:]...)
 		var stdin io.WriteCloser
+		// open a stdin pipe to the command to pipe file contents
 		stdin, err = cmd.StdinPipe()
 		if err != nil {
 			return out, err
@@ -272,6 +273,7 @@ func RunWithFile(ctx context.Context, cmd CommandType, infile string) ([]byte, e
 	return out, nil
 }
 
+// readFileToStdIn writes content to stdin
 func readFileToStdIn(content []byte, stdin io.WriteCloser) error {
 	var err error
 	go func() {
