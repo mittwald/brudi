@@ -20,6 +20,7 @@ var (
 	useResticForget     bool
 	cleanup             bool
 	listResticSnapshots bool
+	doResticCheck       bool
 
 	rootCmd = &cobra.Command{
 		Use:   "brudi",
@@ -38,7 +39,9 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVar(&cleanup, "cleanup", false, "cleanup backup files afterwards")
 
-	rootCmd.PersistentFlags().BoolVar(&listResticSnapshots, "restic-snapshots", false, "List snapshots in restic repository afterwards")
+	rootCmd.PersistentFlags().BoolVar(&listResticSnapshots, "restic-snapshots", false, "list snapshots in restic repository afterwards")
+
+	rootCmd.PersistentFlags().BoolVar(&doResticCheck, "restic-check", false, "perform 'restic check' on the repository")
 
 	rootCmd.PersistentFlags().StringSliceVarP(&cfgFiles, "config", "c", []string{}, "config file (default is ${HOME}/.brudi.yaml)")
 }

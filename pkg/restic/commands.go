@@ -270,11 +270,11 @@ func Find(ctx context.Context, opts *FindOptions) ([]FindResult, error) {
 }
 
 // Check executes "restic check"
-func Check(ctx context.Context, flags *CheckFlags) ([]byte, error) {
+func Check(ctx context.Context, glob *GlobalOptions, flags *CheckFlags) ([]byte, error) {
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "check",
-		Args:    cli.StructToCLI(flags),
+		Args:    append(cli.StructToCLI(glob), cli.StructToCLI(flags)...),
 	}
 	return cli.Run(ctx, cmd)
 }

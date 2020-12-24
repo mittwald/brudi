@@ -3,7 +3,6 @@ package restic
 import (
 	"context"
 	"fmt"
-
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -30,6 +29,7 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 			Flags: &SnapshotFlags{},
 			IDs:   []string{},
 		},
+		Check: &CheckFlags{},
 	}
 
 	err := conf.InitFromViper()
@@ -100,5 +100,16 @@ func (c *Client) ListSnapshots(ctx context.Context) error {
 		fmt.Println(fmt.Sprintf("ID: %s; Time: %s; Host: %s; Tags: %s; Paths: %s",
 			output[index].ID, output[index].Time, output[index].Hostname, output[index].Tags, output[index].Paths))
 	}
+	return nil
+}
+
+func (c *Client) DoResticCheck(ctx context.Context) error {
+	c.Logger.Info("running 'restic check'")
+
+	output, err := Check(ctx, c.Config.Global, c.Config.Check)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("%s - %s", err.Error(), output))
+	}
+	fmt.Println(string(output))
 	return nil
 }

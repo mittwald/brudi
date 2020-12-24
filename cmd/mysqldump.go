@@ -18,7 +18,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			err := source.DoBackupForKind(ctx, mysqldump.Kind, cleanup, useRestic, useResticForget, listResticSnapshots)
+			err := source.DoBackupForKind(ctx, mysqldump.Kind, cleanup, useRestic, useResticForget, listResticSnapshots, doResticCheck)
 			if err != nil {
 				panic(err)
 			}
