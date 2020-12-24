@@ -395,7 +395,7 @@ pgrestore:
 Running: `brudi pgrestore -c ${HOME}/.brudi.yml`
 
 Becomes the following command:  
-`pg_restore  --host=127.0.0.1  --port=5432 --user=postgresuser --db-name=postgres /tmp/postgress.dump`  
+`pg_restore  --host=127.0.0.1  --port=5432 --username=postgresuser --db-name=postgres /tmp/postgress.dump`  
 
 This command has to be used if the `format` option was set to `tar`, `directory` or `custom` in `pg_dump`.
 
@@ -409,7 +409,7 @@ psql:
     flags:
       host: 127.0.0.1
       port: 5432
-      username: postgresuser
+      user: postgresuser
       password: postgresroot
       dbname: postgres
     additionalArgs: []
