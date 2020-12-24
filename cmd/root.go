@@ -15,10 +15,11 @@ import (
 
 var (
 	// Used for flags.
-	cfgFiles        []string
-	useRestic       bool
-	useResticForget bool
-	cleanup         bool
+	cfgFiles            []string
+	useRestic           bool
+	useResticForget     bool
+	cleanup             bool
+	listResticSnapshots bool
 
 	rootCmd = &cobra.Command{
 		Use:   "brudi",
@@ -36,6 +37,8 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&useResticForget, "restic-forget", false, "executes 'restic forget' after backing up things with restic")
 
 	rootCmd.PersistentFlags().BoolVar(&cleanup, "cleanup", false, "cleanup backup files afterwards")
+
+	rootCmd.PersistentFlags().BoolVar(&listResticSnapshots, "restic-snapshots", false, "List snapshots in restic repository afterwards")
 
 	rootCmd.PersistentFlags().StringSliceVarP(&cfgFiles, "config", "c", []string{}, "config file (default is ${HOME}/.brudi.yaml)")
 }

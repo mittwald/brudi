@@ -229,14 +229,17 @@ func GetSnapshotSizeByPath(ctx context.Context, snapshotID, path string) (size u
 }
 
 // ListSnapshots executes "restic snapshots"
-func ListSnapshots(ctx context.Context, opts *SnapshotOptions) ([]Snapshot, error) {
+func ListSnapshots(ctx context.Context, glob *GlobalOptions, opts *SnapshotOptions) ([]Snapshot, error) {
+	args := append([]string{"--json"}, cli.StructToCLI(opts)...)
+	args = append(args, cli.StructToCLI(glob)...)
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "snapshots",
-		Args:    append([]string{"--json"}, cli.StructToCLI(opts)...),
+		Args:    args,
 	}
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
+		fmt.Println(string(out))
 		return nil, err
 	}
 

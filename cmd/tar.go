@@ -19,7 +19,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			err := source.DoBackupForKind(ctx, tar.Kind, cleanup, useRestic, useResticForget)
+			err := source.DoBackupForKind(ctx, tar.Kind, cleanup, useRestic, useResticForget, listResticSnapshots)
 			if err != nil {
 				panic(err)
 			}
