@@ -12,6 +12,7 @@ type Client struct {
 	Config *Config
 }
 
+// NewResticClient creates a new restic client with the given hostname and backup paths
 func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) (*Client, error) {
 	conf := &Config{
 		Global: &GlobalOptions{
@@ -55,6 +56,7 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 	}, nil
 }
 
+// DoResticBackup executes initBackup and CreateBackup with the settings from c
 func (c *Client) DoResticBackup(ctx context.Context) error {
 	c.Logger.Info("running 'restic backup'")
 
@@ -77,6 +79,7 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 	return nil
 }
 
+// DoResticForget executes Forget with the settings from c
 func (c *Client) DoResticForget(ctx context.Context) error {
 	c.Logger.Info("running 'restic forget'")
 
@@ -92,7 +95,8 @@ func (c *Client) DoResticForget(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ListSnapshots(ctx context.Context) error {
+// DoResticListSnapshots executes ListSnapshots with the settings from c
+func (c *Client) DoResticListSnapshots(ctx context.Context) error {
 	c.Logger.Info("running 'restic snapshots'")
 
 	output, err := ListSnapshots(ctx, c.Config.Global, c.Config.Snapshots)
@@ -107,6 +111,7 @@ func (c *Client) ListSnapshots(ctx context.Context) error {
 	return nil
 }
 
+// DoResticCheck executes Check with the settings from c
 func (c *Client) DoResticCheck(ctx context.Context) error {
 	c.Logger.Info("running 'restic check'")
 
@@ -118,7 +123,8 @@ func (c *Client) DoResticCheck(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) PruneRepo(ctx context.Context) error {
+// DoResticPruneRepo executes Prune with the settings from c
+func (c *Client) DoResticPruneRepo(ctx context.Context) error {
 	c.Logger.Info("running 'restic prune")
 
 	output, err := Prune(ctx, c.Config.Global)
@@ -129,7 +135,8 @@ func (c *Client) PruneRepo(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) RebuildIndex(ctx context.Context) error {
+// DoResticRebuildIndex executes RebuildIndex with the settings from c
+func (c *Client) DoResticRebuildIndex(ctx context.Context) error {
 	c.Logger.Info("running 'restic rebuild-index'")
 
 	output, err := RebuildIndex(ctx, c.Config.Global)
@@ -140,7 +147,8 @@ func (c *Client) RebuildIndex(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ResticTag(ctx context.Context) error {
+// DoResticTag executes Tag with the settings from c
+func (c *Client) DoResticTag(ctx context.Context) error {
 	c.Logger.Info("running 'restic rebuild-index'")
 
 	output, err := Tag(ctx, c.Config.Global, c.Config.Tags)

@@ -39,7 +39,7 @@ func init() {
 	forgetConcreteSnapshotPattern = regexp.MustCompile(`^removed snapshot ([0-9a-z].*)$`)
 }
 
-// InitBackup executes "restic init"
+// initBackup executes "restic init"
 func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) {
 	cmd := cli.CommandType{
 		Binary:  binary,
