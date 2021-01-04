@@ -51,12 +51,14 @@ func parseSnapshotOut(responses []map[string]*interface{}) (BackupResult, error)
 	var curSnapshotID string
 	for idx := range responses {
 		v := responses[idx]
-		if *v[messageType] == "summary" {
-			if v[snapshotID] != nil {
-				curSnapshotID = (*v[snapshotID]).(string)
-			}
-			if v[parentID] != nil {
-				parentSnapshotID = (*v[parentID]).(string)
+		if v[messageType] != nil {
+			if *v[messageType] == "summary" {
+				if v[snapshotID] != nil {
+					curSnapshotID = (*v[snapshotID]).(string)
+				}
+				if v[parentID] != nil {
+					parentSnapshotID = (*v[parentID]).(string)
+				}
 			}
 		}
 	}
@@ -106,15 +108,11 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	if jErr != nil {
 		return BackupResult{}, out, jErr
 	}
-
-	backupRes, err := parseSnapshotOut(responseList)
+	var backupRes BackupResult
+	backupRes, err = parseSnapshotOut(responseList)
 	if err != nil {
 		return backupRes, out, err
 	}
-	lsOpts := LsOptions{Flags: &LsFlags{Long: true},
-		SnapshotIDs: []string{"latest"}}
-	_, err = Ls(ctx, globalOpts, &lsOpts)
-	fmt.Println(err)
 
 	return backupRes, nil, nil
 }
@@ -135,7 +133,6 @@ func Ls(ctx context.Context, glob *GlobalOptions, opts *LsOptions) ([]LsResult, 
 	var args []string
 	args = cli.StructToCLI(glob)
 	args = append(args, cli.StructToCLI(opts)...)
-
 	cmd := newCommand("ls", args...)
 
 	out, err := cli.Run(ctx, cmd)
@@ -146,7 +143,8 @@ func Ls(ctx context.Context, glob *GlobalOptions, opts *LsOptions) ([]LsResult, 
 	out = []byte(fmt.Sprint("[" +
 		strings.Replace(strings.TrimRight(string(out), "\n"), "\n", ",", -1) +
 		"]"))
-	result, err := LsResponseFromJSON(out, opts)
+	var result []LsResult
+	result, err = LsResponseFromJSON(out, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -258,9 +256,8 @@ func ListSnapshots(ctx context.Context, opts *SnapshotOptions) ([]Snapshot, erro
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(out)
 	var snapshots []Snapshot
-	if err := json.Unmarshal(out, &snapshots); err != nil {
+	if err = json.Unmarshal(out, &snapshots); err != nil {
 		return nil, err
 	}
 	return snapshots, nil
@@ -276,7 +273,7 @@ func Find(ctx context.Context, opts *FindOptions) ([]FindResult, error) {
 	}
 
 	var findResult []FindResult
-	if err := json.Unmarshal(out, &findResult); err != nil {
+	if err = json.Unmarshal(out, &findResult); err != nil {
 		return nil, err
 	}
 	return findResult, nil
