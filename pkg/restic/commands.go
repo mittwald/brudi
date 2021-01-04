@@ -43,18 +43,20 @@ func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) 
 }
 
 // parseSnapshotOut retrieves snapshot-id and, if available, parent-id from json logs
-func (response *Response) parseSnapshotOut() (BackupResult, error) {
+func parseSnapshotOut(responses []map[string]interface{}) (BackupResult, error) {
 	var result BackupResult
 
 	var parentSnapshotID string
 	var snapshotID string
-	for idx := range response.ResponseSummary {
-		resp := &response.ResponseSummary[idx]
-		if resp.SnapshotID != "" {
-			snapshotID = resp.SnapshotID
-		}
-		if resp.ParentSnapshotID != "" {
-			parentSnapshotID = resp.SnapshotID
+	for idx := range responses {
+		v := responses[idx]
+		if v["message_type"] == "summary" {
+			if v["snapshot_id"] != nil {
+				snapshotID = v["snapshot_id"].(string)
+			}
+			if v["parent"] != nil {
+				parentSnapshotID = v["parent"].(string)
+			}
 		}
 	}
 	if parentSnapshotID != "" {
@@ -94,49 +96,21 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	if err != nil {
 		return BackupResult{}, out, err
 	}
-	var response Response
-	response, err = NewResponseFromResticOutput(out)
-	if err != nil {
-		return BackupResult{}, out, err
+	// transform output from restic into list of json elements
+	out = []byte(fmt.Sprint("[" +
+		strings.Replace(strings.TrimRight(string(out), "\n"), "\n", ",", -1) +
+		"]"))
+	responseList := []map[string]interface{}{}
+	jerr := json.Unmarshal(out, &responseList)
+	if jerr != nil {
+		fmt.Println(jerr)
 	}
-	backupRes, err := response.parseSnapshotOut()
+
+	backupRes, err := parseSnapshotOut(responseList)
 	if err != nil {
 		return backupRes, out, err
 	}
 	return backupRes, nil, nil
-}
-
-// NEwResponseFromResticOutput unmarshals restic's cl response into Response struct
-func NewResponseFromResticOutput(data []byte) (Response, error) {
-	reader := bytes.NewReader(data)
-	bufReader := bufio.NewReader(reader)
-	var response Response
-	var content map[string]interface{}
-	line, _, err := bufReader.ReadLine()
-	for err == nil {
-		jerr := json.Unmarshal(line, &content)
-		if jerr != nil {
-			return Response{}, fmt.Errorf("failed to parse response from restic: %s ", line)
-		}
-		if content["message_type"] == "status" {
-			var resp StatusResponse
-			jerr = json.Unmarshal(line, &resp)
-			if jerr != nil {
-				return Response{}, fmt.Errorf("failed to parse response from restic: %s ", line)
-			}
-			response.ResponseStatus = append(response.ResponseStatus, resp)
-		}
-		if content["message_type"] == "summary" {
-			var resp SummaryResponse
-			jerr = json.Unmarshal(line, &resp)
-			if jerr != nil {
-				return Response{}, fmt.Errorf("failed to parse response from restic: %s ", line)
-			}
-			response.ResponseSummary = append(response.ResponseSummary, resp)
-		}
-		line, _, err = bufReader.ReadLine()
-	}
-	return response, nil
 }
 
 // newCommand initializes an instance of cli.CommandType with given parameters
