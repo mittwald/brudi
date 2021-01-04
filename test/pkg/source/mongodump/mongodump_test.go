@@ -23,6 +23,9 @@ import (
 
 const mongoPort = "27017/tcp"
 const backupPath = "/tmp/dump.tar.gz"
+const mongoPW = "mongodbroot"
+const mongoUser = "root"
+const dataDir = "data"
 
 type TestColl struct {
 	Name string
@@ -48,8 +51,8 @@ var mongoRequest = testcontainers.ContainerRequest{
 	Image:        "mongo:latest",
 	ExposedPorts: []string{mongoPort},
 	Env: map[string]string{
-		"MONGO_INITDB_ROOT_USERNAME": "root",
-		"MONGO_INITDB_ROOT_PASSWORD": "mongodbroot",
+		"MONGO_INITDB_ROOT_USERNAME": mongoUser,
+		"MONGO_INITDB_ROOT_PASSWORD": mongoUser,
 	},
 }
 
@@ -67,7 +70,7 @@ func execCommand(ctx context.Context, cmd string, args ...string) ([]byte, error
 func newMongoClient(target *commons.TestContainerSetup) (mongo.Client, error) {
 	backupClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", target.Address,
 		target.Port))
-	clientAuth := options.Client().SetAuth(options.Credential{Username: "root", Password: "mongodbroot"})
+	clientAuth := options.Client().SetAuth(options.Credential{Username: mongoUser, Password: mongoPW})
 
 	client, err := mongo.Connect(context.TODO(), backupClientOptions, clientAuth)
 	if err != nil {
@@ -208,8 +211,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	// use `mongorestore` to restore backed up data to new container
 	_, err = execCommand(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
 		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port), fmt.Sprintf("--archive=%s", backupPath),
-		"--gzip", "--username=root",
-		"--password=mongodbroot")
+		"--gzip", fmt.Sprintf("--username=%s", mongoUser),
+		fmt.Sprintf("--password=%s", mongoPW))
 	mongoDumpTestSuite.Require().NoError(err)
 
 	restoreClient, err := newMongoClient(&mongoRestoreTarget)
@@ -255,18 +258,19 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	// restore backed up data from restic repository
 	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
 		resticContainer.Address, resticContainer.Port),
-		"--target", "data", "latest")
+		"--target", dataDir, "latest")
 	_, err = cmd.CombinedOutput()
 	mongoDumpTestSuite.Require().NoError(err)
 
 	cmd = exec.CommandContext(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
 		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port),
-		fmt.Sprintf("--archive=data/%s", backupPath), "--gzip", "--username=root", "--password=mongodbroot")
+		fmt.Sprintf("--archive=data/%s", backupPath), "--gzip", fmt.Sprintf("--username=%s", mongoUser),
+		fmt.Sprintf("--password=%s", mongoPW))
 	_, err = cmd.CombinedOutput()
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// remove backup directory
-	err = os.RemoveAll("data")
+	err = os.RemoveAll(dataDir)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	restoreClient, err := newMongoClient(&mongoRestoreTarget)

@@ -23,6 +23,11 @@ import (
 )
 
 const pgPort = "5432/tcp"
+const backupPath = "/tmp/postgres.dump.tar"
+const postgresPW = "postgresroot"
+const postgresUser = "postgresuser"
+const postgresDB = "postgres"
+const dataDir = "data"
 
 type PGDumpTestSuite struct {
 	suite.Suite
@@ -38,9 +43,9 @@ var pgRequest = testcontainers.ContainerRequest{
 	Image:        "postgres:12",
 	ExposedPorts: []string{pgPort},
 	Env: map[string]string{
-		"POSTGRES_PASSWORD": "postgresroot",
-		"POSTGRES_USER":     "postgresuser",
-		"POSTGRES_DB":       "postgres",
+		"POSTGRES_PASSWORD": postgresPW,
+		"POSTGRES_USER":     postgresUser,
+		"POSTGRES_DB":       postgresDB,
 	},
 	WaitingFor: wait.ForLog("database system is ready to accept connections"),
 }
@@ -65,13 +70,13 @@ pgdump:
     flags:
       host: %s
       port: %s
-      password: postgresroot
-      username: postgresuser
-      dbName: postgres
-      file: /tmp/postgres.dump.tar
+      password: %s
+      username: %s
+      dbName: %s
+      file: %s
       format: tar
     additionalArgs: []
-`, "127.0.0.1", container.Port))
+`, "127.0.0.1", container.Port, postgresPW, postgresUser, postgresDB, backupPath))
 	}
 	return []byte(fmt.Sprintf(`
 pgdump:
@@ -79,11 +84,11 @@ pgdump:
     flags:
       host: %s
       port: %s
-      password: postgresroot
-      username: postgresuser
-      dbName: postgres
+      password: %s
+      username: %s
+      dbName: %s
       format: tar
-      file: /tmp/postgres.dump.tar
+      file: %s
     additionalArgs: []
 restic:
   global:
@@ -97,7 +102,7 @@ restic:
       keepWeekly: 0
       keepMonthly: 0
       keepYearly: 0
-`, "127.0.0.1", container.Port, resticIP, resticPort))
+`, "127.0.0.1", container.Port, postgresPW, postgresUser, postgresDB, backupPath, resticIP, resticPort))
 }
 
 // prepareTestData creates and isnerts testdata into the specified pg database
@@ -139,15 +144,15 @@ func scanResult(result *sql.Rows) ([]TestStruct, error) {
 func restorePGDump(ctx context.Context, resticContainer, restoreTarget commons.TestContainerSetup) error {
 	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
 		resticContainer.Address, resticContainer.Port),
-		"--target", "data", "latest")
+		"--target", dataDir, "latest")
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		return err
 	}
 	// restore server from pgdump
-	command := exec.CommandContext(ctx, "pg_restore", "--dbname=postgres",
+	command := exec.CommandContext(ctx, "pg_restore", fmt.Sprintf("--dbname=%s", postgresDB),
 		"--host=127.0.0.1", fmt.Sprintf("--port=%s", restoreTarget.Port),
-		"--username=postgresuser", "data/tmp/postgres.dump.tar")
+		fmt.Sprintf("--username=%s", postgresUser), fmt.Sprintf("%s/%s", dataDir, backupPath))
 	_, err = command.CombinedOutput()
 	if err != nil {
 		return err
@@ -166,8 +171,8 @@ func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic
 	}()
 
 	// connect to postgres database using the driver
-	connectionString := fmt.Sprintf("user=postgresuser password=postgresroot host=%s port=%s database=%s sslmode=disable",
-		pgBackupTarget.Address, pgBackupTarget.Port, "postgres")
+	connectionString := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable", postgresUser,
+		postgresPW, pgBackupTarget.Address, pgBackupTarget.Port, postgresDB)
 	db, err := sql.Open("pgx", connectionString)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
@@ -202,6 +207,11 @@ func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic
 func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	ctx := context.Background()
 
+	defer func() {
+		removeErr := os.Remove(backupPath)
+		pgDumpTestSuite.Require().NoError(removeErr)
+	}()
+
 	testData := pgDoBackup(ctx, pgDumpTestSuite, false, commons.TestContainerSetup{Port: "", Address: ""})
 	// setup second postgres container to test if correct data is restored
 	pgRestoreTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
@@ -211,8 +221,8 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 		pgDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	connectionString2 := fmt.Sprintf("user=postgresuser password=postgresroot host=%s port=%s database=%s sslmode=disable",
-		pgRestoreTarget.Address, pgRestoreTarget.Port, "postgres")
+	connectionString2 := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable",
+		postgresUser, postgresPW, pgRestoreTarget.Address, pgRestoreTarget.Port, postgresDB)
 	dbRestore, err := sql.Open("pgx", connectionString2)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
@@ -225,12 +235,10 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	pgDumpTestSuite.Require().NoError(err)
 
 	// restore server from pgdump
-	command := exec.CommandContext(ctx, "pg_restore", "--dbname=postgres",
-		"--host=127.0.0.1", fmt.Sprintf("--port=%s", pgRestoreTarget.Port), "--username=postgresuser", "/tmp/postgres.dump.tar")
+	command := exec.CommandContext(ctx, "pg_restore", fmt.Sprintf("--dbname=%s", postgresDB),
+		"--host=127.0.0.1", fmt.Sprintf("--port=%s", pgRestoreTarget.Port), fmt.Sprintf("--username=%s", postgresUser),
+		backupPath)
 	_, err = command.CombinedOutput()
-	pgDumpTestSuite.Require().NoError(err)
-
-	err = os.Remove("/tmp/postgres.dump.tar")
 	pgDumpTestSuite.Require().NoError(err)
 
 	// check if data was restored correctly
@@ -254,7 +262,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 
 	defer func() {
 		// delete folder with backup file
-		removeErr := os.RemoveAll("data")
+		removeErr := os.RemoveAll(dataDir)
 		pgDumpTestSuite.Require().NoError(removeErr)
 	}()
 
@@ -276,8 +284,8 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 		pgDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	connectionString2 := fmt.Sprintf("user=postgresuser password=postgresroot host=%s port=%s database=%s sslmode=disable",
-		pgRestoreTarget.Address, pgRestoreTarget.Port, "postgres")
+	connectionString2 := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable",
+		postgresUser, postgresPW, pgRestoreTarget.Address, pgRestoreTarget.Port, postgresDB)
 	dbRestore, err := sql.Open("pgx", connectionString2)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {

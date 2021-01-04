@@ -24,6 +24,11 @@ import (
 
 const sqlPort = "3306/tcp"
 const backupPath = "/tmp/test.sqldump"
+const mySQLRootPW = "mysqlroot"
+const mySQLDatabase = "mysql"
+const mySQLUser = "mysqluser"
+const mySQLPW = "mysql"
+const dataDir = "data"
 
 type MySQLDumpTestSuite struct {
 	suite.Suite
@@ -40,10 +45,10 @@ var mySQLRequest = testcontainers.ContainerRequest{
 	Image:        "mysql:8",
 	ExposedPorts: []string{sqlPort},
 	Env: map[string]string{
-		"MYSQL_ROOT_PASSWORD": "mysqlroot",
-		"MYSQL_DATABASE":      "mysql",
-		"MYSQL_USER":          "mysqluser",
-		"MYSQL_PASSWORD":      "mysql",
+		"MYSQL_ROOT_PASSWORD": mySQLRootPW,
+		"MYSQL_DATABASE":      mySQLDatabase,
+		"MYSQL_USER":          mySQLUser,
+		"MYSQL_PASSWORD":      mySQLPW,
 	},
 	Cmd:        []string{"--default-authentication-plugin=mysql_native_password"},
 	WaitingFor: wait.ForLog("port: 3306  MySQL Community Server - GPL"),
@@ -71,13 +76,13 @@ mysqldump:
     flags:
       host: %s
       port: %s
-      password: mysqlroot
+      password: %s
       user: root
       opt: true
       allDatabases: true
       resultFile: %s
     additionalArgs: []
-`, "127.0.0.1", container.Port, backupPath)) // address is hardcoded because the sql driver doesn't like 'localhost'
+`, "127.0.0.1", container.Port, mySQLRootPW, backupPath)) // address is hardcoded because the sql driver doesn't like 'localhost'
 	}
 	return []byte(fmt.Sprintf(`
 mysqldump:
@@ -85,7 +90,7 @@ mysqldump:
     flags:
       host: %s
       port: %s
-      password: mysqlroot
+      password: %s
       user: root
       opt: true
       allDatabases: true
@@ -103,7 +108,7 @@ restic:
       keepWeekly: 0
       keepMonthly: 0
       keepYearly: 0
-`, "127.0.0.1", container.Port, backupPath, resticIP, resticPort))
+`, "127.0.0.1", container.Port, mySQLRootPW, backupPath, resticIP, resticPort))
 }
 
 // prepareTestData creates test data and inserts it into the given database
@@ -156,8 +161,8 @@ func mySQLDoBackup(ctx context.Context, mySQLDumpTestSuite *MySQLDumpTestSuite, 
 		mySQLDumpTestSuite.Require().NoError(backupErr)
 	}()
 
-	connectionString := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
-		mySQLBackupTarget.Address, mySQLBackupTarget.Port, "mysql")
+	connectionString := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
+		mySQLRootPW, mySQLBackupTarget.Address, mySQLBackupTarget.Port, mySQLDatabase)
 	db, err := sql.Open("mysql", connectionString)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
@@ -194,8 +199,8 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 		mySQLDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	connectionString2 := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
-		mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, "mysql")
+	connectionString2 := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
+		mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase)
 	dbRestore, err := sql.Open("mysql", connectionString2)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
@@ -236,7 +241,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 
 	defer func() {
 		// delete folder with backup file
-		removeErr := os.RemoveAll("data")
+		removeErr := os.RemoveAll(dataDir)
 		mySQLDumpTestSuite.Require().NoError(removeErr)
 	}()
 
@@ -269,7 +274,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 	// restore backup file from restic repository
 	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
 		resticContainer.Address, resticContainer.Port),
-		"--target", "data", "latest")
+		"--target", dataDir, "latest")
 	_, err = cmd.CombinedOutput()
 	mySQLDumpTestSuite.Require().NoError(err)
 
