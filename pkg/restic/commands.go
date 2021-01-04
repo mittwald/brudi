@@ -47,7 +47,7 @@ func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) 
 func parseSnapshotOut(jsonLog []byte) (BackupResult, error) {
 	var result BackupResult
 
-	responseList := []map[string]*interface{}{}
+	var responseList []map[string]*interface{}
 	jErr := json.Unmarshal(jsonLog, &responseList)
 	if jErr != nil {
 		return BackupResult{}, jErr
