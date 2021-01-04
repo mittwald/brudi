@@ -107,16 +107,16 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, redisPort)
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = redisBackupTarget.Container.Terminate(ctx)
-		redisDumpTestSuite.Require().NoError(err)
+		backupErr := redisBackupTarget.Container.Terminate(ctx)
+		redisDumpTestSuite.Require().NoError(backupErr)
 	}()
 
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", redisBackupTarget.Address, redisBackupTarget.Port),
 	})
 	defer func() {
-		err = redisClient.Close()
-		redisDumpTestSuite.Require().NoError(err)
+		redisErr := redisClient.Close()
+		redisDumpTestSuite.Require().NoError(redisErr)
 	}()
 
 	_, err = redisClient.Ping().Result()
@@ -139,16 +139,16 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	compose, err := createContainerFromCompose()
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = compose.Down().Error
-		redisDumpTestSuite.Require().NoError(err)
+		composeErr := compose.Down().Error
+		redisDumpTestSuite.Require().NoError(composeErr)
 	}()
 
 	redisRestoreClient := redis.NewClient(&redis.Options{Password: "redisdb",
 		Addr: fmt.Sprintf("%s:%s", "0.0.0.0", "6379"),
 	})
 	defer func() {
-		err = redisRestoreClient.Close()
-		redisDumpTestSuite.Require().NoError(err)
+		redisErr := redisRestoreClient.Close()
+		redisDumpTestSuite.Require().NoError(redisErr)
 	}()
 
 	_, err = redisRestoreClient.Ping().Result()
@@ -174,8 +174,8 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, redisPort)
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = redisBackupTarget.Container.Terminate(ctx)
-		redisDumpTestSuite.Require().NoError(err)
+		backupErr := redisBackupTarget.Container.Terminate(ctx)
+		redisDumpTestSuite.Require().NoError(backupErr)
 	}()
 
 	redisClient := redis.NewClient(&redis.Options{
@@ -184,16 +184,16 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	_, err = redisClient.Ping().Result()
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = redisClient.Close()
-		redisDumpTestSuite.Require().NoError(err)
+		redisErr := redisClient.Close()
+		redisDumpTestSuite.Require().NoError(redisErr)
 	}()
 
 	// setup a container running the restic rest-server
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = resticContainer.Container.Terminate(ctx)
-		redisDumpTestSuite.Require().NoError(err)
+		resticErr := resticContainer.Container.Terminate(ctx)
+		redisDumpTestSuite.Require().NoError(resticErr)
 	}()
 
 	err = redisClient.Set("name", testName, 0).Err()
@@ -213,6 +213,10 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
 		resticContainer.Address, resticContainer.Port),
 		"--target", "data", "latest")
+	defer func() {
+		removeErr := os.RemoveAll("data")
+		redisDumpTestSuite.Require().NoError(removeErr)
+	}()
 	_, err = cmd.CombinedOutput()
 	redisDumpTestSuite.Require().NoError(err)
 
@@ -220,16 +224,16 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	compose, err := createContainerFromCompose()
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = compose.Down().Error
-		redisDumpTestSuite.Require().NoError(err)
+		composeErr := compose.Down().Error
+		redisDumpTestSuite.Require().NoError(composeErr)
 	}()
 
 	redisRestoreClient := redis.NewClient(&redis.Options{Password: "redisdb",
 		Addr: fmt.Sprintf("%s:%s", "0.0.0.0", "6379"),
 	})
 	defer func() {
-		err = redisRestoreClient.Close()
-		redisDumpTestSuite.Require().NoError(err)
+		restoreErr := redisRestoreClient.Close()
+		redisDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
 	_, err = redisRestoreClient.Ping().Result()

@@ -161,8 +161,8 @@ func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic
 	pgBackupTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = pgBackupTarget.Container.Terminate(ctx)
-		pgDumpTestSuite.Require().NoError(err)
+		backupErr := pgBackupTarget.Container.Terminate(ctx)
+		pgDumpTestSuite.Require().NoError(backupErr)
 	}()
 
 	// connect to postgres database using the driver
@@ -171,8 +171,8 @@ func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic
 	db, err := sql.Open("pgx", connectionString)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = db.Close()
-		pgDumpTestSuite.Require().NoError(err)
+		dbErr := db.Close()
+		pgDumpTestSuite.Require().NoError(dbErr)
 	}()
 
 	// these are necessary, otherwise pgserver resets connections
@@ -207,8 +207,8 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	pgRestoreTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = pgRestoreTarget.Container.Terminate(ctx)
-		pgDumpTestSuite.Require().NoError(err)
+		restoreErr := pgRestoreTarget.Container.Terminate(ctx)
+		pgDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
 	connectionString2 := fmt.Sprintf("user=postgresuser password=postgresroot host=%s port=%s database=%s sslmode=disable",
@@ -216,8 +216,8 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	dbRestore, err := sql.Open("pgx", connectionString2)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = dbRestore.Close()
-		pgDumpTestSuite.Require().NoError(err)
+		dbErr := dbRestore.Close()
+		pgDumpTestSuite.Require().NoError(dbErr)
 	}()
 
 	time.Sleep(1 * time.Second)
@@ -237,7 +237,10 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	result, err := dbRestore.Query("SELECT * FROM test")
 	pgDumpTestSuite.Require().NoError(err)
 	pgDumpTestSuite.Require().NoError(result.Err())
-	defer result.Close()
+	defer func() {
+		resultErr := result.Close()
+		pgDumpTestSuite.Require().NoError(resultErr)
+	}()
 
 	restoreResult, err := scanResult(result)
 	pgDumpTestSuite.Require().NoError(err)
@@ -249,12 +252,18 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 	ctx := context.Background()
 
+	defer func() {
+		// delete folder with backup file
+		removeErr := os.RemoveAll("data")
+		pgDumpTestSuite.Require().NoError(removeErr)
+	}()
+
 	// setup a container running the restic rest-server
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = resticContainer.Container.Terminate(ctx)
-		pgDumpTestSuite.Require().NoError(err)
+		resticErr := resticContainer.Container.Terminate(ctx)
+		pgDumpTestSuite.Require().NoError(resticErr)
 	}()
 
 	testData := pgDoBackup(ctx, pgDumpTestSuite, true, resticContainer)
@@ -263,8 +272,8 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 	pgRestoreTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = pgRestoreTarget.Container.Terminate(ctx)
-		pgDumpTestSuite.Require().NoError(err)
+		restoreErr := pgRestoreTarget.Container.Terminate(ctx)
+		pgDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
 	connectionString2 := fmt.Sprintf("user=postgresuser password=postgresroot host=%s port=%s database=%s sslmode=disable",
@@ -272,8 +281,8 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 	dbRestore, err := sql.Open("pgx", connectionString2)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = dbRestore.Close()
-		pgDumpTestSuite.Require().NoError(err)
+		dbErr := dbRestore.Close()
+		pgDumpTestSuite.Require().NoError(dbErr)
 	}()
 
 	time.Sleep(1 * time.Second)
@@ -282,15 +291,15 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 
 	err = restorePGDump(ctx, resticContainer, pgRestoreTarget)
 	pgDumpTestSuite.Require().NoError(err)
-	// delete folder with backup file
-	err = os.RemoveAll("data")
-	pgDumpTestSuite.Require().NoError(err)
 
 	// check if data was restored correctly
 	result, err := dbRestore.Query("SELECT * FROM test")
 	pgDumpTestSuite.Require().NoError(err)
 	pgDumpTestSuite.Require().NoError(result.Err())
-	defer result.Close()
+	defer func() {
+		resultErr := result.Close()
+		pgDumpTestSuite.Require().NoError(resultErr)
+	}()
 
 	restoreResult, err := scanResult(result)
 	pgDumpTestSuite.Require().NoError(err)

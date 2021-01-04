@@ -160,15 +160,15 @@ func mongoDoBackup(ctx context.Context, mongoDumpTestSuite *MongoDumpTestSuite, 
 	mongoBackupTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
 	mongoDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = mongoBackupTarget.Container.Terminate(ctx)
-		mongoDumpTestSuite.Require().NoError(err)
+		backErr := mongoBackupTarget.Container.Terminate(ctx)
+		mongoDumpTestSuite.Require().NoError(backErr)
 	}()
 
 	backupClient, err := newMongoClient(&mongoBackupTarget)
 	mongoDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = backupClient.Disconnect(ctx)
-		mongoDumpTestSuite.Require().NoError(err)
+		clientErr := backupClient.Disconnect(ctx)
+		mongoDumpTestSuite.Require().NoError(clientErr)
 	}()
 
 	// write test data into database and retain it for later assertion
@@ -190,14 +190,19 @@ func mongoDoBackup(ctx context.Context, mongoDumpTestSuite *MongoDumpTestSuite, 
 func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	ctx := context.Background()
 
+	defer func() {
+		removeErr := os.Remove(backupPath)
+		mongoDumpTestSuite.Require().NoError(removeErr)
+	}()
+
 	testData := mongoDoBackup(ctx, mongoDumpTestSuite, false, commons.TestContainerSetup{Port: "", Address: ""})
 
 	// setup a new mongo container which will be used to ensure data was backed up correctly
 	mongoRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
 	mongoDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = mongoRestoreTarget.Container.Terminate(ctx)
-		mongoDumpTestSuite.Require().NoError(err)
+		restoreErr := mongoRestoreTarget.Container.Terminate(ctx)
+		mongoDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
 	// use `mongorestore` to restore backed up data to new container
@@ -210,17 +215,14 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	restoreClient, err := newMongoClient(&mongoRestoreTarget)
 	mongoDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = restoreClient.Disconnect(ctx)
-		mongoDumpTestSuite.Require().NoError(err)
+		clientErr := restoreClient.Disconnect(ctx)
+		mongoDumpTestSuite.Require().NoError(clientErr)
 	}()
 
 	restoredCollection := restoreClient.Database("test").Collection("testColl")
 
 	findOptions := options.Find()
 	cur, err := restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)
-	mongoDumpTestSuite.Require().NoError(err)
-
-	err = os.Remove(backupPath)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	results, err := getResultsFromCursor(cur)
@@ -237,8 +239,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
 	mongoDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = resticContainer.Container.Terminate(ctx)
-		mongoDumpTestSuite.Require().NoError(err)
+		resticErr := resticContainer.Container.Terminate(ctx)
+		mongoDumpTestSuite.Require().NoError(resticErr)
 	}()
 
 	testData := mongoDoBackup(ctx, mongoDumpTestSuite, true, resticContainer)
@@ -246,8 +248,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	mongoRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
 	mongoDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = mongoRestoreTarget.Container.Terminate(ctx)
-		mongoDumpTestSuite.Require().NoError(err)
+		restoreErr := mongoRestoreTarget.Container.Terminate(ctx)
+		mongoDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
 	// restore backed up data from restic repository
@@ -270,8 +272,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	restoreClient, err := newMongoClient(&mongoRestoreTarget)
 	mongoDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = restoreClient.Disconnect(ctx)
-		mongoDumpTestSuite.Require().NoError(err)
+		clientErr := restoreClient.Disconnect(ctx)
+		mongoDumpTestSuite.Require().NoError(clientErr)
 	}()
 
 	restoredCollection := restoreClient.Database("test").Collection("testColl")

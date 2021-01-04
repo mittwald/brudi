@@ -147,13 +147,13 @@ func restoreSQLFromBackup(filename string, database *sql.DB) error {
 }
 
 func mySQLDoBackup(ctx context.Context, mySQLDumpTestSuite *MySQLDumpTestSuite, useRestic bool,
-resticContainer commons.TestContainerSetup) []TestStruct {
+	resticContainer commons.TestContainerSetup) []TestStruct {
 
 	mySQLBackupTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = mySQLBackupTarget.Container.Terminate(ctx)
-		mySQLDumpTestSuite.Require().NoError(err)
+		backupErr := mySQLBackupTarget.Container.Terminate(ctx)
+		mySQLDumpTestSuite.Require().NoError(backupErr)
 	}()
 
 	connectionString := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
@@ -161,8 +161,8 @@ resticContainer commons.TestContainerSetup) []TestStruct {
 	db, err := sql.Open("mysql", connectionString)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = db.Close()
-		mySQLDumpTestSuite.Require().NoError(err)
+		dbErr := db.Close()
+		mySQLDumpTestSuite.Require().NoError(dbErr)
 	}()
 
 	_, err = db.Exec("CREATE TABLE test(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));")
@@ -190,8 +190,8 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	mySQLRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = mySQLRestoreTarget.Container.Terminate(ctx)
-		mySQLDumpTestSuite.Require().NoError(err)
+		restoreErr := mySQLRestoreTarget.Container.Terminate(ctx)
+		mySQLDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
 	connectionString2 := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
@@ -199,8 +199,8 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	dbRestore, err := sql.Open("mysql", connectionString2)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = dbRestore.Close()
-		mySQLDumpTestSuite.Require().NoError(err)
+		dbErr := dbRestore.Close()
+		mySQLDumpTestSuite.Require().NoError(dbErr)
 	}()
 
 	// restore server from mysqldump
@@ -214,7 +214,10 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	result, err := dbRestore.Query("SELECT * FROM test")
 	mySQLDumpTestSuite.Require().NoError(err)
 	mySQLDumpTestSuite.Require().NoError(result.Err())
-	defer result.Close()
+	defer func() {
+		resultErr := result.Close()
+		mySQLDumpTestSuite.Require().NoError(resultErr)
+	}()
 
 	var restoreResult []TestStruct
 	for result.Next() {
@@ -231,12 +234,18 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 	ctx := context.Background()
 
+	defer func() {
+		// delete folder with backup file
+		removeErr := os.RemoveAll("data")
+		mySQLDumpTestSuite.Require().NoError(removeErr)
+	}()
+
 	// setup a container running the restic rest-server
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = resticContainer.Container.Terminate(ctx)
-		mySQLDumpTestSuite.Require().NoError(err)
+		resticErr := resticContainer.Container.Terminate(ctx)
+		mySQLDumpTestSuite.Require().NoError(resticErr)
 	}()
 
 	testData := mySQLDoBackup(ctx, mySQLDumpTestSuite, true, resticContainer)
@@ -244,8 +253,8 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 	mySQLRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = mySQLRestoreTarget.Container.Terminate(ctx)
-		mySQLDumpTestSuite.Require().NoError(err)
+		restoreErr := mySQLRestoreTarget.Container.Terminate(ctx)
+		mySQLDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
 	connectionString2 := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
@@ -253,8 +262,8 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 	dbRestore, err := sql.Open("mysql", connectionString2)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
-		err = dbRestore.Close()
-		mySQLDumpTestSuite.Require().NoError(err)
+		dbErr := dbRestore.Close()
+		mySQLDumpTestSuite.Require().NoError(dbErr)
 	}()
 
 	// restore backup file from restic repository
@@ -267,14 +276,13 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 	err = restoreSQLFromBackup(fmt.Sprintf("data/%s", backupPath), dbRestore)
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	// delete folder with backup file
-	err = os.RemoveAll("data")
-	mySQLDumpTestSuite.Require().NoError(err)
-
 	result, err := dbRestore.Query("SELECT * FROM test")
 	mySQLDumpTestSuite.Require().NoError(err)
 	mySQLDumpTestSuite.Require().NoError(result.Err())
-	defer result.Close()
+	defer func() {
+		resultErr := result.Close()
+		mySQLDumpTestSuite.Require().NoError(resultErr)
+	}()
 
 	var restoreResult []TestStruct
 	for result.Next() {
