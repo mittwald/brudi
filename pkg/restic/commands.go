@@ -1,8 +1,6 @@
 package restic
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -113,6 +111,10 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	if err != nil {
 		return backupRes, out, err
 	}
+	lsOpts := LsOptions{Flags: &LsFlags{Long: true},
+		SnapshotIDs: []string{"latest"}}
+	_, err = Ls(ctx, globalOpts, &lsOpts)
+	fmt.Println(err)
 
 	return backupRes, nil, nil
 }
@@ -129,64 +131,76 @@ func newCommand(command string, args ...string) cli.CommandType {
 }
 
 // Ls executes "restic ls"
-func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
-	var result []LsResult
-	cmd := newCommand("ls", cli.StructToCLI(&opts)...)
+func Ls(ctx context.Context, glob *GlobalOptions, opts *LsOptions) ([]LsResult, error) {
+	var args []string
+	args = cli.StructToCLI(glob)
+	args = append(args, cli.StructToCLI(opts)...)
+
+	cmd := newCommand("ls", args...)
 
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
 
-	reader := bytes.NewReader(out)
-	bufReader := bufio.NewReader(reader)
+	out = []byte(fmt.Sprint("[" +
+		strings.Replace(strings.TrimRight(string(out), "\n"), "\n", ",", -1) +
+		"]"))
+	result, err := LsResponseFromJSON(out, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// LsResponseFromJSON unmarshals LS json output
+func LsResponseFromJSON(jsonLog []byte, opts *LsOptions) ([]LsResult, error) {
+	var result []LsResult
+	var messages []LsMessage
+	err := json.Unmarshal(jsonLog, &messages)
+	if err != nil {
+		return nil, err
+	}
 	var current LsResult
-	line, _, err := bufReader.ReadLine()
-
-	for err != nil {
-		var mess LsMessage
-		jerr := json.Unmarshal(line, &mess)
-		if jerr != nil {
-			return nil, jerr
-		}
-		if *mess.ShortID != "" {
-			if *current.SnapshotID != "" {
-				result = append(result, current)
-			}
-			current = LsResult{
-				SnapshotID: mess.ShortID,
-				Paths:      mess.Paths,
-				Time:       mess.Time,
-				Files:      []*LsFile{},
-			}
-			line, _, err = bufReader.ReadLine()
-			continue
-		}
-
-		if !opts.Flags.Long {
-			if *mess.Type == fileType {
-				current.Files = append(current.Files, &LsFile{
-					Path: mess.Path,
-				})
-				line, _, err = bufReader.ReadLine()
+	for idx := range messages {
+		currentMessage := messages[idx]
+		if currentMessage.ShortID != nil {
+			if *currentMessage.ShortID != "" {
+				if current.SnapshotID != "" {
+					result = append(result, current)
+				}
+				current = LsResult{
+					SnapshotID: *currentMessage.ShortID,
+					Paths:      currentMessage.Paths,
+					Time:       currentMessage.Time,
+					Files:      []LsFile{},
+				}
 				continue
 			}
 		}
-		if *mess.Type == fileType {
-			*current.Size += *mess.Size
-			current.Files = append(current.Files, &LsFile{
-				Permissions: mess.Mode,
-				User:        mess.UID,
-				Group:       mess.GID,
-				Size:        mess.Size,
-				Time:        mess.Time,
-				Path:        mess.Path,
+		if !opts.Flags.Long {
+			if currentMessage.Type == fileType {
+				current.Files = append(current.Files, LsFile{
+					Path: currentMessage.Path,
+				})
+			}
+			continue
+		}
+		if currentMessage.Type == fileType {
+			current.Size += currentMessage.Size
+			current.Files = append(current.Files, LsFile{
+				Permissions: currentMessage.Mode,
+				User:        currentMessage.UID,
+				Group:       currentMessage.GID,
+				Size:        currentMessage.Size,
+				Time:        currentMessage.Time,
+				Path:        currentMessage.Path,
 			})
 		}
-		line, _, err = bufReader.ReadLine()
 	}
-	result = append(result, current)
 
+	result = append(result, current)
 	return result, nil
 }
 
@@ -207,7 +221,7 @@ func GetSnapshotSize(ctx context.Context, snapshotIDs []string) (size uint64) {
 	if err = json.Unmarshal(out, &stats); err != nil {
 		return
 	}
-	return *stats.TotalSize
+	return stats.TotalSize
 }
 
 // GetSnapshotSizeByPath returns the summed file size (filtered by its path)...
@@ -219,7 +233,7 @@ func GetSnapshotSizeByPath(ctx context.Context, snapshotID, path string) (size u
 		},
 		SnapshotIDs: []string{snapshotID},
 	}
-	ls, err := Ls(ctx, &opts)
+	ls, err := Ls(ctx, &GlobalOptions{}, &opts)
 
 	if err != nil {
 		return
@@ -227,8 +241,8 @@ func GetSnapshotSizeByPath(ctx context.Context, snapshotID, path string) (size u
 
 	for _, itm := range ls {
 		for _, f := range itm.Files {
-			if strings.HasPrefix(*f.Path, path) {
-				size += *f.Size
+			if strings.HasPrefix(f.Path, path) {
+				size += f.Size
 			}
 		}
 	}
@@ -304,7 +318,9 @@ func Forget(
 	}
 	for idx := range forgetResponse.Tags {
 		for index := range forgetResponse.Tags[idx].Remove {
-			deletedSnapshots = append(deletedSnapshots, *forgetResponse.Tags[idx].Remove[index].ID)
+			if forgetResponse.Tags[idx].Remove[index].ID != nil {
+				deletedSnapshots = append(deletedSnapshots, *forgetResponse.Tags[idx].Remove[index].ID)
+			}
 		}
 	}
 	return deletedSnapshots, out, nil
