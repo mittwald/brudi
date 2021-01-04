@@ -92,12 +92,12 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
           flags:
             host: %s
             port: %s
-            username: root
-            password: mongodbroot
+            username: %s
+            password: %s
             gzip: true
             archive: %s
           additionalArgs: []
-`, container.Address, container.Port, backupPath))
+`, container.Address, container.Port, mongoUser, mongoPW, backupPath))
 	}
 	return []byte(fmt.Sprintf(`
       mongodump:
@@ -105,8 +105,8 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
           flags:
             host: %s
             port: %s
-            username: root
-            password: mongodbroot
+            username: %s
+            password: %s
             gzip: true
             archive: %s
           additionalArgs: []
@@ -122,7 +122,7 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
             keepWeekly: 0
             keepMonthly: 0
             keepYearly: 0
-`, container.Address, container.Port, backupPath, resticIP, resticPort))
+`, container.Address, container.Port, mongoUser, mongoPW, backupPath, resticIP, resticPort))
 }
 
 // prepareTestData creates test data and writes it into a database using the provided client
@@ -166,8 +166,8 @@ func mongoDoBackup(ctx context.Context, mongoDumpTestSuite *MongoDumpTestSuite, 
 		backErr := mongoBackupTarget.Container.Terminate(ctx)
 		mongoDumpTestSuite.Require().NoError(backErr)
 	}()
-
-	backupClient, err := newMongoClient(&mongoBackupTarget)
+	var backupClient mongo.Client
+	backupClient, err = newMongoClient(&mongoBackupTarget)
 	mongoDumpTestSuite.Require().NoError(err)
 	defer func() {
 		clientErr := backupClient.Disconnect(ctx)
@@ -175,7 +175,8 @@ func mongoDoBackup(ctx context.Context, mongoDumpTestSuite *MongoDumpTestSuite, 
 	}()
 
 	// write test data into database and retain it for later assertion
-	testData, err := prepareTestData(&backupClient)
+	var testData []interface{}
+	testData, err = prepareTestData(&backupClient)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	testMongoConfig := createMongoConfig(mongoBackupTarget, useRestic, resticContainer.Address, resticContainer.Port)
@@ -225,10 +226,12 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	restoredCollection := restoreClient.Database("test").Collection("testColl")
 
 	findOptions := options.Find()
-	cur, err := restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)
+	var cur *mongo.Cursor
+	cur, err = restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)
 	mongoDumpTestSuite.Require().NoError(err)
 
-	results, err := getResultsFromCursor(cur)
+	var results []interface{}
+	results, err = getResultsFromCursor(cur)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// check if the original data was restored
@@ -248,7 +251,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 
 	testData := mongoDoBackup(ctx, mongoDumpTestSuite, true, resticContainer)
 
-	mongoRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
+	var mongoRestoreTarget commons.TestContainerSetup
+	mongoRestoreTarget, err = commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
 	mongoDumpTestSuite.Require().NoError(err)
 	defer func() {
 		restoreErr := mongoRestoreTarget.Container.Terminate(ctx)
@@ -264,7 +268,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 
 	cmd = exec.CommandContext(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
 		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port),
-		fmt.Sprintf("--archive=data/%s", backupPath), "--gzip", fmt.Sprintf("--username=%s", mongoUser),
+		fmt.Sprintf("--archive=%s/%s", dataDir, backupPath), "--gzip", fmt.Sprintf("--username=%s", mongoUser),
 		fmt.Sprintf("--password=%s", mongoPW))
 	_, err = cmd.CombinedOutput()
 	mongoDumpTestSuite.Require().NoError(err)
@@ -273,7 +277,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	err = os.RemoveAll(dataDir)
 	mongoDumpTestSuite.Require().NoError(err)
 
-	restoreClient, err := newMongoClient(&mongoRestoreTarget)
+	var restoreClient mongo.Client
+	restoreClient, err = newMongoClient(&mongoRestoreTarget)
 	mongoDumpTestSuite.Require().NoError(err)
 	defer func() {
 		clientErr := restoreClient.Disconnect(ctx)
@@ -283,10 +288,12 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	restoredCollection := restoreClient.Database("test").Collection("testColl")
 
 	findOptions := options.Find()
-	cur, err := restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)
+	var cur *mongo.Cursor
+	cur, err = restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)
 	mongoDumpTestSuite.Require().NoError(err)
 
-	results, err := getResultsFromCursor(cur)
+	var results []interface{}
+	results, err = getResultsFromCursor(cur)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	assert.DeepEqual(mongoDumpTestSuite.T(), testData, results)

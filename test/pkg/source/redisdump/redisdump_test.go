@@ -26,6 +26,9 @@ const redisPort = "6379/tcp"
 const testName = "test"
 const testType = "gopher"
 const backupPath = "/tmp/redisdump.rdb"
+const redisPW = "redisdb"
+const composeLocation = "../../../testdata/testredis.yml"
+const dataDir = "data"
 
 type RedisDumpTestSuite struct {
 	suite.Suite
@@ -45,10 +48,10 @@ redisdump:
     flags:
       host: %s
       port: %s
-      password: redisdb
+      password: %s
       rdb: %s
     additionalArgs: []
-`, container.Address, container.Port, backupPath))
+`, container.Address, container.Port, redisPW, backupPath))
 	}
 	return []byte(fmt.Sprintf(`
 redisdump:
@@ -56,7 +59,7 @@ redisdump:
     flags:
       host: %s
       port: %s
-      password: redisdb
+      password: %s
       rdb: %s
     additionalArgs: []
 restic:
@@ -71,7 +74,7 @@ restic:
       keepWeekly: 0
       keepMonthly: 0
       keepYearly: 0
-`, container.Address, container.Port, backupPath, resticIP, resticPort))
+`, container.Address, container.Port, redisPW, backupPath, resticIP, resticPort))
 }
 
 func (redisDumpTestSuite *RedisDumpTestSuite) SetupTest() {
@@ -86,7 +89,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TearDownTest() {
 }
 
 func createContainerFromCompose() (*testcontainers.LocalDockerCompose, error) {
-	composeFilePaths := []string{"../../../testdata/testredis.yml"}
+	composeFilePaths := []string{composeLocation}
 	identifier := strings.ToLower(uuid.New().String())
 
 	compose := testcontainers.NewLocalDockerCompose(composeFilePaths, identifier)
@@ -143,7 +146,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 		redisDumpTestSuite.Require().NoError(composeErr)
 	}()
 
-	redisRestoreClient := redis.NewClient(&redis.Options{Password: "redisdb",
+	redisRestoreClient := redis.NewClient(&redis.Options{Password: redisPW,
 		Addr: fmt.Sprintf("%s:%s", "0.0.0.0", "6379"),
 	})
 	defer func() {
@@ -212,9 +215,9 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 
 	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
 		resticContainer.Address, resticContainer.Port),
-		"--target", "data", "latest")
+		"--target", dataDir, "latest")
 	defer func() {
-		removeErr := os.RemoveAll("data")
+		removeErr := os.RemoveAll(dataDir)
 		redisDumpTestSuite.Require().NoError(removeErr)
 	}()
 	_, err = cmd.CombinedOutput()

@@ -262,8 +262,8 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 		mySQLDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	connectionString2 := fmt.Sprintf("root:mysqlroot@tcp(%s:%s)/%s?tls=skip-verify",
-		mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, "mysql")
+	connectionString2 := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
+		mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, "mysql")
 	dbRestore, err := sql.Open("mysql", connectionString2)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
@@ -278,7 +278,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 	_, err = cmd.CombinedOutput()
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	err = restoreSQLFromBackup(fmt.Sprintf("data/%s", backupPath), dbRestore)
+	err = restoreSQLFromBackup(fmt.Sprintf("%s/%s", dataDir, backupPath), dbRestore)
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	result, err := dbRestore.Query("SELECT * FROM test")
