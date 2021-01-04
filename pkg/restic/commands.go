@@ -44,13 +44,19 @@ func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) 
 }
 
 // parseSnapshotOut retrieves snapshot-id and, if available, parent-id from json logs
-func parseSnapshotOut(responses []map[string]*interface{}) (BackupResult, error) {
+func parseSnapshotOut(jsonLog []byte) (BackupResult, error) {
 	var result BackupResult
+
+	responseList := []map[string]*interface{}{}
+	jErr := json.Unmarshal(jsonLog, &responseList)
+	if jErr != nil {
+		return BackupResult{}, jErr
+	}
 
 	var parentSnapshotID string
 	var curSnapshotID string
-	for idx := range responses {
-		v := responses[idx]
+	for idx := range responseList {
+		v := responseList[idx]
 		if v[messageType] != nil {
 			if *v[messageType] == "summary" {
 				if v[snapshotID] != nil {
@@ -99,17 +105,14 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	if err != nil {
 		return BackupResult{}, out, err
 	}
+
 	// transform output from restic into list of json elements
 	out = []byte(fmt.Sprint("[" +
 		strings.Replace(strings.TrimRight(string(out), "\n"), "\n", ",", -1) +
 		"]"))
-	responseList := []map[string]*interface{}{}
-	jErr := json.Unmarshal(out, &responseList)
-	if jErr != nil {
-		return BackupResult{}, out, jErr
-	}
+
 	var backupRes BackupResult
-	backupRes, err = parseSnapshotOut(responseList)
+	backupRes, err = parseSnapshotOut(out)
 	if err != nil {
 		return backupRes, out, err
 	}
@@ -249,7 +252,6 @@ func GetSnapshotSizeByPath(ctx context.Context, snapshotID, path string) (size u
 
 // ListSnapshots executes "restic snapshots"
 func ListSnapshots(ctx context.Context, opts *SnapshotOptions) ([]Snapshot, error) {
-	fmt.Println("hello")
 	cmd := newCommand("snapshots", cli.StructToCLI(&opts)...)
 
 	out, err := cli.Run(ctx, cmd)
