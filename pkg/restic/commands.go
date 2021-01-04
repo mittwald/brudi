@@ -13,8 +13,11 @@ import (
 )
 
 const (
-	binary   = "restic"
-	fileType = "file"
+	binary      = "restic"
+	fileType    = "file"
+	messageType = "message_type"
+	snapshotID  = "snapshot_id"
+	parentID    = "parent"
 )
 
 var (
@@ -43,29 +46,29 @@ func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) 
 }
 
 // parseSnapshotOut retrieves snapshot-id and, if available, parent-id from json logs
-func parseSnapshotOut(responses []map[string]interface{}) (BackupResult, error) {
+func parseSnapshotOut(responses []map[string]*interface{}) (BackupResult, error) {
 	var result BackupResult
 
 	var parentSnapshotID string
-	var snapshotID string
+	var curSnapshotID string
 	for idx := range responses {
 		v := responses[idx]
-		if v["message_type"] == "summary" {
-			if v["snapshot_id"] != nil {
-				snapshotID = v["snapshot_id"].(string)
+		if *v[messageType] == "summary" {
+			if v[snapshotID] != nil {
+				curSnapshotID = (*v[snapshotID]).(string)
 			}
-			if v["parent"] != nil {
-				parentSnapshotID = v["parent"].(string)
+			if v[parentID] != nil {
+				parentSnapshotID = (*v[parentID]).(string)
 			}
 		}
 	}
 	if parentSnapshotID != "" {
 		result.ParentSnapshotID = parentSnapshotID
 	}
-	if snapshotID == "" {
+	if curSnapshotID == "" {
 		return BackupResult{}, fmt.Errorf("failed to parse snapshotID")
 	}
-	result.SnapshotID = snapshotID
+	result.SnapshotID = curSnapshotID
 	return result, nil
 }
 
@@ -100,16 +103,17 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	out = []byte(fmt.Sprint("[" +
 		strings.Replace(strings.TrimRight(string(out), "\n"), "\n", ",", -1) +
 		"]"))
-	responseList := []map[string]interface{}{}
-	jerr := json.Unmarshal(out, &responseList)
-	if jerr != nil {
-		fmt.Println(jerr)
+	responseList := []map[string]*interface{}{}
+	jErr := json.Unmarshal(out, &responseList)
+	if jErr != nil {
+		return BackupResult{}, out, jErr
 	}
 
 	backupRes, err := parseSnapshotOut(responseList)
 	if err != nil {
 		return backupRes, out, err
 	}
+
 	return backupRes, nil, nil
 }
 
@@ -145,32 +149,32 @@ func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
 		if jerr != nil {
 			return nil, jerr
 		}
-		if mess.ShortID != "" {
-			if current.SnapshotID != "" {
+		if *mess.ShortID != "" {
+			if *current.SnapshotID != "" {
 				result = append(result, current)
 			}
 			current = LsResult{
 				SnapshotID: mess.ShortID,
 				Paths:      mess.Paths,
 				Time:       mess.Time,
-				Files:      []LsFile{},
+				Files:      []*LsFile{},
 			}
 			line, _, err = bufReader.ReadLine()
 			continue
 		}
 
 		if !opts.Flags.Long {
-			if mess.Type == fileType {
-				current.Files = append(current.Files, LsFile{
+			if *mess.Type == fileType {
+				current.Files = append(current.Files, &LsFile{
 					Path: mess.Path,
 				})
 				line, _, err = bufReader.ReadLine()
 				continue
 			}
 		}
-		if mess.Type == fileType {
-			current.Size += mess.Size
-			current.Files = append(current.Files, LsFile{
+		if *mess.Type == fileType {
+			*current.Size += *mess.Size
+			current.Files = append(current.Files, &LsFile{
 				Permissions: mess.Mode,
 				User:        mess.UID,
 				Group:       mess.GID,
@@ -203,7 +207,7 @@ func GetSnapshotSize(ctx context.Context, snapshotIDs []string) (size uint64) {
 	if err = json.Unmarshal(out, &stats); err != nil {
 		return
 	}
-	return stats.TotalSize
+	return *stats.TotalSize
 }
 
 // GetSnapshotSizeByPath returns the summed file size (filtered by its path)...
@@ -223,8 +227,8 @@ func GetSnapshotSizeByPath(ctx context.Context, snapshotID, path string) (size u
 
 	for _, itm := range ls {
 		for _, f := range itm.Files {
-			if strings.HasPrefix(f.Path, path) {
-				size += f.Size
+			if strings.HasPrefix(*f.Path, path) {
+				size += *f.Size
 			}
 		}
 	}
@@ -233,13 +237,14 @@ func GetSnapshotSizeByPath(ctx context.Context, snapshotID, path string) (size u
 
 // ListSnapshots executes "restic snapshots"
 func ListSnapshots(ctx context.Context, opts *SnapshotOptions) ([]Snapshot, error) {
+	fmt.Println("hello")
 	cmd := newCommand("snapshots", cli.StructToCLI(&opts)...)
 
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println(out)
 	var snapshots []Snapshot
 	if err := json.Unmarshal(out, &snapshots); err != nil {
 		return nil, err
@@ -299,7 +304,7 @@ func Forget(
 	}
 	for idx := range forgetResponse.Tags {
 		for index := range forgetResponse.Tags[idx].Remove {
-			deletedSnapshots = append(deletedSnapshots, forgetResponse.Tags[idx].Remove[index].ID)
+			deletedSnapshots = append(deletedSnapshots, *forgetResponse.Tags[idx].Remove[index].ID)
 		}
 	}
 	return deletedSnapshots, out, nil
