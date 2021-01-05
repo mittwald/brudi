@@ -32,6 +32,7 @@ const dataDir = "data"
 const dumpKind = "mysqldump"
 const dbDriver = "mysql"
 const tableName = "testTable"
+const hostName = "127.0.0.1"
 
 type MySQLDumpTestSuite struct {
 	suite.Suite
@@ -82,7 +83,7 @@ mysqldump:
       allDatabases: true
       resultFile: %s
     additionalArgs: []
-`, "127.0.0.1", container.Port, mySQLRootPW, backupPath)) // address is hardcoded because the sql driver doesn't like 'localhost'
+`, hostName, container.Port, mySQLRootPW, backupPath)) // address is hardcoded because the sql driver doesn't like 'localhost'
 	}
 	return []byte(fmt.Sprintf(`
 mysqldump:
@@ -108,7 +109,7 @@ restic:
       keepWeekly: 0
       keepMonthly: 0
       keepYearly: 0
-`, "127.0.0.1", container.Port, mySQLRootPW, backupPath, resticIP, resticPort))
+`, hostName, container.Port, mySQLRootPW, backupPath, resticIP, resticPort))
 }
 
 // prepareTestData creates test data and inserts it into the given database

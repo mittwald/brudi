@@ -27,6 +27,10 @@ const postgresPW = "postgresroot"
 const postgresUser = "postgresuser"
 const postgresDB = "postgres"
 const dataDir = "data"
+const tableName = "test"
+const restoreKind = "pg_restore"
+const dumpKind = "pgdump"
+const hostName = "127.0.0.1"
 
 type PGDumpTestSuite struct {
 	suite.Suite
@@ -73,7 +77,7 @@ pgdump:
       file: %s
       format: tar
     additionalArgs: []
-`, "127.0.0.1", container.Port, postgresPW, postgresUser, postgresDB, backupPath))
+`, hostName, container.Port, postgresPW, postgresUser, postgresDB, backupPath))
 	}
 	return []byte(fmt.Sprintf(`
 pgdump:
@@ -99,7 +103,7 @@ restic:
       keepWeekly: 0
       keepMonthly: 0
       keepYearly: 0
-`, "127.0.0.1", container.Port, postgresPW, postgresUser, postgresDB, backupPath, resticIP, resticPort))
+`, hostName, container.Port, postgresPW, postgresUser, postgresDB, backupPath, resticIP, resticPort))
 }
 
 // prepareTestData creates and isnerts testdata into the specified pg database
@@ -109,7 +113,7 @@ func prepareTestData(database *sql.DB) ([]TestStruct, error) {
 	testData := []TestStruct{testStruct1}
 	var insert *sql.Rows
 	for idx := range testData {
-		insert, err = database.Query(fmt.Sprintf("INSERT INTO test (id, name) VALUES ( %d, '%s' )", testData[idx].ID, testData[idx].Name))
+		insert, err = database.Query(fmt.Sprintf("INSERT INTO %s (id, name) VALUES ( %d, '%s' )", tableName, testData[idx].ID, testData[idx].Name))
 		if err != nil {
 			return []TestStruct{}, err
 		}
@@ -148,8 +152,8 @@ func restorePGDump(ctx context.Context, resticContainer, restoreTarget commons.T
 		return err
 	}
 	// restore server from pgdump
-	command := exec.CommandContext(ctx, "pg_restore", fmt.Sprintf("--dbname=%s", postgresDB),
-		"--host=127.0.0.1", fmt.Sprintf("--port=%s", restoreTarget.Port),
+	command := exec.CommandContext(ctx, restoreKind, fmt.Sprintf("--dbname=%s", postgresDB),
+		fmt.Sprintf("--host=%s", hostName), fmt.Sprintf("--port=%s", restoreTarget.Port),
 		fmt.Sprintf("--username=%s", postgresUser), fmt.Sprintf("%s/%s", dataDir, backupPath))
 	_, err = command.CombinedOutput()
 	if err != nil {
@@ -185,7 +189,7 @@ func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic
 	}
 
 	// Create test table
-	_, err = db.Exec("CREATE TABLE test(id serial PRIMARY KEY, name VARCHAR(100) NOT NULL)")
+	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s(id serial PRIMARY KEY, name VARCHAR(100) NOT NULL)", tableName))
 	pgDumpTestSuite.Require().NoError(err)
 
 	// create test data and write it to database
@@ -197,7 +201,7 @@ func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic
 	pgDumpTestSuite.Require().NoError(err)
 
 	// perform backup action on first postgres container
-	err = source.DoBackupForKind(ctx, "pgdump", false, useRestic, false)
+	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
 	pgDumpTestSuite.Require().NoError(err)
 	return testData
 }
@@ -235,14 +239,14 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	}
 
 	// restore server from pgdump
-	command := exec.CommandContext(ctx, "pg_restore", fmt.Sprintf("--dbname=%s", postgresDB),
-		"--host=127.0.0.1", fmt.Sprintf("--port=%s", pgRestoreTarget.Port), fmt.Sprintf("--username=%s", postgresUser),
+	command := exec.CommandContext(ctx, restoreKind, fmt.Sprintf("--dbname=%s", postgresDB),
+		fmt.Sprintf("--host=%s", hostName), fmt.Sprintf("--port=%s", pgRestoreTarget.Port), fmt.Sprintf("--username=%s", postgresUser),
 		backupPath)
 	_, err = command.CombinedOutput()
 	pgDumpTestSuite.Require().NoError(err)
 
 	// check if data was restored correctly
-	result, err := dbRestore.Query("SELECT * FROM test")
+	result, err := dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
 	pgDumpTestSuite.Require().NoError(err)
 	pgDumpTestSuite.Require().NoError(result.Err())
 	defer func() {
@@ -302,7 +306,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 	pgDumpTestSuite.Require().NoError(err)
 
 	// check if data was restored correctly
-	result, err := dbRestore.Query("SELECT * FROM test")
+	result, err := dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
 	pgDumpTestSuite.Require().NoError(err)
 	pgDumpTestSuite.Require().NoError(result.Err())
 	defer func() {
