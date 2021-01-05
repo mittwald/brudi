@@ -11,11 +11,12 @@ import (
 )
 
 const (
-	binary      = "restic"
-	fileType    = "file"
-	messageType = "message_type"
-	snapshotID  = "snapshot_id"
-	parentID    = "parent"
+	binary             = "restic"
+	fileType           = "file"
+	messageType        = "message_type"
+	snapshotID         = "snapshot_id"
+	parentID           = "parent"
+	messageTypeSummary = "summary"
 )
 
 var (
@@ -58,7 +59,7 @@ func parseSnapshotOut(jsonLog []byte) (BackupResult, error) {
 	for idx := range responseList {
 		v := responseList[idx]
 		if v[messageType] != nil {
-			if *v[messageType] == "summary" {
+			if *v[messageType] == messageTypeSummary {
 				if v[snapshotID] != nil {
 					curSnapshotID = (*v[snapshotID]).(string)
 				}
