@@ -469,7 +469,7 @@ It is also possible to specify concrete snapshot-ids instead of `latest`.
 - [x] `mongorestore`
 - [x] `tarrestore`
 - [x] `pgrestore`
-- []  `redisrestore`
+- [ ]  `redisrestore`
  
 ### Incremental backup of the source backups
 
