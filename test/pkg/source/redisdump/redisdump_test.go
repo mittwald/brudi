@@ -28,6 +28,10 @@ const backupPath = "/tmp/redisdump.rdb"
 const redisPW = "redisdb"
 const composeLocation = "../../../testdata/testredis.yml"
 const dataDir = "data"
+const nameKey = "name"
+const typeKey = "type"
+const logString = "Ready to accept connections"
+const dumpKind = "redisdump"
 
 type RedisDumpTestSuite struct {
 	suite.Suite
@@ -44,7 +48,7 @@ var redisRequest = testcontainers.ContainerRequest{
 var redisRestoreRequest = testcontainers.ContainerRequest{
 	Image:        "redis:alpine",
 	ExposedPorts: []string{redisPort},
-	WaitingFor:   wait.ForLog("Ready to accept connections"),
+	WaitingFor:   wait.ForLog(logString),
 	BindMounts:   map[string]string{backupPath: "/data/dump.rdb"},
 }
 
@@ -131,10 +135,10 @@ func doRedisBackup(ctx context.Context, redisDumpTestSuite *RedisDumpTestSuite, 
 	_, err = redisClient.Ping().Result()
 	redisDumpTestSuite.Require().NoError(err)
 
-	err = redisClient.Set("name", testName, 0).Err()
+	err = redisClient.Set(nameKey, testName, 0).Err()
 	redisDumpTestSuite.Require().NoError(err)
 
-	err = redisClient.Set("type", testType, 0).Err()
+	err = redisClient.Set(typeKey, testType, 0).Err()
 	redisDumpTestSuite.Require().NoError(err)
 
 	redisBackupConfig := createRedisConfig(redisBackupTarget, useRestic, resticContainer.Address, resticContainer.Port)
@@ -142,7 +146,7 @@ func doRedisBackup(ctx context.Context, redisDumpTestSuite *RedisDumpTestSuite, 
 	redisDumpTestSuite.Require().NoError(err)
 
 	// perform backup action on first redis container
-	err = source.DoBackupForKind(ctx, "redisdump", false, useRestic, false)
+	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
 	redisDumpTestSuite.Require().NoError(err)
 }
 
@@ -171,10 +175,10 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	_, err = redisRestoreClient.Ping().Result()
 	redisDumpTestSuite.Require().NoError(err)
 
-	nameVal, err := redisRestoreClient.Get("name").Result()
+	nameVal, err := redisRestoreClient.Get(nameKey).Result()
 	redisDumpTestSuite.Require().NoError(err)
 
-	typeVal, err := redisRestoreClient.Get("type").Result()
+	typeVal, err := redisRestoreClient.Get(typeKey).Result()
 	redisDumpTestSuite.Require().NoError(err)
 
 	assert.Equal(redisDumpTestSuite.T(), testName, nameVal)
@@ -224,10 +228,10 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	_, err = redisRestoreClient.Ping().Result()
 	redisDumpTestSuite.Require().NoError(err)
 
-	nameVal, err := redisRestoreClient.Get("name").Result()
+	nameVal, err := redisRestoreClient.Get(nameKey).Result()
 	redisDumpTestSuite.Require().NoError(err)
 
-	typeVal, err := redisRestoreClient.Get("type").Result()
+	typeVal, err := redisRestoreClient.Get(typeKey).Result()
 	redisDumpTestSuite.Require().NoError(err)
 
 	assert.Equal(redisDumpTestSuite.T(), testName, nameVal)

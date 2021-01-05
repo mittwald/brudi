@@ -160,6 +160,11 @@ func restorePGDump(ctx context.Context, resticContainer, restoreTarget commons.T
 	return nil
 }
 
+func createConnectionString(target commons.TestContainerSetup) string {
+	return fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable", postgresUser,
+		postgresPW, target.Address, target.Port, postgresDB)
+}
+
 // pgDoBackup populates a database with data and performs a backup, optionally with restic
 func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic bool,
 	resticContainer commons.TestContainerSetup) []TestStruct {
@@ -172,8 +177,7 @@ func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic
 	}()
 
 	// connect to postgres database using the driver
-	backupConnectionString := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable", postgresUser,
-		postgresPW, pgBackupTarget.Address, pgBackupTarget.Port, postgresDB)
+	backupConnectionString := createConnectionString(pgBackupTarget)
 	db, err := sql.Open(dbDriver, backupConnectionString)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
@@ -222,8 +226,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 		pgDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	restoreConnectionString := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable",
-		postgresUser, postgresPW, pgRestoreTarget.Address, pgRestoreTarget.Port, postgresDB)
+	restoreConnectionString := createConnectionString(pgRestoreTarget)
 	dbRestore, err := sql.Open(dbDriver, restoreConnectionString)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
@@ -286,8 +289,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 		pgDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	restoreConnectionString := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable",
-		postgresUser, postgresPW, pgRestoreTarget.Address, pgRestoreTarget.Port, postgresDB)
+	restoreConnectionString := createConnectionString(pgRestoreTarget)
 	dbRestore, err := sql.Open(dbDriver, restoreConnectionString)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
