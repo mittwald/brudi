@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,39 +11,23 @@ import (
 )
 
 const (
-	binary = "restic"
+	binary             = "restic"
+	fileType           = "file"
+	messageType        = "message_type"
+	snapshotID         = "snapshot_id"
+	parentID           = "parent"
+	messageTypeSummary = "summary"
 )
 
 var (
 	ErrRepoAlreadyInitialized = fmt.Errorf("repo already initialized")
 
-	createBackupSnapshotIDPattern, createBackupParentSnapshotIDPattern, lsSnapshotSep, lsFileSep                    *regexp.Regexp
-	forgetSnapshotStartPattern, forgetSnapshotPattern, forgetConcreteSnapshotPattern, forgetSnapshotFinishedPattern *regexp.Regexp
-
 	cmdTimeout = 6 * time.Hour
 )
 
-func init() {
-	// TODO: use json-log option of restic instead 'regex parsing'-foo
-	createBackupSnapshotIDPattern = regexp.MustCompile(`snapshot ([0-9a-z]*) saved\n`)
-	createBackupParentSnapshotIDPattern = regexp.MustCompile(`^using parent snapshot ([0-9a-z]*)\n`)
-	lsSnapshotSep = regexp.MustCompile(`^snapshot ([0-9a-z]*) of \[(.*)\] at (.*):$`)
-	lsFileSep = regexp.MustCompile(`^([-rwxd]{10})[ \t]+([0-9a-zA-Z]+)[ \t]+([0-9a-zA-Z]+)[ \t]+([0-9]+)[ \t]+([0-9-]+ [0-9:]+) (.+)$`)
-
-	// forget snapshots
-	forgetSnapshotStartPattern = regexp.MustCompile(`^remove \d* snapshots:$`)
-	forgetSnapshotFinishedPattern = regexp.MustCompile(`^\d* snapshots have been removed`)
-	forgetSnapshotPattern = regexp.MustCompile(`^([0-9a-z]*)[ ].*[0-9]{4}(-[0-9]{2}){2} ([0-9]{2}:){2}[0-9]{2}`)
-	forgetConcreteSnapshotPattern = regexp.MustCompile(`^removed snapshot ([0-9a-z].*)$`)
-}
-
 // InitBackup executes "restic init"
 func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) {
-	cmd := cli.CommandType{
-		Binary:  binary,
-		Command: "init",
-		Args:    cli.StructToCLI(globalOpts),
-	}
+	cmd := newCommand("init", cli.StructToCLI(globalOpts)...)
 
 	out, err := cli.RunWithTimeout(ctx, cmd, cmdTimeout)
 	if err != nil {
@@ -62,18 +44,38 @@ func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) 
 	return out, err
 }
 
-func parseSnapshotOut(str string) (BackupResult, error) {
+// parseSnapshotOut retrieves snapshot-id and, if available, parent-id from json logs
+func parseSnapshotOut(jsonLog []byte) (BackupResult, error) {
 	var result BackupResult
 
-	parentSnapshotID := createBackupParentSnapshotIDPattern.FindStringSubmatch(str)
-	snapshotID := createBackupSnapshotIDPattern.FindStringSubmatch(str)
-	if len(parentSnapshotID) > 0 {
-		result.ParentSnapshotID = parentSnapshotID[1]
+	var responseList []map[string]*interface{}
+	jErr := json.Unmarshal(jsonLog, &responseList)
+	if jErr != nil {
+		return BackupResult{}, jErr
 	}
-	if len(snapshotID) == 0 {
-		return BackupResult{}, fmt.Errorf("failed to parse snapshotID: %s ", str)
+
+	var parentSnapshotID string
+	var curSnapshotID string
+	for idx := range responseList {
+		v := responseList[idx]
+		if v[messageType] != nil {
+			if *v[messageType] == messageTypeSummary {
+				if v[snapshotID] != nil {
+					curSnapshotID = (*v[snapshotID]).(string)
+				}
+				if v[parentID] != nil {
+					parentSnapshotID = (*v[parentID]).(string)
+				}
+			}
+		}
 	}
-	result.SnapshotID = snapshotID[1]
+	if parentSnapshotID != "" {
+		result.ParentSnapshotID = parentSnapshotID
+	}
+	if curSnapshotID == "" {
+		return BackupResult{}, fmt.Errorf("failed to parse snapshotID")
+	}
+	result.SnapshotID = curSnapshotID
 	return result, nil
 }
 
@@ -98,85 +100,113 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	args = cli.StructToCLI(globalOpts)
 	args = append(args, cli.StructToCLI(backupOpts)...)
 
-	cmd := cli.CommandType{
-		Binary:  binary,
-		Command: "backup",
-		Args:    args,
-	}
+	cmd := newCommand("backup", args...)
+
 	out, err = cli.RunWithTimeout(ctx, cmd, cmdTimeout)
 	if err != nil {
 		return BackupResult{}, out, err
 	}
 
-	backupRes, err := parseSnapshotOut(fmt.Sprintf("%s", out))
+	// transform output from restic into list of json elements
+	out = []byte(fmt.Sprint("[" +
+		strings.Replace(strings.TrimRight(string(out), "\n"), "\n", ",", -1) +
+		"]"))
+
+	var backupRes BackupResult
+	backupRes, err = parseSnapshotOut(out)
 	if err != nil {
 		return backupRes, out, err
 	}
+
 	return backupRes, nil, nil
 }
 
-// Ls executes "restic ls"
-func Ls(ctx context.Context, opts *LsOptions) ([]LsResult, error) {
-	var result []LsResult
-	cmd := cli.CommandType{
+// newCommand initializes an instance of cli.CommandType with given parameters
+func newCommand(command string, args ...string) cli.CommandType {
+	// enable json-logging
+	defaultArgs := []string{"--json"}
+	return cli.CommandType{
 		Binary:  binary,
-		Command: "ls",
-		Args:    cli.StructToCLI(opts),
+		Command: command,
+		Args:    append(defaultArgs, args...),
 	}
+}
+
+// Ls executes "restic ls"
+func Ls(ctx context.Context, glob *GlobalOptions, opts *LsOptions) ([]LsResult, error) {
+	var args []string
+	args = cli.StructToCLI(glob)
+	args = append(args, cli.StructToCLI(opts)...)
+	cmd := newCommand("ls", args...)
+
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
 
-	lines := strings.Split(string(out), "\n")
+	out = []byte(fmt.Sprint("[" +
+		strings.Replace(strings.TrimRight(string(out), "\n"), "\n", ",", -1) +
+		"]"))
+	var result []LsResult
+	result, err = LsResponseFromJSON(out, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// LsResponseFromJSON unmarshals LS json output
+func LsResponseFromJSON(jsonLog []byte, opts *LsOptions) ([]LsResult, error) {
+	var result []LsResult
+	var messages []LsMessage
+	err := json.Unmarshal(jsonLog, &messages)
+	if err != nil {
+		return nil, err
+	}
 	var current LsResult
-
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-
-		match := lsSnapshotSep.FindStringSubmatch(line)
-		if len(match) > 0 {
-			if current.SnapshotID != "" {
-				result = append(result, current)
-			}
-			current = LsResult{
-				SnapshotID: match[1],
-				Paths:      strings.Split(match[2], " "),
-				Time:       match[3],
-				Files:      []LsFile{},
-			}
-
-			continue
-		}
-
-		if !opts.Flags.Long {
-			current.Files = append(current.Files, LsFile{
-				Path: line,
-			})
-			continue
-		}
-
-		fileInfo := lsFileSep.FindStringSubmatch(line)
-		if len(fileInfo) > 0 {
-			size, err := strconv.ParseUint(fileInfo[4], 10, 64)
-			if err != nil {
+	for idx := range messages {
+		currentMessage := messages[idx]
+		if currentMessage.ShortID != nil {
+			if *currentMessage.ShortID != "" {
+				if current.SnapshotID != "" {
+					result = append(result, current)
+				}
+				current = LsResult{
+					SnapshotID: *currentMessage.ShortID,
+					Paths:      currentMessage.Paths,
+					Time:       currentMessage.Time,
+					Files:      []LsFile{},
+				}
 				continue
 			}
-			current.Size += size
-			current.Files = append(current.Files, LsFile{
-				Permissions: fileInfo[1],
-				User:        fileInfo[2],
-				Group:       fileInfo[3],
-				Size:        size,
-				Time:        fileInfo[5],
-				Path:        fileInfo[6],
-			})
+		}
+		if !opts.Flags.Long {
+			if currentMessage.Type == fileType {
+				current.Files = append(current.Files, LsFile{
+					Path: currentMessage.Path,
+				})
+			}
+			continue
+		}
+		if currentMessage.Type == fileType {
+			current.Size += currentMessage.Size
+			// valid entries for files should have uid, guid and permissions if -l is set
+			// use pointers to distinguish empty value from 0 for root user
+			if currentMessage.Mode != nil && currentMessage.UID != nil && currentMessage.GID != nil {
+				current.Files = append(current.Files, LsFile{
+					Permissions: *currentMessage.Mode,
+					User:        *currentMessage.UID,
+					Group:       *currentMessage.GID,
+					Size:        currentMessage.Size,
+					Time:        currentMessage.Time,
+					Path:        currentMessage.Path,
+				})
+			}
 		}
 	}
-	result = append(result, current)
 
+	result = append(result, current)
 	return result, nil
 }
 
@@ -186,11 +216,8 @@ func GetSnapshotSize(ctx context.Context, snapshotIDs []string) (size uint64) {
 		Flags: &StatsFlags{},
 		IDs:   snapshotIDs,
 	}
-	cmd := cli.CommandType{
-		Binary:  binary,
-		Command: "stats",
-		Args:    append([]string{"--json"}, cli.StructToCLI(&opts)...),
-	}
+	cmd := newCommand("stats", cli.StructToCLI(&opts)...)
+
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return
@@ -212,7 +239,7 @@ func GetSnapshotSizeByPath(ctx context.Context, snapshotID, path string) (size u
 		},
 		SnapshotIDs: []string{snapshotID},
 	}
-	ls, err := Ls(ctx, &opts)
+	ls, err := Ls(ctx, &GlobalOptions{}, &opts)
 
 	if err != nil {
 		return
@@ -230,18 +257,14 @@ func GetSnapshotSizeByPath(ctx context.Context, snapshotID, path string) (size u
 
 // ListSnapshots executes "restic snapshots"
 func ListSnapshots(ctx context.Context, opts *SnapshotOptions) ([]Snapshot, error) {
-	cmd := cli.CommandType{
-		Binary:  binary,
-		Command: "snapshots",
-		Args:    append([]string{"--json"}, cli.StructToCLI(opts)...),
-	}
+	cmd := newCommand("snapshots", cli.StructToCLI(&opts)...)
+
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
-
 	var snapshots []Snapshot
-	if err := json.Unmarshal(out, &snapshots); err != nil {
+	if err = json.Unmarshal(out, &snapshots); err != nil {
 		return nil, err
 	}
 	return snapshots, nil
@@ -249,18 +272,15 @@ func ListSnapshots(ctx context.Context, opts *SnapshotOptions) ([]Snapshot, erro
 
 // Find executes "restic find"
 func Find(ctx context.Context, opts *FindOptions) ([]FindResult, error) {
-	cmd := cli.CommandType{
-		Binary:  binary,
-		Command: "find",
-		Args:    append([]string{"--json"}, cli.StructToCLI(opts)...),
-	}
+	cmd := newCommand("find", cli.StructToCLI(&opts)...)
+
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
 
 	var findResult []FindResult
-	if err := json.Unmarshal(out, &findResult); err != nil {
+	if err = json.Unmarshal(out, &findResult); err != nil {
 		return nil, err
 	}
 	return findResult, nil
@@ -268,11 +288,7 @@ func Find(ctx context.Context, opts *FindOptions) ([]FindResult, error) {
 
 // Check executes "restic check"
 func Check(ctx context.Context, flags *CheckFlags) ([]byte, error) {
-	cmd := cli.CommandType{
-		Binary:  binary,
-		Command: "check",
-		Args:    cli.StructToCLI(flags),
-	}
+	cmd := newCommand("check", cli.StructToCLI(flags)...)
 	return cli.Run(ctx, cmd)
 }
 
@@ -299,54 +315,25 @@ func Forget(
 		return nil, out, err
 	}
 	var deletedSnapshots []string
-
-	lines := strings.Split(string(out), "\n")
-	start := false
-	for _, line := range lines {
-		// check if output prints single remove lines (if concrete snapshot id(s) are given)
-		concreteID := forgetConcreteSnapshotPattern.FindStringSubmatch(line)
-		if len(concreteID) > 0 {
-			deletedSnapshots = append(deletedSnapshots, concreteID[1])
-			continue
-		}
-
-		// check if end of relevant output is reached
-		finish := forgetSnapshotFinishedPattern.MatchString(line)
-		if finish {
-			break
-		}
-
-		// check if deleted snapshots block starts
-		if !start {
-			match := forgetSnapshotStartPattern.MatchString(line)
-			if match {
-				start = true
+	var forgetResponse ForgetResponse
+	err = json.Unmarshal(out, &forgetResponse)
+	if err != nil {
+		return nil, out, err
+	}
+	for idx := range forgetResponse.Tags {
+		for index := range forgetResponse.Tags[idx].Remove {
+			if forgetResponse.Tags[idx].Remove[index].ID != nil {
+				deletedSnapshots = append(deletedSnapshots, *forgetResponse.Tags[idx].Remove[index].ID)
 			}
-			continue
-		}
-
-		// check if delete snapshots block ends
-		if line == "" {
-			start = false
-		}
-
-		// check if line contains a deleted snapshot id
-		match := forgetSnapshotPattern.FindStringSubmatch(line)
-		if len(match) > 0 {
-			deletedSnapshots = append(deletedSnapshots, match[1])
 		}
 	}
-
 	return deletedSnapshots, out, nil
 }
 
 // Prune executes "restic prune"
 func Prune(ctx context.Context) ([]byte, error) {
-	cmd := cli.CommandType{
-		Binary:  binary,
-		Command: "prune",
-		Args:    nil,
-	}
+	cmd := newCommand("prune", nil...)
+
 	return cli.Run(ctx, cmd)
 }
 
@@ -366,11 +353,8 @@ func RebuildIndex(ctx context.Context) ([]byte, error) {
 
 // RestoreBackup executes "restic restore"
 func RestoreBackup(ctx context.Context, opts *RestoreOptions) ([]byte, error) {
-	cmd := cli.CommandType{
-		Binary:  binary,
-		Command: "restore",
-		Args:    cli.StructToCLI(opts),
-	}
+	cmd := newCommand("restore", cli.StructToCLI(opts)...)
+
 	return cli.Run(ctx, cmd)
 }
 
@@ -379,21 +363,14 @@ func Unlock(ctx context.Context, globalOpts *GlobalOptions, unlockOpts *UnlockOp
 	var args []string
 	args = cli.StructToCLI(globalOpts)
 	args = append(args, cli.StructToCLI(unlockOpts)...)
+	cmd := newCommand("unlock", args...)
 
-	cmd := cli.CommandType{
-		Binary:  binary,
-		Command: "unlock",
-		Args:    args,
-	}
 	return cli.Run(ctx, cmd)
 }
 
 // Tag executes "restic tag"
 func Tag(ctx context.Context, opts *TagOptions) ([]byte, error) {
-	cmd := cli.CommandType{
-		Binary:  binary,
-		Command: "tag",
-		Args:    cli.StructToCLI(opts),
-	}
+	cmd := newCommand("tag", cli.StructToCLI(opts)...)
+
 	return cli.Run(ctx, cmd)
 }

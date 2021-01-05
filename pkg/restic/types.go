@@ -7,18 +7,18 @@ type GlobalOptions struct {
 
 // Global restic flags
 type GlobalFlags struct {
-	CaCert        string `flag:"--cacert"`
-	CacheDir      string `flag:"--cache-dir"`
-	CleanupCache  bool   `flag:"--cleanup-cache"`
-	KeyHint       string `flag:"--key-hint"`
-	LimitDownload int    `flag:"--limit-download"`
-	LimitUpload   int    `flag:"--limit-upload"`
-	NoCache       bool   `flag:"--no-cache"`
-	NoLock        bool   `flag:"--no-lock"`
-	PasswordFile  string `flag:"--password-file"`
-	Repo          string `flag:"--repo"`
-	TLSClientCert string `flag:"--tls-client-cert"`
-	//--json                     set output mode to JSON for commands that support it
+	CaCert         string `flag:"--cacert"`
+	CacheDir       string `flag:"--cache-dir"`
+	CleanupCache   bool   `flag:"--cleanup-cache"`
+	KeyHint        string `flag:"--key-hint"`
+	LimitDownload  int    `flag:"--limit-download"`
+	LimitUpload    int    `flag:"--limit-upload"`
+	NoCache        bool   `flag:"--no-cache"`
+	NoLock         bool   `flag:"--no-lock"`
+	PasswordFile   string `flag:"--password-file"`
+	Repo           string `flag:"--repo"`
+	RepositoryFile string `flag:"--repository-file"`
+	TLSClientCert  string `flag:"--tls-client-cert"`
 }
 
 // BackupResult for cmd "restic backup"
@@ -35,16 +35,25 @@ type BackupOptions struct {
 
 // BackupFlags for cmd: "restic backup"
 type BackupFlags struct {
-	Exclude       []string `flag:"-e"`
-	ExcludeCaches bool     `flag:"--exclude-caches"`
-	Force         bool     `flag:"-f"`
-	Host          string   `flag:"--host"`
-	OneFileSystem bool     `flag:"-x"`
-	Parent        string   `flag:"--parent"`
-	Tags          []string `flag:"--tag"`
-	Time          string   `flag:"--time"`
-	Stdin         bool     `flag:"--stdin"`
-	StdinFilename string   `flag:"--stdin-filename"`
+	Exclude           []string `flag:"-e"`
+	ExcludeCaches     bool     `flag:"--exclude-caches"`
+	ExcludeFile       string   `flag:"--exclude-file"`
+	ExcludeLargerThan int      `flag:"exclude-larger-than"`
+	FilesFromFile     []string `flag:"--files-from file"`
+	FilesFromRaw      []string `flag:"--files-from-raw file"`
+	FilesFromVerbatim string   `flag:"--files-from-verbatim file"`
+	Force             bool     `flag:"-f"`
+	Host              string   `flag:"--host"`
+	IexcludeFile      string   `flag:"--iexclude-file"`
+	IexCludePattern   string   `flag:"--iexclude-pattern"`
+	IgnoreInode       bool     `flag:"--ignore-inode"`
+	OneFileSystem     bool     `flag:"-x"`
+	Parent            string   `flag:"--parent"`
+	Stdin             bool     `flag:"--stdin"`
+	StdinFilename     string   `flag:"--stdin-filename"`
+	Tags              []string `flag:"--tag"`
+	Time              string   `flag:"--time"`
+	WithAtime         bool     `flag:"--with-atime"`
 }
 
 // StatsOptions for cmd: "restic stats"
@@ -53,11 +62,13 @@ type StatsOptions struct {
 	IDs   []string
 }
 
+// StatsFlags for cmd: "restic stats"
 type StatsFlags struct {
 	Host string `flag:"--host"`
 	Mode string `flag:"--mode"`
 }
 
+// Stats for "restic stats" json-logging
 type Stats struct {
 	TotalSize      uint64 `json:"total_size"`
 	TotalFileCount uint64 `json:"total_file_count"`
@@ -70,6 +81,11 @@ type SnapshotOptions struct {
 	IDs   []string
 }
 
+// Response wraps summary and status responses from "restic backup"
+type Response struct {
+	Responses []interface{}
+}
+
 // SnapshotFlags for cmd: "restic snapshots"
 type SnapshotFlags struct {
 	Host  string   `flag:"-H"`
@@ -79,15 +95,15 @@ type SnapshotFlags struct {
 
 // Snapshot type for the (json-)result of "restic snapshots"
 type Snapshot struct {
-	ID       string   `json:"id"`
+	ID       *string  `json:"id"`
 	Time     string   `json:"time"`
 	Tree     string   `json:"tree"`
-	Tags     []string `json:"tags,omitempty"`
+	Tags     []string `json:"tags"`
 	Paths    []string `json:"paths"`
 	Hostname string   `json:"hostname"`
 	Username string   `json:"username"`
-	UID      int      `json:"uid"`
-	GID      int      `json:"gid"`
+	UID      *int     `json:"uid"`
+	GID      *int     `json:"gid"`
 }
 
 // CheckFlags for cmd: "restic check"
@@ -119,6 +135,49 @@ type ForgetFlags struct {
 	DryRun      bool     `flag:"-n"`
 	Prune       bool     `flag:"--prune"`
 	Compact     bool     `flag:"--compact"`
+}
+
+// ForgetResponse for "restic forget" json-logging
+type ForgetResponse struct {
+	Tags []*ForgetTag
+}
+
+// ForgetTag for "restic forget" json-logging
+type ForgetTag struct {
+	Tags    []string       `json:"tags"`
+	Host    string         `json:"host"`
+	Paths   []string       `json:"paths"`
+	Keep    []Snapshot     `json:"keep"`
+	Remove  []Snapshot     `json:"remove"`
+	Reasons []ForgetReason `json:"reasons"`
+}
+
+// ForgetReason for "restic forget" json-logging
+type ForgetReason struct {
+	Snapshot Snapshot `json:"snapshot"`
+	Matches  []string `json:"matches"`
+	Counters Counters `Json:"counters"`
+}
+
+// Counters for "restic forget" json-logging
+type Counters struct {
+	Last    int `json:"last"`
+	Hourly  int `json:"hourly"`
+	Daily   int `json:"daily"`
+	Weekly  int `json:"weekly"`
+	Monthly int `json:"monthly"`
+	Yearly  int `json:"yearly"`
+}
+
+// ForgetSnapshot for "restic forget" json-logging
+type ForgetSnapshot struct {
+	Time     string   `json:"time"`
+	Tree     string   `json:"tree"`
+	Paths    []string `json:"paths"`
+	Hostname string   `json:"hostname"`
+	Username string   `json:"username"`
+	UID      *int     `json:"uid"`
+	GID      *int     `json:"gid"`
 }
 
 // RestoreOptions for cmd: "restic restore"
@@ -182,7 +241,7 @@ type FindFlags struct {
 type FindResult struct {
 	Matches    []FindMatch `json:"matches"`
 	Hits       int         `json:"hits"`
-	SnapshotID string      `json:"snapshot"`
+	SnapshotID *string     `json:"snapshot"`
 }
 
 // FindMatch represents one match of "restic find"
@@ -190,12 +249,12 @@ type FindMatch struct {
 	Path        string `json:"path"`
 	Permissions string `json:"permissions"`
 	Type        string `json:"type"`
-	Mode        int    `json:"mode"`
+	Mode        *int   `json:"mode"`
 	MTime       string `json:"mtime"`
 	ATime       string `json:"atime"`
 	CTime       string `json:"ctime"`
-	UID         int    `json:"uid"`
-	GID         int    `json:"gid"`
+	UID         *int   `json:"uid"`
+	GID         *int   `json:"gid"`
 	User        string `json:"user"`
 	DeviceID    int    `json:"device_id"`
 	Size        int    `json:"size"`
@@ -225,14 +284,36 @@ type LsResult struct {
 	Size       uint64
 }
 
+// LsMessage for "resitc ls" json-logging
+type LsMessage struct {
+	Time       string   `json:"time"`
+	Tree       string   `json:"tree"`
+	Paths      []string `json:"paths"`
+	Hostname   string   `json:"hostname"`
+	Username   string   `json:"username"`
+	UID        *int     `json:"uid"`
+	GID        *int     `json:"gid"`
+	ID         *string  `json:"id"`
+	ShortID    *string  `json:"short_id"`
+	StructType string   `json:"struct_type"`
+	Name       string   `json:"name"`
+	Type       string   `json:"type"`
+	Path       string   `json:"path"`
+	Size       uint64   `json:"size"`
+	Mode       *int     `json:"mode"`
+	MTime      string   `json:"mtime"`
+	CTime      string   `json:"ctime"`
+	ATime      string   `json:"atime"`
+}
+
 // LsFile for cmd "restic ls"
 type LsFile struct {
-	Permissions string `json:"permissions"`
-	User        string `json:"user"`
-	Group       string `json:"group"`
-	Size        uint64 `json:"size"`
-	Time        string `json:"time"`
-	Path        string `json:"path"`
+	Permissions int
+	User        int
+	Group       int
+	Size        uint64
+	Time        string
+	Path        string
 }
 
 // UnlockOptions for cmd "restic unlock"
