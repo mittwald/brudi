@@ -31,6 +31,7 @@ const tableName = "test"
 const restoreKind = "pg_restore"
 const dumpKind = "pgdump"
 const hostName = "127.0.0.1"
+const dbDriver = "pgx"
 
 type PGDumpTestSuite struct {
 	suite.Suite
@@ -144,10 +145,7 @@ func scanResult(result *sql.Rows) ([]TestStruct, error) {
 
 // restorePGDump pulls data from restic repository and uses pg_restore to restore it to the given databse
 func restorePGDump(ctx context.Context, resticContainer, restoreTarget commons.TestContainerSetup) error {
-	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
-		resticContainer.Address, resticContainer.Port),
-		"--target", dataDir, "latest")
-	_, err := cmd.CombinedOutput()
+	err := commons.DoResticRestore(ctx, resticContainer, dataDir)
 	if err != nil {
 		return err
 	}
@@ -176,7 +174,7 @@ func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic
 	// connect to postgres database using the driver
 	backupConnectionString := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable", postgresUser,
 		postgresPW, pgBackupTarget.Address, pgBackupTarget.Port, postgresDB)
-	db, err := sql.Open("pgx", backupConnectionString)
+	db, err := sql.Open(dbDriver, backupConnectionString)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
 		dbErr := db.Close()
@@ -226,7 +224,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 
 	restoreConnectionString := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable",
 		postgresUser, postgresPW, pgRestoreTarget.Address, pgRestoreTarget.Port, postgresDB)
-	dbRestore, err := sql.Open("pgx", restoreConnectionString)
+	dbRestore, err := sql.Open(dbDriver, restoreConnectionString)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
 		dbErr := dbRestore.Close()
@@ -290,7 +288,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 
 	restoreConnectionString := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable",
 		postgresUser, postgresPW, pgRestoreTarget.Address, pgRestoreTarget.Port, postgresDB)
-	dbRestore, err := sql.Open("pgx", restoreConnectionString)
+	dbRestore, err := sql.Open(dbDriver, restoreConnectionString)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
 		dbErr := dbRestore.Close()

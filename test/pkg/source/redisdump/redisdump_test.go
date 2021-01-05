@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 
@@ -138,8 +137,8 @@ func doRedisBackup(ctx context.Context, redisDumpTestSuite *RedisDumpTestSuite, 
 	err = redisClient.Set("type", testType, 0).Err()
 	redisDumpTestSuite.Require().NoError(err)
 
-	testRedisConfig := createRedisConfig(redisBackupTarget, useRestic, resticContainer.Address, resticContainer.Port)
-	err = viper.ReadConfig(bytes.NewBuffer(testRedisConfig))
+	redisBackupConfig := createRedisConfig(redisBackupTarget, useRestic, resticContainer.Address, resticContainer.Port)
+	err = viper.ReadConfig(bytes.NewBuffer(redisBackupConfig))
 	redisDumpTestSuite.Require().NoError(err)
 
 	// perform backup action on first redis container
@@ -197,15 +196,13 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	// setup a redis container, populate it with test data and perform a backup
 	doRedisBackup(ctx, redisDumpTestSuite, true, resticContainer)
 
-	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
-		resticContainer.Address, resticContainer.Port),
-		"--target", dataDir, "latest")
+	// pull backup from restic repo
+	err = commons.DoResticRestore(ctx, resticContainer, dataDir)
+	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
 		removeErr := os.RemoveAll(dataDir)
 		redisDumpTestSuite.Require().NoError(removeErr)
 	}()
-	_, err = cmd.CombinedOutput()
-	redisDumpTestSuite.Require().NoError(err)
 
 	// setup a new redis-container which loads the backup as a volume
 	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, &redisRestoreRequest, redisPort)

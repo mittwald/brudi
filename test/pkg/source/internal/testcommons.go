@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/spf13/viper"
+	"os/exec"
 	"strings"
 
 	"github.com/docker/go-connections/nat"
@@ -60,4 +61,12 @@ func TestSetup() {
 	viper.SetConfigType("yaml")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
+}
+
+func DoResticRestore(ctx context.Context, resticContainer TestContainerSetup, dataDir string) error {
+	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
+		resticContainer.Address, resticContainer.Port),
+		"--target", dataDir, "latest")
+	_, err := cmd.CombinedOutput()
+	return err
 }

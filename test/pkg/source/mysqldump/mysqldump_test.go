@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 
@@ -27,12 +26,14 @@ const backupPath = "/tmp/test.sqldump"
 const mySQLRootPW = "mysqlroot"
 const mySQLDatabase = "mysql"
 const mySQLUser = "mysqluser"
+const mySQLRoot = "root"
 const mySQLPw = "mysql"
 const dataDir = "data"
 const dumpKind = "mysqldump"
 const dbDriver = "mysql"
 const tableName = "testTable"
-const hostName = "127.0.0.1"
+const hostName = "127.0.0.1" // mysql does not like localhost, therefore use this as address
+const logString = "port: 3306  MySQL Community Server - GPL"
 
 type MySQLDumpTestSuite struct {
 	suite.Suite
@@ -55,7 +56,7 @@ var mySQLRequest = testcontainers.ContainerRequest{
 		"MYSQL_PASSWORD":      mySQLPw,
 	},
 	Cmd:        []string{"--default-authentication-plugin=mysql_native_password"},
-	WaitingFor: wait.ForLog("port: 3306  MySQL Community Server - GPL"),
+	WaitingFor: wait.ForLog(logString),
 }
 
 // SetupTest resets and
@@ -68,7 +69,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
-// createMySQLConfig creates a brudi config for the mysqlodump command.
+// createMySQLConfig creates a brudi config for the `mysqlodump` command.
 func createMySQLConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
 	if !useRestic {
 		return []byte(fmt.Sprintf(`
@@ -78,12 +79,12 @@ mysqldump:
       host: %s
       port: %s
       password: %s
-      user: root
+      user: %s
       opt: true
       allDatabases: true
       resultFile: %s
     additionalArgs: []
-`, hostName, container.Port, mySQLRootPW, backupPath)) // address is hardcoded because the sql driver doesn't like 'localhost'
+`, hostName, container.Port, mySQLRootPW, mySQLRoot, backupPath))
 	}
 	return []byte(fmt.Sprintf(`
 mysqldump:
@@ -92,7 +93,7 @@ mysqldump:
       host: %s
       port: %s
       password: %s
-      user: root
+      user: %s
       opt: true
       allDatabases: true
       resultFile: %s
@@ -109,7 +110,7 @@ restic:
       keepWeekly: 0
       keepMonthly: 0
       keepYearly: 0
-`, hostName, container.Port, mySQLRootPW, backupPath, resticIP, resticPort))
+`, hostName, container.Port, mySQLRootPW, mySQLRoot, backupPath, resticIP, resticPort))
 }
 
 // prepareTestData creates test data and inserts it into the given database
@@ -162,8 +163,9 @@ func mySQLDoBackup(ctx context.Context, mySQLDumpTestSuite *MySQLDumpTestSuite, 
 		mySQLDumpTestSuite.Require().NoError(backupErr)
 	}()
 
-	backupConnectionString := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
-		mySQLRootPW, mySQLBackupTarget.Address, mySQLBackupTarget.Port, mySQLDatabase)
+	// establish connection
+	backupConnectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
+		mySQLRoot, mySQLRootPW, mySQLBackupTarget.Address, mySQLBackupTarget.Port, mySQLDatabase)
 	db, err := sql.Open(dbDriver, backupConnectionString)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
@@ -171,14 +173,16 @@ func mySQLDoBackup(ctx context.Context, mySQLDumpTestSuite *MySQLDumpTestSuite, 
 		mySQLDumpTestSuite.Require().NoError(dbErr)
 	}()
 
+	// create table for test data
 	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));", tableName))
 	mySQLDumpTestSuite.Require().NoError(err)
 
+	// insert test data
 	testData, err := prepareTestData(db)
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	testMySQLConfig := createMySQLConfig(mySQLBackupTarget, useRestic, resticContainer.Address, resticContainer.Port)
-	err = viper.ReadConfig(bytes.NewBuffer(testMySQLConfig))
+	MySQLBackupConfig := createMySQLConfig(mySQLBackupTarget, useRestic, resticContainer.Address, resticContainer.Port)
+	err = viper.ReadConfig(bytes.NewBuffer(MySQLBackupConfig))
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
@@ -200,8 +204,9 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 		mySQLDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	restoreConnectionString := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
-		mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase)
+	// establish connection for restoring data
+	restoreConnectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
+		mySQLRoot, mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase)
 	dbRestore, err := sql.Open(dbDriver, restoreConnectionString)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
@@ -213,6 +218,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	err = restoreSQLFromBackup(backupPath, dbRestore)
 	mySQLDumpTestSuite.Require().NoError(err)
 
+	// remove backup files
 	err = os.Remove(backupPath)
 	mySQLDumpTestSuite.Require().NoError(err)
 
@@ -263,8 +269,8 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 		mySQLDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	restoreConnectionString := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
-		mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase)
+	restoreConnectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
+		mySQLRoot, mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase)
 	dbRestore, err := sql.Open(dbDriver, restoreConnectionString)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
@@ -273,15 +279,13 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 	}()
 
 	// restore backup file from restic repository
-	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
-		resticContainer.Address, resticContainer.Port),
-		"--target", dataDir, "latest")
-	_, err = cmd.CombinedOutput()
+	err = commons.DoResticRestore(ctx, resticContainer, dataDir)
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	err = restoreSQLFromBackup(fmt.Sprintf("%s/%s", dataDir, backupPath), dbRestore)
 	mySQLDumpTestSuite.Require().NoError(err)
 
+	// check if data was restored correctly
 	result, err := dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
 	mySQLDumpTestSuite.Require().NoError(err)
 	mySQLDumpTestSuite.Require().NoError(result.Err())
