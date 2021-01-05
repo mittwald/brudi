@@ -190,14 +190,18 @@ func LsResponseFromJSON(jsonLog []byte, opts *LsOptions) ([]LsResult, error) {
 		}
 		if currentMessage.Type == fileType {
 			current.Size += currentMessage.Size
-			current.Files = append(current.Files, LsFile{
-				Permissions: currentMessage.Mode,
-				User:        currentMessage.UID,
-				Group:       currentMessage.GID,
-				Size:        currentMessage.Size,
-				Time:        currentMessage.Time,
-				Path:        currentMessage.Path,
-			})
+			// valid entries for files should have uid, guid and permissions if -l is set.
+			// use pointers to distinguish empty value from 0 for root user
+			if currentMessage.Mode != nil && currentMessage.UID != nil && currentMessage.GID != nil {
+				current.Files = append(current.Files, LsFile{
+					Permissions: *currentMessage.Mode,
+					User:        *currentMessage.UID,
+					Group:       *currentMessage.GID,
+					Size:        currentMessage.Size,
+					Time:        currentMessage.Time,
+					Path:        currentMessage.Path,
+				})
+			}
 		}
 	}
 

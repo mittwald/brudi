@@ -102,8 +102,8 @@ type Snapshot struct {
 	Paths    []string `json:"paths"`
 	Hostname string   `json:"hostname"`
 	Username string   `json:"username"`
-	UID      int      `json:"uid"`
-	GID      int      `json:"gid"`
+	UID      *int     `json:"uid"`
+	GID      *int     `json:"gid"`
 }
 
 // CheckFlags for cmd: "restic check"
@@ -176,8 +176,8 @@ type ForgetSnapshot struct {
 	Paths    []string `json:"paths"`
 	Hostname string   `json:"hostname"`
 	Username string   `json:"username"`
-	UID      int      `json:"uid"`
-	GID      int      `json:"gid"`
+	UID      *int     `json:"uid"`
+	GID      *int     `json:"gid"`
 }
 
 // RestoreOptions for cmd: "restic restore"
@@ -249,12 +249,12 @@ type FindMatch struct {
 	Path        string `json:"path"`
 	Permissions string `json:"permissions"`
 	Type        string `json:"type"`
-	Mode        int    `json:"mode"`
+	Mode        *int   `json:"mode"`
 	MTime       string `json:"mtime"`
 	ATime       string `json:"atime"`
 	CTime       string `json:"ctime"`
-	UID         int    `json:"uid"`
-	GID         int    `json:"gid"`
+	UID         *int   `json:"uid"`
+	GID         *int   `json:"gid"`
 	User        string `json:"user"`
 	DeviceID    int    `json:"device_id"`
 	Size        int    `json:"size"`
@@ -291,8 +291,8 @@ type LsMessage struct {
 	Paths      []string `json:"paths"`
 	Hostname   string   `json:"hostname"`
 	Username   string   `json:"username"`
-	UID        int      `json:"uid"`
-	GID        int      `json:"gid"`
+	UID        *int     `json:"uid"`
+	GID        *int     `json:"gid"`
 	ID         *string  `json:"id"`
 	ShortID    *string  `json:"short_id"`
 	StructType string   `json:"struct_type"`
@@ -300,7 +300,7 @@ type LsMessage struct {
 	Type       string   `json:"type"`
 	Path       string   `json:"path"`
 	Size       uint64   `json:"size"`
-	Mode       int      `json:"mode"`
+	Mode       *int     `json:"mode"`
 	MTime      string   `json:"mtime"`
 	CTime      string   `json:"ctime"`
 	ATime      string   `json:"atime"`
