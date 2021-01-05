@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/mittwald/brudi/pkg/source"
@@ -27,6 +26,7 @@ const mongoPW = "mongodbroot"
 const mongoUser = "root"
 const dataDir = "data"
 
+// TestColl holds test data for integration tests
 type TestColl struct {
 	Name string
 	Age  int
@@ -37,16 +37,15 @@ type MongoDumpTestSuite struct {
 }
 
 func (mongoDumpTestSuite *MongoDumpTestSuite) SetupTest() {
-	viper.Reset()
-	viper.SetConfigType("yaml")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
+	commons.TestSetup()
 }
 
+// TearDownTest resets viper after a test
 func (mongoDumpTestSuite *MongoDumpTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
+// mongorequest is a testcontainers.ContainerRequest for a basic mongodb testcontainer
 var mongoRequest = testcontainers.ContainerRequest{
 	Image:        "mongo:latest",
 	ExposedPorts: []string{mongoPort},
@@ -66,7 +65,7 @@ func execCommand(ctx context.Context, cmd string, args ...string) ([]byte, error
 	return out, nil
 }
 
-// newMongoClient creates a mongo client connected to the database specified by the provided TestContainerSetup
+// newMongoClient creates a mongo client connected to the database specified by the provided commons.TestContainerSetup
 func newMongoClient(target *commons.TestContainerSetup) (mongo.Client, error) {
 	backupClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", target.Address,
 		target.Port))
@@ -167,6 +166,8 @@ func mongoDoBackup(ctx context.Context, mongoDumpTestSuite *MongoDumpTestSuite, 
 		backErr := mongoBackupTarget.Container.Terminate(ctx)
 		mongoDumpTestSuite.Require().NoError(backErr)
 	}()
+
+	// client to insert test data into database
 	var backupClient mongo.Client
 	backupClient, err = newMongoClient(&mongoBackupTarget)
 	mongoDumpTestSuite.Require().NoError(err)
@@ -254,6 +255,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 
 	testData := mongoDoBackup(ctx, mongoDumpTestSuite, true, resticContainer)
 
+	// create new databse container for restoration purposes
 	var mongoRestoreTarget commons.TestContainerSetup
 	mongoRestoreTarget, err = commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
 	mongoDumpTestSuite.Require().NoError(err)
@@ -269,6 +271,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	_, err = cmd.CombinedOutput()
 	mongoDumpTestSuite.Require().NoError(err)
 
+	// restore data to mongodb
 	cmd = exec.CommandContext(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
 		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port),
 		fmt.Sprintf("--archive=%s/%s", dataDir, backupPath), "--gzip", fmt.Sprintf("--username=%s", mongoUser),
@@ -280,6 +283,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	err = os.RemoveAll(dataDir)
 	mongoDumpTestSuite.Require().NoError(err)
 
+	// setup a client to connect to restored database and pull data
 	var restoreClient mongo.Client
 	restoreClient, err = newMongoClient(&mongoRestoreTarget)
 	mongoDumpTestSuite.Require().NoError(err)
@@ -288,8 +292,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 		mongoDumpTestSuite.Require().NoError(clientErr)
 	}()
 
+	// pull restored data from database
 	restoredCollection := restoreClient.Database("test").Collection("testColl")
-
 	findOptions := options.Find()
 	var cur *mongo.Cursor
 	cur, err = restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)

@@ -3,6 +3,8 @@ package internal
 import (
 	"context"
 	"fmt"
+	"github.com/spf13/viper"
+	"strings"
 
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
@@ -50,4 +52,12 @@ func NewTestContainerSetup(ctx context.Context, request *testcontainers.Containe
 	result.Address = host
 
 	return result, nil
+}
+
+// TestSetup resets Viper and then performs initialization
+func TestSetup() {
+	viper.Reset()
+	viper.SetConfigType("yaml")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
 }

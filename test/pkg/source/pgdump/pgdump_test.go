@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"testing"
 	"time"
 
@@ -51,12 +50,10 @@ var pgRequest = testcontainers.ContainerRequest{
 }
 
 func (pgDumpTestSuite *PGDumpTestSuite) SetupTest() {
-	viper.Reset()
-	viper.SetConfigType("yaml")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
+	commons.TestSetup()
 }
 
+// TearDownTest resets viper after test
 func (pgDumpTestSuite *PGDumpTestSuite) TearDownTest() {
 	viper.Reset()
 }
@@ -141,6 +138,7 @@ func scanResult(result *sql.Rows) ([]TestStruct, error) {
 	return restoreResult, nil
 }
 
+// restorePGDump pulls data from restic repository and uses pg_restore to restore it to the given databse
 func restorePGDump(ctx context.Context, resticContainer, restoreTarget commons.TestContainerSetup) error {
 	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
 		resticContainer.Address, resticContainer.Port),
@@ -160,6 +158,7 @@ func restorePGDump(ctx context.Context, resticContainer, restoreTarget commons.T
 	return nil
 }
 
+// pgDoBackup populates a database with data and performs a backup, optionally with restic
 func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic bool,
 	resticContainer commons.TestContainerSetup) []TestStruct {
 	// create a postgres container to test backup function
@@ -171,16 +170,16 @@ func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic
 	}()
 
 	// connect to postgres database using the driver
-	connectionString := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable", postgresUser,
+	backupConnectionString := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable", postgresUser,
 		postgresPW, pgBackupTarget.Address, pgBackupTarget.Port, postgresDB)
-	db, err := sql.Open("pgx", connectionString)
+	db, err := sql.Open("pgx", backupConnectionString)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
 		dbErr := db.Close()
 		pgDumpTestSuite.Require().NoError(dbErr)
 	}()
 
-	// these are necessary, otherwise pgserver resets connections
+	// necessary, otherwise pgserver resets connections
 	time.Sleep(1 * time.Second)
 	err = db.Ping()
 	pgDumpTestSuite.Require().NoError(err)
@@ -221,15 +220,16 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 		pgDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	connectionString2 := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable",
+	restoreConnectionString := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable",
 		postgresUser, postgresPW, pgRestoreTarget.Address, pgRestoreTarget.Port, postgresDB)
-	dbRestore, err := sql.Open("pgx", connectionString2)
+	dbRestore, err := sql.Open("pgx", restoreConnectionString)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
 		dbErr := dbRestore.Close()
 		pgDumpTestSuite.Require().NoError(dbErr)
 	}()
 
+	// necessary, otherwise pgserver resets connections
 	time.Sleep(1 * time.Second)
 	err = dbRestore.Ping()
 	pgDumpTestSuite.Require().NoError(err)
@@ -284,15 +284,16 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 		pgDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	connectionString2 := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable",
+	restoreConnectionString := fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable",
 		postgresUser, postgresPW, pgRestoreTarget.Address, pgRestoreTarget.Port, postgresDB)
-	dbRestore, err := sql.Open("pgx", connectionString2)
+	dbRestore, err := sql.Open("pgx", restoreConnectionString)
 	pgDumpTestSuite.Require().NoError(err)
 	defer func() {
 		dbErr := dbRestore.Close()
 		pgDumpTestSuite.Require().NoError(dbErr)
 	}()
 
+	// necessary, otherwise pgserver resets connections
 	time.Sleep(1 * time.Second)
 	err = dbRestore.Ping()
 	pgDumpTestSuite.Require().NoError(err)

@@ -34,12 +34,22 @@ type RedisDumpTestSuite struct {
 	suite.Suite
 }
 
+// redisRequest is a request for a blank redis container
 var redisRequest = testcontainers.ContainerRequest{
 	Image:        "redis:alpine",
 	ExposedPorts: []string{redisPort},
 	WaitingFor:   wait.ForLog("Ready to accept connections"),
 }
 
+// redisRestoreRequest is a request for a redis container that mounts an rdb-file from backupPath to initialize the database
+var redisRestoreRequest = testcontainers.ContainerRequest{
+	Image:        "redis:alpine",
+	ExposedPorts: []string{redisPort},
+	WaitingFor:   wait.ForLog("Ready to accept connections"),
+	BindMounts:   map[string]string{backupPath: "/data/dump.rdb"},
+}
+
+// createRedisConfig returns a brudi config for redis
 func createRedisConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
 	if !useRestic {
 		return []byte(fmt.Sprintf(`
@@ -78,12 +88,10 @@ restic:
 }
 
 func (redisDumpTestSuite *RedisDumpTestSuite) SetupTest() {
-	viper.Reset()
-	viper.SetConfigType("yaml")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
+	commons.TestSetup()
 }
 
+// TearDownTest resets viper after test
 func (redisDumpTestSuite *RedisDumpTestSuite) TearDownTest() {
 	viper.Reset()
 }
@@ -103,10 +111,9 @@ func createContainerFromCompose() (*testcontainers.LocalDockerCompose, error) {
 	return compose, nil
 }
 
-func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
-	ctx := context.Background()
-
-	// create a redis container to test backup function
+// doResticBackup  populates a database with test data and performs a backup
+func doRedisBackup(ctx context.Context, redisDumpTestSuite *RedisDumpTestSuite, useRestic bool,
+	resticContainer commons.TestContainerSetup) {
 	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, redisPort)
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
@@ -131,23 +138,31 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	err = redisClient.Set("type", testType, 0).Err()
 	redisDumpTestSuite.Require().NoError(err)
 
-	testRedisConfig := createRedisConfig(redisBackupTarget, false, "", "")
+	testRedisConfig := createRedisConfig(redisBackupTarget, useRestic, resticContainer.Address, resticContainer.Port)
 	err = viper.ReadConfig(bytes.NewBuffer(testRedisConfig))
 	redisDumpTestSuite.Require().NoError(err)
 
 	// perform backup action on first redis container
-	err = source.DoBackupForKind(ctx, "redisdump", false, false, false)
+	err = source.DoBackupForKind(ctx, "redisdump", false, useRestic, false)
 	redisDumpTestSuite.Require().NoError(err)
+}
 
-	compose, err := createContainerFromCompose()
+// TestBasicRedisDump performs an integration test for brudi's `redisdump` command without restic
+func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
+	ctx := context.Background()
+
+	// create a redis container to test backup function
+	doRedisBackup(ctx, redisDumpTestSuite, false, commons.TestContainerSetup{Port: "", Address: ""})
+
+	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, &redisRestoreRequest, redisPort)
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
-		composeErr := compose.Down().Error
-		redisDumpTestSuite.Require().NoError(composeErr)
+		restoreErr := redisRestoreTarget.Container.Terminate(ctx)
+		redisDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	redisRestoreClient := redis.NewClient(&redis.Options{Password: redisPW,
-		Addr: fmt.Sprintf("%s:%s", "0.0.0.0", "6379"),
+	redisRestoreClient := redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("%s:%s", redisRestoreTarget.Address, redisRestoreTarget.Port),
 	})
 	defer func() {
 		redisErr := redisRestoreClient.Close()
@@ -165,31 +180,11 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 
 	assert.Equal(redisDumpTestSuite.T(), testName, nameVal)
 	assert.Equal(redisDumpTestSuite.T(), testType, typeVal)
-
-	err = os.Remove(backupPath)
-	redisDumpTestSuite.Require().NoError(err)
 }
 
+// TestBasicRedisDumpRestic performs an integration test for brudi's `redisdump` command with restic
 func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	ctx := context.Background()
-
-	// create a redis container to test backup function
-	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, redisPort)
-	redisDumpTestSuite.Require().NoError(err)
-	defer func() {
-		backupErr := redisBackupTarget.Container.Terminate(ctx)
-		redisDumpTestSuite.Require().NoError(backupErr)
-	}()
-
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("%s:%s", redisBackupTarget.Address, redisBackupTarget.Port),
-	})
-	_, err = redisClient.Ping().Result()
-	redisDumpTestSuite.Require().NoError(err)
-	defer func() {
-		redisErr := redisClient.Close()
-		redisDumpTestSuite.Require().NoError(redisErr)
-	}()
 
 	// setup a container running the restic rest-server
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
@@ -199,19 +194,8 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 		redisDumpTestSuite.Require().NoError(resticErr)
 	}()
 
-	err = redisClient.Set("name", testName, 0).Err()
-	redisDumpTestSuite.Require().NoError(err)
-
-	err = redisClient.Set("type", testType, 0).Err()
-	redisDumpTestSuite.Require().NoError(err)
-
-	testRedisConfig := createRedisConfig(redisBackupTarget, true, resticContainer.Address, resticContainer.Port)
-	err = viper.ReadConfig(bytes.NewBuffer(testRedisConfig))
-	redisDumpTestSuite.Require().NoError(err)
-
-	// perform backup action on first redis container
-	err = source.DoBackupForKind(ctx, "redisdump", false, true, false)
-	redisDumpTestSuite.Require().NoError(err)
+	// setup a redis container, populate it with test data and perform a backup
+	doRedisBackup(ctx, redisDumpTestSuite, true, resticContainer)
 
 	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
 		resticContainer.Address, resticContainer.Port),
@@ -223,20 +207,21 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	_, err = cmd.CombinedOutput()
 	redisDumpTestSuite.Require().NoError(err)
 
-	// create second redis container to test dumped values. link dump.rdb as volume
-	compose, err := createContainerFromCompose()
+	// setup a new redis-container which loads the backup as a volume
+	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, &redisRestoreRequest, redisPort)
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
-		composeErr := compose.Down().Error
-		redisDumpTestSuite.Require().NoError(composeErr)
+		restoreErr := redisRestoreTarget.Container.Terminate(ctx)
+		redisDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	redisRestoreClient := redis.NewClient(&redis.Options{Password: "redisdb",
-		Addr: fmt.Sprintf("%s:%s", "0.0.0.0", "6379"),
+	// redis-client to retrieve restored data from database
+	redisRestoreClient := redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("%s:%s", redisRestoreTarget.Address, redisRestoreTarget.Port),
 	})
 	defer func() {
-		restoreErr := redisRestoreClient.Close()
-		redisDumpTestSuite.Require().NoError(restoreErr)
+		redisErr := redisRestoreClient.Close()
+		redisDumpTestSuite.Require().NoError(redisErr)
 	}()
 
 	_, err = redisRestoreClient.Ping().Result()

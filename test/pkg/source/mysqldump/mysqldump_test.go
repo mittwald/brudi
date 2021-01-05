@@ -54,21 +54,18 @@ var mySQLRequest = testcontainers.ContainerRequest{
 	WaitingFor: wait.ForLog("port: 3306  MySQL Community Server - GPL"),
 }
 
+// SetupTest resets and
 func (mySQLDumpTestSuite *MySQLDumpTestSuite) SetupTest() {
-	viper.Reset()
-	viper.SetConfigType("yaml")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
+	commons.TestSetup()
 }
 
+// TearDownTest resets viper after a test
 func (mySQLDumpTestSuite *MySQLDumpTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
 // createMySQLConfig creates a brudi config for the mysqlodump command.
 func createMySQLConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
-	fmt.Println(resticIP)
-	fmt.Println(resticPort)
 	if !useRestic {
 		return []byte(fmt.Sprintf(`
 mysqldump:
@@ -141,7 +138,6 @@ func restoreSQLFromBackup(filename string, database *sql.DB) error {
 	}
 
 	requests := strings.Split(string(file), ";\n")
-
 	for _, request := range requests {
 		_, err := database.Exec(request)
 		if err != nil {
@@ -151,6 +147,7 @@ func restoreSQLFromBackup(filename string, database *sql.DB) error {
 	return nil
 }
 
+// mySQLDoBackup inserts test data into the given database and then executes brudi's `mysqldump`
 func mySQLDoBackup(ctx context.Context, mySQLDumpTestSuite *MySQLDumpTestSuite, useRestic bool,
 	resticContainer commons.TestContainerSetup) []TestStruct {
 
@@ -161,9 +158,9 @@ func mySQLDoBackup(ctx context.Context, mySQLDumpTestSuite *MySQLDumpTestSuite, 
 		mySQLDumpTestSuite.Require().NoError(backupErr)
 	}()
 
-	connectionString := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
+	backupConnectionString := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
 		mySQLRootPW, mySQLBackupTarget.Address, mySQLBackupTarget.Port, mySQLDatabase)
-	db, err := sql.Open("mysql", connectionString)
+	db, err := sql.Open("mysql", backupConnectionString)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
 		dbErr := db.Close()
@@ -199,9 +196,9 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 		mySQLDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	connectionString2 := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
+	restoreConnectionString := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
 		mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase)
-	dbRestore, err := sql.Open("mysql", connectionString2)
+	dbRestore, err := sql.Open("mysql", restoreConnectionString)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
 		dbErr := dbRestore.Close()
@@ -262,9 +259,9 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 		mySQLDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
-	connectionString2 := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
+	restoreConnectionString := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
 		mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, "mysql")
-	dbRestore, err := sql.Open("mysql", connectionString2)
+	dbRestore, err := sql.Open("mysql", restoreConnectionString)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
 		dbErr := dbRestore.Close()
