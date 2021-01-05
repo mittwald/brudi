@@ -157,6 +157,7 @@ func getResultsFromCursor(cur *mongo.Cursor) ([]interface{}, error) {
 	return results, nil
 }
 
+// mongoDoBackup performs a mongodump and returns the test data that was used for verification purposes
 func mongoDoBackup(ctx context.Context, mongoDumpTestSuite *MongoDumpTestSuite, useRestic bool,
 	resticContainer commons.TestContainerSetup) []interface{} {
 	// create a mongo container to test backup function
@@ -199,6 +200,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 		mongoDumpTestSuite.Require().NoError(removeErr)
 	}()
 
+	// backup test data with brudi and return data so it can be used to verify the restoration
 	testData := mongoDoBackup(ctx, mongoDumpTestSuite, false, commons.TestContainerSetup{Port: "", Address: ""})
 
 	// setup a new mongo container which will be used to ensure data was backed up correctly
@@ -223,8 +225,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 		mongoDumpTestSuite.Require().NoError(clientErr)
 	}()
 
+	// pull restored data from database
 	restoredCollection := restoreClient.Database("test").Collection("testColl")
-
 	findOptions := options.Find()
 	var cur *mongo.Cursor
 	cur, err = restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)
@@ -238,6 +240,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	assert.DeepEqual(mongoDumpTestSuite.T(), testData, results)
 }
 
+// TestBasicMongoDBDumpRestic performs an integration test for the `mongodump` command with restic support
 func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	ctx := context.Background()
 
