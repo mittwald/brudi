@@ -25,6 +25,10 @@ const backupPath = "/tmp/dump.tar.gz"
 const mongoPW = "mongodbroot"
 const mongoUser = "root"
 const dataDir = "data"
+const dumpKind = "mongodump"
+const restoreKind = "mongorestore"
+const dbName = "test"
+const collName = "testColl"
 
 // TestColl holds test data for integration tests
 type TestColl struct {
@@ -130,7 +134,7 @@ func prepareTestData(client *mongo.Client) ([]interface{}, error) {
 	barColl := TestColl{"Bar", 13}
 	gopherColl := TestColl{"Gopher", 42}
 	testData := []interface{}{fooColl, barColl, gopherColl}
-	collection := client.Database("test").Collection("testColl")
+	collection := client.Database(dbName).Collection(collName)
 	_, err := collection.InsertMany(context.TODO(), testData)
 	if err != nil {
 		return []interface{}{}, err
@@ -186,7 +190,7 @@ func mongoDoBackup(ctx context.Context, mongoDumpTestSuite *MongoDumpTestSuite, 
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// perform backup action on first mongo container
-	err = source.DoBackupForKind(ctx, "mongodump", false, useRestic, false)
+	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	return testData
@@ -213,7 +217,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	}()
 
 	// use `mongorestore` to restore backed up data to new container
-	_, err = execCommand(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
+	_, err = execCommand(ctx, restoreKind, fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
 		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port), fmt.Sprintf("--archive=%s", backupPath),
 		"--gzip", fmt.Sprintf("--username=%s", mongoUser),
 		fmt.Sprintf("--password=%s", mongoPW))
@@ -227,7 +231,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	}()
 
 	// pull restored data from database
-	restoredCollection := restoreClient.Database("test").Collection("testColl")
+	restoredCollection := restoreClient.Database(dbName).Collection(collName)
 	findOptions := options.Find()
 	var cur *mongo.Cursor
 	cur, err = restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)
@@ -272,7 +276,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// restore data to mongodb
-	cmd = exec.CommandContext(ctx, "mongorestore", fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
+	cmd = exec.CommandContext(ctx, restoreKind, fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
 		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port),
 		fmt.Sprintf("--archive=%s/%s", dataDir, backupPath), "--gzip", fmt.Sprintf("--username=%s", mongoUser),
 		fmt.Sprintf("--password=%s", mongoPW))
@@ -293,7 +297,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	}()
 
 	// pull restored data from database
-	restoredCollection := restoreClient.Database("test").Collection("testColl")
+	restoredCollection := restoreClient.Database(dbName).Collection(collName)
 	findOptions := options.Find()
 	var cur *mongo.Cursor
 	cur, err = restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)

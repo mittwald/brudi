@@ -179,10 +179,10 @@ func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic
 		pgDumpTestSuite.Require().NoError(dbErr)
 	}()
 
-	// necessary, otherwise pgserver resets connections
-	time.Sleep(1 * time.Second)
-	err = db.Ping()
-	pgDumpTestSuite.Require().NoError(err)
+	// wait for postgres to be ready for connections
+	for ok := true; ok; ok = db.Ping() != nil {
+		time.Sleep(1 * time.Second)
+	}
 
 	// Create test table
 	_, err = db.Exec("CREATE TABLE test(id serial PRIMARY KEY, name VARCHAR(100) NOT NULL)")
@@ -229,10 +229,10 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 		pgDumpTestSuite.Require().NoError(dbErr)
 	}()
 
-	// necessary, otherwise pgserver resets connections
-	time.Sleep(1 * time.Second)
-	err = dbRestore.Ping()
-	pgDumpTestSuite.Require().NoError(err)
+	// wait for postgres to be ready for connections
+	for ok := true; ok; ok = dbRestore.Ping() != nil {
+		time.Sleep(1 * time.Second)
+	}
 
 	// restore server from pgdump
 	command := exec.CommandContext(ctx, "pg_restore", fmt.Sprintf("--dbname=%s", postgresDB),
@@ -293,10 +293,10 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 		pgDumpTestSuite.Require().NoError(dbErr)
 	}()
 
-	// necessary, otherwise pgserver resets connections
-	time.Sleep(1 * time.Second)
-	err = dbRestore.Ping()
-	pgDumpTestSuite.Require().NoError(err)
+	// wait for postgres to be ready for connections
+	for ok := true; ok; ok = dbRestore.Ping() != nil {
+		time.Sleep(1 * time.Second)
+	}
 
 	err = restorePGDump(ctx, resticContainer, pgRestoreTarget)
 	pgDumpTestSuite.Require().NoError(err)

@@ -27,8 +27,11 @@ const backupPath = "/tmp/test.sqldump"
 const mySQLRootPW = "mysqlroot"
 const mySQLDatabase = "mysql"
 const mySQLUser = "mysqluser"
-const mySQLPW = "mysql"
+const mySQLPw = "mysql"
 const dataDir = "data"
+const dumpKind = "mysqldump"
+const dbDriver = "mysql"
+const tableName = "testTable"
 
 type MySQLDumpTestSuite struct {
 	suite.Suite
@@ -48,7 +51,7 @@ var mySQLRequest = testcontainers.ContainerRequest{
 		"MYSQL_ROOT_PASSWORD": mySQLRootPW,
 		"MYSQL_DATABASE":      mySQLDatabase,
 		"MYSQL_USER":          mySQLUser,
-		"MYSQL_PASSWORD":      mySQLPW,
+		"MYSQL_PASSWORD":      mySQLPw,
 	},
 	Cmd:        []string{"--default-authentication-plugin=mysql_native_password"},
 	WaitingFor: wait.ForLog("port: 3306  MySQL Community Server - GPL"),
@@ -115,7 +118,7 @@ func prepareTestData(database *sql.DB) ([]TestStruct, error) {
 	testData := []TestStruct{testStruct1}
 	var insert *sql.Rows
 	for idx := range testData {
-		insert, err = database.Query(fmt.Sprintf("INSERT INTO test VALUES ( %d, '%s' )", testData[idx].ID, testData[idx].Name))
+		insert, err = database.Query(fmt.Sprintf("INSERT INTO %s VALUES ( %d, '%s' )", tableName, testData[idx].ID, testData[idx].Name))
 		if err != nil {
 			return []TestStruct{}, err
 		}
@@ -160,14 +163,14 @@ func mySQLDoBackup(ctx context.Context, mySQLDumpTestSuite *MySQLDumpTestSuite, 
 
 	backupConnectionString := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
 		mySQLRootPW, mySQLBackupTarget.Address, mySQLBackupTarget.Port, mySQLDatabase)
-	db, err := sql.Open("mysql", backupConnectionString)
+	db, err := sql.Open(dbDriver, backupConnectionString)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
 		dbErr := db.Close()
 		mySQLDumpTestSuite.Require().NoError(dbErr)
 	}()
 
-	_, err = db.Exec("CREATE TABLE test(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));")
+	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));", tableName))
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	testData, err := prepareTestData(db)
@@ -177,7 +180,7 @@ func mySQLDoBackup(ctx context.Context, mySQLDumpTestSuite *MySQLDumpTestSuite, 
 	err = viper.ReadConfig(bytes.NewBuffer(testMySQLConfig))
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	err = source.DoBackupForKind(ctx, "mysqldump", false, useRestic, false)
+	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
 	mySQLDumpTestSuite.Require().NoError(err)
 	return testData
 }
@@ -198,7 +201,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 
 	restoreConnectionString := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
 		mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase)
-	dbRestore, err := sql.Open("mysql", restoreConnectionString)
+	dbRestore, err := sql.Open(dbDriver, restoreConnectionString)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
 		dbErr := dbRestore.Close()
@@ -213,7 +216,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	mySQLDumpTestSuite.Require().NoError(err)
 
 	// check if data was restored correctly
-	result, err := dbRestore.Query("SELECT * FROM test")
+	result, err := dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
 	mySQLDumpTestSuite.Require().NoError(err)
 	mySQLDumpTestSuite.Require().NoError(result.Err())
 	defer func() {
@@ -260,8 +263,8 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 	}()
 
 	restoreConnectionString := fmt.Sprintf("root:%s@tcp(%s:%s)/%s?tls=skip-verify",
-		mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, "mysql")
-	dbRestore, err := sql.Open("mysql", restoreConnectionString)
+		mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase)
+	dbRestore, err := sql.Open(dbDriver, restoreConnectionString)
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
 		dbErr := dbRestore.Close()
@@ -278,7 +281,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 	err = restoreSQLFromBackup(fmt.Sprintf("%s/%s", dataDir, backupPath), dbRestore)
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	result, err := dbRestore.Query("SELECT * FROM test")
+	result, err := dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
 	mySQLDumpTestSuite.Require().NoError(err)
 	mySQLDumpTestSuite.Require().NoError(result.Err())
 	defer func() {
