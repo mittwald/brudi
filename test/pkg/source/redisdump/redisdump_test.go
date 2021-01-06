@@ -44,7 +44,8 @@ var redisRequest = testcontainers.ContainerRequest{
 	Image:        redisImage,
 	ExposedPorts: []string{redisPort},
 	WaitingFor:   wait.ForLog("Ready to accept connections"),
-	Env:          map[string]string{"ALLOW_EMPTY_PASSWORD": "yes"},
+	Env: map[string]string{"ALLOW_EMPTY_PASSWORD": "yes",
+		"REDIS_AOF_ENABLED": "no"},
 }
 
 // redisRestoreRequest is a request for a redis container that mounts an rdb-file from backupPath to initialize the database
@@ -52,16 +53,20 @@ var redisRestoreRequest = testcontainers.ContainerRequest{
 	Image:        redisImage,
 	ExposedPorts: []string{redisPort},
 	WaitingFor:   wait.ForLog(logString),
-	BindMounts:   map[string]string{backupPath: "/data/dump.rdb"},
-	Env:          map[string]string{"ALLOW_EMPTY_PASSWORD": "yes"},
+	BindMounts:   map[string]string{backupPath: "/bitnami/redis/data/dump.rdb"},
+	Env: map[string]string{"ALLOW_EMPTY_PASSWORD": "yes",
+		"REDIS_AOF_ENABLED": "no"},
 }
 
-func createRedisRestoreRequest(backupFilePath string) *testcontainers.ContainerRequest {
+func createResticRestoreRequest(backupFilePath string) *testcontainers.ContainerRequest {
 	request := testcontainers.ContainerRequest{
-		Image:        "redis:alpine",
+		Image:        redisImage,
 		ExposedPorts: []string{redisPort},
 		WaitingFor:   wait.ForLog(logString),
-		BindMounts:   map[string]string{backupFilePath: "/data/dump.rdb"}}
+		BindMounts:   map[string]string{backupFilePath: "/bitnami/redis/data/dump.rdb"},
+		Env: map[string]string{"ALLOW_EMPTY_PASSWORD": "yes",
+			"REDIS_AOF_ENABLED": "no"},
+	}
 	return &request
 }
 
@@ -170,7 +175,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	// create a redis container to test backup function
 	doRedisBackup(ctx, redisDumpTestSuite, false, commons.TestContainerSetup{Port: "", Address: ""})
 
-	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, createRedisRestoreRequest(backupPath), redisPort)
+	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, createResticRestoreRequest(backupPath), redisPort)
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
 		restoreErr := redisRestoreTarget.Container.Terminate(ctx)
@@ -222,7 +227,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	}()
 
 	// setup a new redis-container which loads the backup as a volume
-	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, createRedisRestoreRequest(backupPathRestic), redisPort)
+	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, createResticRestoreRequest(backupPathRestic), redisPort)
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
 		restoreErr := redisRestoreTarget.Container.Terminate(ctx)

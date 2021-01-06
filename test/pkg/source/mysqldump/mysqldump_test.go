@@ -35,6 +35,7 @@ const dbDriver = "mysql"
 const tableName = "testTable"
 const hostName = "127.0.0.1" // mysql does not like localhost, therefore use this as address
 const logString = "ready for connections"
+const mysqlImage = "quay.io/bitnami/mysql:latest"
 
 type MySQLDumpTestSuite struct {
 	suite.Suite
@@ -49,7 +50,7 @@ type TestStruct struct {
 //v--default-authentication-plugin=mysql_native_password"
 // testcontainer request for a mysql container
 var mySQLRequest = testcontainers.ContainerRequest{
-	Image:        "quay.io/bitnami/mysql:latest",
+	Image:        mysqlImage,
 	ExposedPorts: []string{sqlPort},
 	Env: map[string]string{
 		"MYSQL_ROOT_PASSWORD": mySQLRootPW,

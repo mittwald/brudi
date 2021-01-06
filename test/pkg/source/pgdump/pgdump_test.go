@@ -32,6 +32,7 @@ const restoreKind = "pg_restore"
 const dumpKind = "pgdump"
 const hostName = "127.0.0.1"
 const dbDriver = "pgx"
+const pgImage = "quay.io/bitnami/postgresql:latest"
 
 type PGDumpTestSuite struct {
 	suite.Suite
@@ -44,7 +45,7 @@ type TestStruct struct {
 
 // testcontainers request for a postgres testcontainer
 var pgRequest = testcontainers.ContainerRequest{
-	Image:        "quay.io/bitnami/postgresql:latest",
+	Image:        pgImage,
 	ExposedPorts: []string{pgPort},
 	Env: map[string]string{
 		"POSTGRES_PASSWORD": postgresPW,
