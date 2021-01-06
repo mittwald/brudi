@@ -25,6 +25,7 @@ const redisPort = "6379/tcp"
 const testName = "test"
 const testType = "gopher"
 const backupPath = "/tmp/redisdump.rdb"
+const backupPathRestic = "/tmp/redisdump_restic.rdb"
 const redisPW = "redisdb"
 const composeLocation = "../../../testdata/testredis.yml"
 const dataDir = "data"
@@ -50,6 +51,15 @@ var redisRestoreRequest = testcontainers.ContainerRequest{
 	ExposedPorts: []string{redisPort},
 	WaitingFor:   wait.ForLog(logString),
 	BindMounts:   map[string]string{backupPath: "/data/dump.rdb"},
+}
+
+func createRedisRestoreRequest(backupFilePath string) *testcontainers.ContainerRequest {
+	request := testcontainers.ContainerRequest{
+		Image:        "redis:alpine",
+		ExposedPorts: []string{redisPort},
+		WaitingFor:   wait.ForLog(logString),
+		BindMounts:   map[string]string{backupFilePath: "/data/dump.rdb"}}
+	return &request
 }
 
 // createRedisConfig returns a brudi config for redis
@@ -87,7 +97,7 @@ restic:
       keepWeekly: 0
       keepMonthly: 0
       keepYearly: 0
-`, container.Address, container.Port, redisPW, backupPath, resticIP, resticPort))
+`, container.Address, container.Port, redisPW, backupPathRestic, resticIP, resticPort))
 }
 
 func (redisDumpTestSuite *RedisDumpTestSuite) SetupTest() {
@@ -157,7 +167,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	// create a redis container to test backup function
 	doRedisBackup(ctx, redisDumpTestSuite, false, commons.TestContainerSetup{Port: "", Address: ""})
 
-	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, &redisRestoreRequest, redisPort)
+	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, createRedisRestoreRequest(backupPath), redisPort)
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
 		restoreErr := redisRestoreTarget.Container.Terminate(ctx)
@@ -209,7 +219,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	}()
 
 	// setup a new redis-container which loads the backup as a volume
-	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, &redisRestoreRequest, redisPort)
+	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, createRedisRestoreRequest(backupPathRestic), redisPort)
 	redisDumpTestSuite.Require().NoError(err)
 	defer func() {
 		restoreErr := redisRestoreTarget.Container.Terminate(ctx)

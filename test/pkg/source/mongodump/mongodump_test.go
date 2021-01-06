@@ -55,7 +55,7 @@ var mongoRequest = testcontainers.ContainerRequest{
 	ExposedPorts: []string{mongoPort},
 	Env: map[string]string{
 		"MONGO_INITDB_ROOT_USERNAME": mongoUser,
-		"MONGO_INITDB_ROOT_PASSWORD": mongoUser,
+		"MONGO_INITDB_ROOT_PASSWORD": mongoPW,
 	},
 }
 
@@ -74,7 +74,6 @@ func newMongoClient(target *commons.TestContainerSetup) (mongo.Client, error) {
 	backupClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", target.Address,
 		target.Port))
 	clientAuth := options.Client().SetAuth(options.Credential{Username: mongoUser, Password: mongoPW})
-
 	client, err := mongo.Connect(context.TODO(), backupClientOptions, clientAuth)
 	if err != nil {
 		return mongo.Client{}, err

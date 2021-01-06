@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/spf13/viper"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -61,6 +62,7 @@ func TestSetup() {
 	viper.SetConfigType("yaml")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
+	os.Setenv("RESTIC_PASSWORD", "mongorepo")
 }
 
 func DoResticRestore(ctx context.Context, resticContainer TestContainerSetup, dataDir string) error {
