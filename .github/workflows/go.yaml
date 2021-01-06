@@ -21,7 +21,7 @@ jobs:
       run: sudo apt-get install restic
 
     - name: Update restic
-      run: restic self-update
+      run: restic --help
 
     - name: install redis-cli
       run: sudo apt-get install redis-tools
