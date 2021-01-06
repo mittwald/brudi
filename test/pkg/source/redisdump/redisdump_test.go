@@ -33,6 +33,7 @@ const nameKey = "name"
 const typeKey = "type"
 const logString = "Ready to accept connections"
 const dumpKind = "redisdump"
+const redisImage = "quay.io/bitnami/redis:latest"
 
 type RedisDumpTestSuite struct {
 	suite.Suite
@@ -40,17 +41,19 @@ type RedisDumpTestSuite struct {
 
 // redisRequest is a request for a blank redis container
 var redisRequest = testcontainers.ContainerRequest{
-	Image:        "redis:alpine",
+	Image:        redisImage,
 	ExposedPorts: []string{redisPort},
 	WaitingFor:   wait.ForLog("Ready to accept connections"),
+	Env:          map[string]string{"ALLOW_EMPTY_PASSWORD": "yes"},
 }
 
 // redisRestoreRequest is a request for a redis container that mounts an rdb-file from backupPath to initialize the database
 var redisRestoreRequest = testcontainers.ContainerRequest{
-	Image:        "redis:alpine",
+	Image:        redisImage,
 	ExposedPorts: []string{redisPort},
 	WaitingFor:   wait.ForLog(logString),
 	BindMounts:   map[string]string{backupPath: "/data/dump.rdb"},
+	Env:          map[string]string{"ALLOW_EMPTY_PASSWORD": "yes"},
 }
 
 func createRedisRestoreRequest(backupFilePath string) *testcontainers.ContainerRequest {

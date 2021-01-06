@@ -44,7 +44,7 @@ type TestStruct struct {
 
 // testcontainers request for a postgres testcontainer
 var pgRequest = testcontainers.ContainerRequest{
-	Image:        "postgres:12",
+	Image:        "quay.io/bitnami/postgresql:latest",
 	ExposedPorts: []string{pgPort},
 	Env: map[string]string{
 		"POSTGRES_PASSWORD": postgresPW,

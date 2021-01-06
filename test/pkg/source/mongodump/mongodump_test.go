@@ -4,20 +4,19 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
-	"testing"
-
 	"github.com/mittwald/brudi/pkg/source"
 	commons "github.com/mittwald/brudi/test/pkg/source/internal"
-
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gotest.tools/assert"
+	"os"
+	"os/exec"
+	"testing"
 )
 
 const mongoPort = "27017/tcp"
@@ -29,6 +28,8 @@ const dumpKind = "mongodump"
 const restoreKind = "mongorestore"
 const dbName = "test"
 const collName = "testColl"
+const mongoImage = "quay.io/bitnami/mongodb:latest"
+const logString = "Waiting for connections"
 
 // TestColl holds test data for integration tests
 type TestColl struct {
@@ -51,12 +52,14 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TearDownTest() {
 
 // mongorequest is a testcontainers.ContainerRequest for a basic mongodb testcontainer
 var mongoRequest = testcontainers.ContainerRequest{
-	Image:        "mongo:latest",
+	Image:        mongoImage,
 	ExposedPorts: []string{mongoPort},
 	Env: map[string]string{
-		"MONGO_INITDB_ROOT_USERNAME": mongoUser,
-		"MONGO_INITDB_ROOT_PASSWORD": mongoPW,
+		"MONGODB_ROOT_USERNAME": mongoUser,
+		"MONGODB_ROOT_PASSWORD": mongoPW,
+		//"MONGODB_EXTRA_FLAGS": "--authenticationDatabase=admin",
 	},
+	WaitingFor: wait.ForLog(logString),
 }
 
 // execCommand executes a given command within a context and with specified arguments
@@ -76,8 +79,10 @@ func newMongoClient(target *commons.TestContainerSetup) (mongo.Client, error) {
 	clientAuth := options.Client().SetAuth(options.Credential{Username: mongoUser, Password: mongoPW})
 	client, err := mongo.Connect(context.TODO(), backupClientOptions, clientAuth)
 	if err != nil {
+
 		return mongo.Client{}, err
 	}
+
 	err = client.Ping(context.TODO(), nil)
 	if err != nil {
 		return mongo.Client{}, err
@@ -172,6 +177,7 @@ func mongoDoBackup(ctx context.Context, mongoDumpTestSuite *MongoDumpTestSuite, 
 
 	// client to insert test data into database
 	var backupClient mongo.Client
+	//time.Sleep(30*time.Second)
 	backupClient, err = newMongoClient(&mongoBackupTarget)
 	mongoDumpTestSuite.Require().NoError(err)
 	defer func() {

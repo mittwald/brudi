@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mittwald/brudi/pkg/source"
 	commons "github.com/mittwald/brudi/test/pkg/source/internal"
@@ -33,7 +34,7 @@ const dumpKind = "mysqldump"
 const dbDriver = "mysql"
 const tableName = "testTable"
 const hostName = "127.0.0.1" // mysql does not like localhost, therefore use this as address
-const logString = "port: 3306  MySQL Community Server - GPL"
+const logString = "ready for connections"
 
 type MySQLDumpTestSuite struct {
 	suite.Suite
@@ -45,17 +46,18 @@ type TestStruct struct {
 	Name string
 }
 
+//v--default-authentication-plugin=mysql_native_password"
 // testcontainer request for a mysql container
 var mySQLRequest = testcontainers.ContainerRequest{
-	Image:        "mysql:8",
+	Image:        "quay.io/bitnami/mysql:latest",
 	ExposedPorts: []string{sqlPort},
 	Env: map[string]string{
 		"MYSQL_ROOT_PASSWORD": mySQLRootPW,
 		"MYSQL_DATABASE":      mySQLDatabase,
 		"MYSQL_USER":          mySQLUser,
 		"MYSQL_PASSWORD":      mySQLPw,
+		"MYSQL_EXTRA:FLAGS":   "--default-authentication-plugin=mysql_native_password",
 	},
-	Cmd:        []string{"--default-authentication-plugin=mysql_native_password"},
 	WaitingFor: wait.ForLog(logString),
 }
 
@@ -172,7 +174,7 @@ func mySQLDoBackup(ctx context.Context, mySQLDumpTestSuite *MySQLDumpTestSuite, 
 		dbErr := db.Close()
 		mySQLDumpTestSuite.Require().NoError(dbErr)
 	}()
-
+	time.Sleep(1 * time.Second)
 	// create table for test data
 	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));", tableName))
 	mySQLDumpTestSuite.Require().NoError(err)
@@ -213,7 +215,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 		dbErr := dbRestore.Close()
 		mySQLDumpTestSuite.Require().NoError(dbErr)
 	}()
-
+	time.Sleep(1 * time.Second)
 	// restore server from mysqldump
 	err = restoreSQLFromBackup(backupPath, dbRestore)
 	mySQLDumpTestSuite.Require().NoError(err)
@@ -278,6 +280,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 		mySQLDumpTestSuite.Require().NoError(dbErr)
 	}()
 
+	time.Sleep(1 * time.Second)
 	// restore backup file from restic repository
 	err = commons.DoResticRestore(ctx, resticContainer, dataDir)
 	mySQLDumpTestSuite.Require().NoError(err)

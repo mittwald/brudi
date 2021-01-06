@@ -11,12 +11,14 @@ services:
   - docker
 
 addons:
+  postgresql:"11.10"
   apt:
     packages:
       - curl
       - bash
       - wget
       - make
+      - restic
 
 env:
   global:
