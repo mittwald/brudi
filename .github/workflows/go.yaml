@@ -20,6 +20,9 @@ jobs:
     - name: Install restic
       run: sudo apt-get install restic
 
+    - name: Update restic
+      run: restic self-update
+
     - name: install redis-cli
       run: sudo apt-get install redis-tools
 

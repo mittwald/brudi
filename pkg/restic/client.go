@@ -59,9 +59,7 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 		c.Logger.Info("restic repo initialized successfully")
 	}
 
-	var out []byte
-	_, out, err = CreateBackup(ctx, c.Config.Global, c.Config.Backup, true)
-	fmt.Println(string(out))
+	_, _, err = CreateBackup(ctx, c.Config.Global, c.Config.Backup, true)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("error while while running restic backup: %s", err.Error()))
 	}

@@ -98,16 +98,6 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	args = cli.StructToCLI(globalOpts)
 
 	args = append(args, cli.StructToCLI(backupOpts)...)
-	printHelp := cli.CommandType{
-		Binary:  binary,
-		Command: "backup",
-		Args:    []string{"--help"},
-	}
-	out, err = cli.RunWithTimeout(ctx, printHelp, cmdTimeout)
-	if err != nil {
-		return BackupResult{}, out, err
-	}
-	fmt.Println(string(out))
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "backup",
