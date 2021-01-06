@@ -18,10 +18,10 @@ jobs:
       run: go build -v ./...
 
     - name: Install restic
-      run: apt-get install resitc
+      run: sudo apt-get install resitc
 
     - name: install redis-cli
-      run: apt-get install redis-tools
-      
+      run: sudo apt-get install redis-tools
+
     - name: Test
       run: go test -v ./...
