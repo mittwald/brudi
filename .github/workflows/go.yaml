@@ -17,5 +17,11 @@ jobs:
     - name: Build
       run: go build -v ./...
 
+    - name: Install restic
+      run: apt-get install resitc
+
+    - name: install redis-cli
+      run: apt-get install redis-tools
+      
     - name: Test
       run: go test -v ./...

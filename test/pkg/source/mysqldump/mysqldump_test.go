@@ -84,6 +84,7 @@ mysqldump:
       password: %s
       user: %s
       opt: true
+      force: true
       allDatabases: true
       resultFile: %s
     additionalArgs: []
@@ -98,6 +99,7 @@ mysqldump:
       password: %s
       user: %s
       opt: true
+      force: true
       allDatabases: true
       resultFile: %s
     additionalArgs: []
