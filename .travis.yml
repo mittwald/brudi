@@ -26,6 +26,7 @@ env:
     - GORELEASER_VERSION=v0.144.0
 
 script:
+  - go test ./...
   - curl -sL https://git.io/goreleaser | VERSION=${GORELEASER_VERSION} bash -s -- --snapshot --skip-publish --rm-dist
 
 before_deploy:
