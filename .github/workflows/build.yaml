@@ -36,7 +36,7 @@ jobs:
         bzip2 -d restic_0.11.0_linux_amd64.bz2
         sudo mv restic_0.11.0_linux_amd64 /usr/local/bin/restic
         sudo chown root:root /usr/local/bin/restic
-        sudo chmod +x /usr/local/bin/restc
+        sudo chmod +x /usr/local/bin/restic
 
     - name: install redis-cli
       run: sudo apt-get install redis-tools
