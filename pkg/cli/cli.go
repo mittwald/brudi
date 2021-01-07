@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"reflect"
@@ -210,57 +209,6 @@ func Run(ctx context.Context, cmd CommandType) ([]byte, error) {
 
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("successfully executed command")
 	return out, nil
-}
-
-// RunWithFile executes the given binary with data from a file read into stdin
-func RunWithFile(ctx context.Context, cmd CommandType, infile string) ([]byte, error) {
-	var out []byte
-	var err error
-	commandLine := ParseCommandLine(cmd)
-	log.WithField("command", strings.Join(commandLine, " ")).Debug("executing command")
-	fileContent, err := ioutil.ReadFile(infile)
-	if err != nil {
-		return out, err
-	}
-
-	pipeCmd := exec.CommandContext(ctx, commandLine[0], commandLine[1:]...)
-	var stdin io.WriteCloser
-	// open a stdin pipe to the command to pipe file contents
-	stdin, err = pipeCmd.StdinPipe()
-	if err != nil {
-		return out, err
-	}
-
-	err = readFileToStdIn(fileContent, stdin)
-	if err != nil {
-		return nil, err
-	}
-
-	out, err = pipeCmd.CombinedOutput()
-	if ctx.Err() != nil {
-		return out, fmt.Errorf("failed to execute command: timed out or canceled")
-	}
-	if err != nil {
-		return out, err
-	}
-
-	if err != nil {
-		return out, fmt.Errorf("failed to execute command: %s", err)
-	}
-
-	log.WithField("command", strings.Join(commandLine, " ")).Debug("successfully executed command")
-	return out, nil
-}
-
-// readFileToStdIn writes content to stdin
-func readFileToStdIn(content []byte, stdin io.WriteCloser) error {
-	var err error
-	go func() {
-		defer stdin.Close()
-		_, err = io.WriteString(stdin, string(content))
-	}()
-
-	return err
 }
 
 // RunPipedWithTimeout executes "RunPiped" within a max execution time
