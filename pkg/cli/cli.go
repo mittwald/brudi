@@ -216,55 +216,32 @@ func RunWithFile(ctx context.Context, cmd CommandType, infile string) ([]byte, e
 	var err error
 	commandLine := ParseCommandLine(cmd)
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("executing command")
-	if ctx != nil {
-		fileContent, err := ioutil.ReadFile(infile)
-		if err != nil {
-			return out, err
-		}
-
-		cmd := exec.CommandContext(ctx, commandLine[0], commandLine[1:]...)
-		var stdin io.WriteCloser
-		// open a stdin pipe to the command to pipe file contents
-		stdin, err = cmd.StdinPipe()
-		if err != nil {
-			return out, err
-		}
-
-		err = readFileToStdIn(fileContent, stdin)
-		if err != nil {
-			return nil, err
-		}
-
-		out, err = cmd.CombinedOutput()
-		if ctx.Err() != nil {
-			return out, fmt.Errorf("failed to execute command: timed out or canceled")
-		}
-		if err != nil {
-			return out, err
-		}
-	} else {
-		fileContent, err := ioutil.ReadFile(infile)
-		if err != nil {
-			return out, err
-		}
-
-		cmd := exec.Command(commandLine[0], commandLine[1:]...)
-		var stdin io.WriteCloser
-		stdin, err = cmd.StdinPipe()
-		if err != nil {
-			return out, err
-		}
-
-		err = readFileToStdIn(fileContent, stdin)
-		if err != nil {
-			return nil, err
-		}
-
-		out, err = cmd.CombinedOutput()
-		if err != nil {
-			return out, err
-		}
+	fileContent, err := ioutil.ReadFile(infile)
+	if err != nil {
+		return out, err
 	}
+
+	pipeCmd := exec.CommandContext(ctx, commandLine[0], commandLine[1:]...)
+	var stdin io.WriteCloser
+	// open a stdin pipe to the command to pipe file contents
+	stdin, err = pipeCmd.StdinPipe()
+	if err != nil {
+		return out, err
+	}
+
+	err = readFileToStdIn(fileContent, stdin)
+	if err != nil {
+		return nil, err
+	}
+
+	out, err = pipeCmd.CombinedOutput()
+	if ctx.Err() != nil {
+		return out, fmt.Errorf("failed to execute command: timed out or canceled")
+	}
+	if err != nil {
+		return out, err
+	}
+
 	if err != nil {
 		return out, fmt.Errorf("failed to execute command: %s", err)
 	}

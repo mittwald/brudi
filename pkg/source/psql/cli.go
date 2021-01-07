@@ -30,7 +30,7 @@ type Flags struct {
 	NoPsqlrc            bool   `flag:"--no-psqlrc"`
 	NoReafline          bool   `flag:"--no-readline"`
 	Output              string `flag:"--output="`
-	Password            bool   `flag:"-" env:"PGPASSWORD"`
+	Password            string `flag:"-" env:"PGPASSWORD"`
 	Port                int    `flag:"--port="`
 	Pset                string `flag:"--pset="`
 	Quiet               bool   `flag:"--quiet"`
