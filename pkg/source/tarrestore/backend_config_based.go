@@ -36,7 +36,6 @@ func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
 		Binary: binary,
 		Args:   cli.StructToCLI(b.cfg.Options),
 	}
-	fmt.Println(cmd)
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
