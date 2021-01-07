@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"reflect"
@@ -17,6 +18,7 @@ import (
 )
 
 const flagTag = "flag"
+const gzipType = "application/x-gzip"
 
 // includeFlag returns an string slice of [<flag>, <val>], or [<val>]
 func includeFlag(flag, val string) []string {
@@ -322,13 +324,19 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 			log.Error(fileErr)
 		}
 	}()
-	headerBytes := make([]byte, 2)
+
+	// read first 512 bytes for http.DetectContentType
+	headerBytes := make([]byte, 512)
 	_, err = file.Read(headerBytes)
 	if err != nil {
 		return "", err
 	}
+
 	// check if file is gzipped
-	if headerBytes[0] == 31 && headerBytes[1] == 139 {
+	fileType := http.DetectContentType(headerBytes)
+	fmt.Println(fileType)
+	if fileType == gzipType {
+		// open gzipped file
 		archive, archErr := os.Open(fileName)
 		if archErr != nil {
 			return "", err
@@ -340,7 +348,7 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 			}
 		}()
 
-		// read gzipped file from file system
+		// unzip gzipped file
 		archiveReader, err := gzip.NewReader(archive)
 		if err != nil {
 			return "", err
@@ -352,6 +360,7 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 			}
 		}()
 
+		// open output file
 		var outFile *os.File
 		outFile, err = os.Create(archiveReader.Name)
 		if err != nil {
