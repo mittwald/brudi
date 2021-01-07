@@ -18,7 +18,10 @@ jobs:
       run: go build -v ./...
 
     - name: Install restic
-      run: sudo apt-get install restic
+      run: |
+        git clone https://github.com/restic/restic
+        cd restic
+        go run build.go
 
     - name: Update restic
       run: restic --help
