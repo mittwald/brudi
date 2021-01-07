@@ -35,8 +35,8 @@ jobs:
         wget https://github.com/restic/restic/releases/download/v0.11.0/restic_0.11.0_linux_amd64.bz2
         bzip2 -d restic_0.11.0_linux_amd64.bz2
         sudo mv restic_0.11.0_linux_amd64 /usr/local/bin/restic
-        chown root:root /usr/local/bin/restic
-        chmod +x /usr/local/bin/restc
+        sudo chown root:root /usr/local/bin/restic
+        sudo chmod +x /usr/local/bin/restc
 
     - name: install redis-cli
       run: sudo apt-get install redis-tools
