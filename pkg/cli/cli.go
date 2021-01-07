@@ -2,10 +2,12 @@ package cli
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -357,4 +359,70 @@ func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPi
 	).Debug("successfully executed command")
 
 	return out.Bytes(), nil
+}
+
+// CheckAndGunzipFile checks if a file is gzipped and extracts it in that case...
+// ... it also returns the name of the unzipped file
+func CheckAndGunzipFile(fileName string) (string, error) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		fileErr := file.Close()
+		if fileErr != nil {
+			log.Error(fileErr)
+		}
+	}()
+	headerBytes := make([]byte, 2)
+	_, err = file.Read(headerBytes)
+	if err != nil {
+		return "", err
+	}
+	// check if file is gzipped
+	if headerBytes[0] == 31 && headerBytes[1] == 139 {
+		archive, archErr := os.Open(fileName)
+		if archErr != nil {
+			return "", err
+		}
+		defer func() {
+			archDeferedErr := archive.Close()
+			if archDeferedErr != nil {
+				log.Error(archDeferedErr)
+			}
+		}()
+
+		// read gzipped file from file system
+		archiveReader, err := gzip.NewReader(archive)
+		if err != nil {
+			return "", err
+		}
+		defer func() {
+			readerErr := archiveReader.Close()
+			if readerErr != nil {
+				log.Error(readerErr)
+			}
+		}()
+
+		var outFile *os.File
+		outFile, err = os.Create(archiveReader.Name)
+		if err != nil {
+			return "", err
+		}
+		defer func() {
+			outErr := outFile.Close()
+			if outErr != nil {
+				log.Error(outErr)
+			}
+		}()
+
+		// write unzipped file to file system
+		if _, err := io.Copy(outFile, archiveReader); err != nil {
+			return "", err
+		}
+		extractedName := archiveReader.Name
+		return extractedName, nil
+
+	}
+	return fileName, nil
 }

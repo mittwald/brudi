@@ -31,8 +31,9 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 }
 
 func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
+	fileName, err := cli.CheckAndGunzipFile(b.cfg.Options.SourceFile)
 	args := append(cli.StructToCLI(b.cfg.Options.Flags), b.cfg.Options.AdditionalArgs...)
-	args = append(args, []string{"-e", fmt.Sprintf("source %s", b.cfg.Options.SourceFile)}...)
+	args = append(args, []string{"-e", fmt.Sprintf("source %s", fileName)}...)
 	cmd := cli.CommandType{
 		Binary: binary,
 		Args:   args,

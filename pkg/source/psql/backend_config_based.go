@@ -3,9 +3,8 @@ package psql
 import (
 	"context"
 	"fmt"
-	"os"
-
 	"github.com/pkg/errors"
+	"os"
 
 	"github.com/mittwald/brudi/pkg/cli"
 )
@@ -32,17 +31,17 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 }
 
 func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
+	fileName, err := cli.CheckAndGunzipFile(b.cfg.Options.SourceFile)
 	args := append(cli.StructToCLI(b.cfg.Options.Flags), b.cfg.Options.AdditionalArgs...)
-	args = append(args, []string{"-c", fmt.Sprintf("source %s", b.cfg.Options.SourceFile)}...)
+	args = append(args, []string{fmt.Sprintf("--command=\\i %s", fileName)}...)
 	cmd := cli.CommandType{
 		Binary: binary,
-		Args:   append(cli.StructToCLI(b.cfg.Options.Flags), b.cfg.Options.AdditionalArgs...),
+		Args:   args,
 	}
-	out, err := cli.RunWithFile(ctx, cmd, b.cfg.Options.SourceFile)
+	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
 	}
-
 	return nil
 }
 
