@@ -5,7 +5,7 @@ on: [push, pull_request]
 jobs:
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
 
@@ -18,10 +18,7 @@ jobs:
       run: go build -v ./...
 
     - name: Install restic
-      run: |
-        git clone https://github.com/restic/restic
-        cd restic
-        go run build.go
+      run: sudo apt-get install restic
 
     - name: Update restic
       run: restic --help
