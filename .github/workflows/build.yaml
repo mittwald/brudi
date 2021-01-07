@@ -34,6 +34,7 @@ jobs:
       run: |
         wget https://github.com/restic/restic/releases/download/v0.11.0/restic_0.11.0_linux_amd64.bz2
         bzip2 -d restic_0.11.0_linux_amd64.bz2
+        ls
         sudo mv restic /usr/local/bin/restic
         chown root:root /usr/local/bin/restic
         chmod +x /usr/local/bin/restc
