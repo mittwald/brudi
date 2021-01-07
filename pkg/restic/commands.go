@@ -96,8 +96,8 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 
 	var args []string
 	args = cli.StructToCLI(globalOpts)
-
 	args = append(args, cli.StructToCLI(backupOpts)...)
+
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "backup",
