@@ -334,7 +334,6 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 
 	// check if file is gzipped
 	fileType := http.DetectContentType(headerBytes)
-	fmt.Println(fileType)
 	if fileType == gzipType {
 		// open gzipped file
 		archive, archErr := os.Open(fileName)
