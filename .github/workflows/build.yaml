@@ -38,8 +38,6 @@ jobs:
         chown root:root /usr/local/bin/restic
         chmod +x /usr/local/bin/restc
 
-
-
     - name: install redis-cli
       run: sudo apt-get install redis-tools
 
