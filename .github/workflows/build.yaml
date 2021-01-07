@@ -31,10 +31,14 @@ jobs:
         go-version: 1.15
 
     - name: Install restic
-      run: sudo apt-get install restic
+      run: |
+        wget https://github.com/restic/restic/releases/download/v0.11.0/restic_0.11.0_linux_amd64.bz2
+        bzip2 -d restic_0.11.0_linux_amd64.bz2
+        sudo mv restic /usr/local/bin/restic
+        chown root:root /usr/local/bin/restic
+        chmod +x /usr/local/bin/restc
 
-    - name: Update restic
-      run: restic self-update
+
 
     - name: install redis-cli
       run: sudo apt-get install redis-tools
