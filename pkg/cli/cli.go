@@ -386,9 +386,9 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 			return "", err
 		}
 		defer func() {
-			archDeferedErr := archive.Close()
-			if archDeferedErr != nil {
-				log.Error(archDeferedErr)
+			archDeferredErr := archive.Close()
+			if archDeferredErr != nil {
+				log.Error(archDeferredErr)
 			}
 		}()
 
