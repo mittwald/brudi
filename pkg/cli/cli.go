@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"os"
@@ -316,12 +317,12 @@ func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPi
 func CheckAndGunzipFile(fileName string) (string, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
 	defer func() {
 		fileErr := file.Close()
 		if fileErr != nil {
-			log.Error(fileErr)
+			log.WithError(fileErr).Error(fmt.Sprintf("failed to close source file %s", fileName))
 		}
 	}()
 
@@ -329,7 +330,7 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 	headerBytes := make([]byte, 512)
 	_, err = file.Read(headerBytes)
 	if err != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
 
 	// check if file is gzipped
@@ -340,43 +341,46 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 	// open gzipped file
 	archive, archErr := os.Open(fileName)
 	if archErr != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
 	defer func() {
 		archDeferredErr := archive.Close()
 		if archDeferredErr != nil {
-			log.Error(archDeferredErr)
+			log.WithError(archDeferredErr).Error(fmt.Sprintf("failed to close archive file %s", fileName))
 		}
 	}()
 
 	// unzip gzipped file
-	archiveReader, err := gzip.NewReader(archive)
+	var archiveReader *gzip.Reader
+	archiveReader, err = gzip.NewReader(archive)
 	if err != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
 	defer func() {
 		readerErr := archiveReader.Close()
 		if readerErr != nil {
-			log.Error(readerErr)
+			log.WithError(readerErr).Error(fmt.Sprintf("failed to close archive reader"))
 		}
 	}()
 
 	// open output file
 	var outFile *os.File
-	outFile, err = os.Create(archiveReader.Name)
+	outName := archiveReader.Name
+	outFile, err = os.Create(outName)
 	if err != nil {
 		return "", err
 	}
 	defer func() {
 		outErr := outFile.Close()
 		if outErr != nil {
-			log.Error(outErr)
+			log.WithError(outErr).Error(fmt.Sprintf("failed to close output file %s", outName))
 		}
 	}()
 
 	// write unzipped file to file system
-	if _, err := io.Copy(outFile, archiveReader); err != nil {
-		return "", err
+	_, err = io.Copy(outFile, archiveReader)
+	if err != nil {
+		return "", errors.WithStack(err)
 	}
 	extractedName := archiveReader.Name
 	return extractedName, nil
