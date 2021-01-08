@@ -1,0 +1,10 @@
+pgrestore:
+  options:
+    flags:
+      host: 127.0.0.1
+      port: 5432
+      username: postgresuser
+      dbname: postgres
+      password: postgresroot
+    additionalArgs: []
+    sourcefile: /tmp/postgres.dump

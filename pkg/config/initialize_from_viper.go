@@ -35,7 +35,6 @@ func InitializeStructFromViper(parentKey string, target interface{}) error {
 	for i := 0; i < structElem.NumField(); i++ {
 		field := structElem.Field(i)
 		flag := structElem.Type().Field(i).Tag.Get(flagTag)
-
 		if flag == "-" {
 			log.WithFields(log.Fields{
 				"field": structElem.Type().Field(i).Name,

@@ -37,7 +37,6 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 		Binary: binary,
 		Args:   cli.StructToCLI(b.cfg.Options),
 	}
-	fmt.Println(cmd.Args)
 
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
