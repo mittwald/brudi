@@ -322,7 +322,7 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 	defer func() {
 		fileErr := file.Close()
 		if fileErr != nil {
-			log.WithError(fileErr).Error(fmt.Sprintf("failed to close source file %s", fileName))
+			log.WithError(fileErr).Errorf("failed to close source file %s", fileName)
 		}
 	}()
 
@@ -346,7 +346,7 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 	defer func() {
 		archDeferredErr := archive.Close()
 		if archDeferredErr != nil {
-			log.WithError(archDeferredErr).Error(fmt.Sprintf("failed to close archive file %s", fileName))
+			log.WithError(archDeferredErr).Errorf("failed to close archive file %s", fileName)
 		}
 	}()
 
@@ -359,7 +359,7 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 	defer func() {
 		readerErr := archiveReader.Close()
 		if readerErr != nil {
-			log.WithError(readerErr).Error(fmt.Sprintf("failed to close archive reader"))
+			log.WithError(readerErr).Error("failed to close archive reader")
 		}
 	}()
 
@@ -373,7 +373,7 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 	defer func() {
 		outErr := outFile.Close()
 		if outErr != nil {
-			log.WithError(outErr).Error(fmt.Sprintf("failed to close output file %s", outName))
+			log.WithError(outErr).Errorf("failed to close output file %s", outName)
 		}
 	}()
 
