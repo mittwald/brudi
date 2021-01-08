@@ -334,51 +334,50 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 
 	// check if file is gzipped
 	fileType := http.DetectContentType(headerBytes)
-	if fileType == gzipType {
-		// open gzipped file
-		archive, archErr := os.Open(fileName)
-		if archErr != nil {
-			return "", err
-		}
-		defer func() {
-			archDeferredErr := archive.Close()
-			if archDeferredErr != nil {
-				log.Error(archDeferredErr)
-			}
-		}()
-
-		// unzip gzipped file
-		archiveReader, err := gzip.NewReader(archive)
-		if err != nil {
-			return "", err
-		}
-		defer func() {
-			readerErr := archiveReader.Close()
-			if readerErr != nil {
-				log.Error(readerErr)
-			}
-		}()
-
-		// open output file
-		var outFile *os.File
-		outFile, err = os.Create(archiveReader.Name)
-		if err != nil {
-			return "", err
-		}
-		defer func() {
-			outErr := outFile.Close()
-			if outErr != nil {
-				log.Error(outErr)
-			}
-		}()
-
-		// write unzipped file to file system
-		if _, err := io.Copy(outFile, archiveReader); err != nil {
-			return "", err
-		}
-		extractedName := archiveReader.Name
-		return extractedName, nil
-
+	if fileType != gzipType {
+		return fileName, nil
 	}
-	return fileName, nil
+	// open gzipped file
+	archive, archErr := os.Open(fileName)
+	if archErr != nil {
+		return "", err
+	}
+	defer func() {
+		archDeferredErr := archive.Close()
+		if archDeferredErr != nil {
+			log.Error(archDeferredErr)
+		}
+	}()
+
+	// unzip gzipped file
+	archiveReader, err := gzip.NewReader(archive)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		readerErr := archiveReader.Close()
+		if readerErr != nil {
+			log.Error(readerErr)
+		}
+	}()
+
+	// open output file
+	var outFile *os.File
+	outFile, err = os.Create(archiveReader.Name)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		outErr := outFile.Close()
+		if outErr != nil {
+			log.Error(outErr)
+		}
+	}()
+
+	// write unzipped file to file system
+	if _, err := io.Copy(outFile, archiveReader); err != nil {
+		return "", err
+	}
+	extractedName := archiveReader.Name
+	return extractedName, nil
 }

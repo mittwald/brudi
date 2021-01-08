@@ -38,7 +38,7 @@ type Flags struct {
 	DisableNamedCommands   bool   `flag:"--disable-named-commands"`
 	DNSSrvName             string `flag:"--dns-srv-name"`
 	EnableCleartextPlugin  bool   `flag:"--enable-cleartext-plugin"`
-	Execute                bool   `flag:"--execute"`
+	Execute                string `flag:"--execute="`
 	Force                  bool   `flaf:"--force"`
 	GetServerPublicKey     bool   `flag:"--get-server-public-key"`
 	Help                   bool   `flag:"--help"`

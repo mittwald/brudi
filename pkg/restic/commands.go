@@ -368,13 +368,9 @@ func RestoreBackup(ctx context.Context, glob *GlobalOptions, opts *RestoreOption
 		}
 	}
 
-	cmd := cli.CommandType{
-		Binary:  binary,
-		Command: "restore",
-		Args:    args,
-	}
+	cmd := newCommand("restore", args...)
 
-  return cli.Run(ctx, cmd)
+	return cli.Run(ctx, cmd)
 }
 
 // Unlock executes "restic unlock"
