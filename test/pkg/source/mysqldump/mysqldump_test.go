@@ -111,12 +111,15 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 	mySQLDumpTestSuite.Require().NoError(err)
 	defer func() {
 		resticErr := resticContainer.Container.Terminate(ctx)
-		mySQLDumpTestSuite.Require().NoError(resticErr)
+		if resticErr != nil {
+			log.WithError(resticErr).Error("failed to terminate mysql restic container")
+		}
 	}()
 
 	// backup test data with brudi and remember test data for verification
 	var testData []TestStruct
 	testData, err = mySQLDoBackup(ctx, true, resticContainer)
+	mySQLDumpTestSuite.Require().NoError(err)
 
 	// restore database from backup and pull test data from it for verification
 	var restoreResult []TestStruct

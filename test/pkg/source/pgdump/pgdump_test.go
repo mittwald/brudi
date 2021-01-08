@@ -5,8 +5,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/source/pgrestore"
+	"github.com/mittwald/brudi/pkg/source/psql"
+	log "github.com/sirupsen/logrus"
 	"os"
-	"os/exec"
 	"testing"
 	"time"
 
@@ -23,17 +25,16 @@ import (
 
 const pgPort = "5432/tcp"
 const backupPath = "/tmp/postgres.dump.tar"
+const backupPathPlain = "/tmp/postgres.dump"
 const postgresPW = "postgresroot"
 const postgresUser = "postgresuser"
 const postgresDB = "postgres"
-const dataDir = "data"
 const tableName = "test"
-const restoreKind = "pg_restore"
 const dumpKind = "pgdump"
-const psqlKind = "psql"
 const hostName = "127.0.0.1"
 const dbDriver = "pgx"
 const pgImage = "quay.io/bitnami/postgresql:latest"
+const plainKind = "plain"
 
 type PGDumpTestSuite struct {
 	suite.Suite
@@ -65,36 +66,245 @@ func (pgDumpTestSuite *PGDumpTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
-// createPGConfig creates a brudi config for the pgdump command
-func createPGConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, format string) []byte {
-	if !useRestic {
-		return []byte(fmt.Sprintf(`
-pgdump:
-  options:
-    flags:
-      host: %s
-      port: %s
-      password: %s
-      username: %s
-      dbName: %s
-      file: %s
-      format: %s
-    additionalArgs: []
-`, hostName, container.Port, postgresPW, postgresUser, postgresDB, backupPath, format))
+// TestBasicPGDump performs an integration test for brudi pgdump, without use of restic
+func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
+	ctx := context.Background()
+
+	defer func() {
+		removeErr := os.Remove(backupPath)
+		if removeErr != nil {
+			log.WithError(removeErr).Error("failed to remove pgdump backup files")
+		}
+	}()
+
+	testData, err := pgDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
+		"tar", backupPath)
+	pgDumpTestSuite.Require().NoError(err)
+	// setup second postgres container to test if correct data is restored
+	var restoreResult []TestStruct
+	restoreResult, err = pgDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
+		"tar", backupPath)
+	pgDumpTestSuite.Require().NoError(err)
+
+	assert.DeepEqual(pgDumpTestSuite.T(), testData, restoreResult)
+
+	var testDataPlain []TestStruct
+	testDataPlain, err = pgDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
+		"plain", backupPathPlain)
+	pgDumpTestSuite.Require().NoError(err)
+	// setup second postgres container to test if correct data is restored
+	var restoreResultPlain []TestStruct
+	restoreResult, err = pgDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
+		"plain", backupPathPlain)
+	pgDumpTestSuite.Require().NoError(err)
+
+	assert.DeepEqual(pgDumpTestSuite.T(), testDataPlain, restoreResultPlain)
+}
+
+// TestPGDumpRestic performs an integration test for brudi pgdump with restic
+func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
+	ctx := context.Background()
+
+	defer func() {
+		// delete folder with backup file
+		removeErr := os.RemoveAll(backupPath)
+		log.WithError(removeErr).Error("failed to remove pgdump backup files")
+	}()
+
+	// setup a container running the restic rest-server
+	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
+	pgDumpTestSuite.Require().NoError(err)
+	defer func() {
+		resticErr := resticContainer.Container.Terminate(ctx)
+		log.WithError(resticErr).Error("failed to terminate pgdump restic container")
+	}()
+
+	var testData []TestStruct
+	testData, err = pgDoBackup(ctx, true, resticContainer,
+		"tar", backupPath)
+	pgDumpTestSuite.Require().NoError(err)
+
+	var restoreResult []TestStruct
+	restoreResult, err = pgDoRestore(ctx, true, resticContainer,
+		"tar", backupPath)
+	pgDumpTestSuite.Require().NoError(err)
+
+	assert.DeepEqual(pgDumpTestSuite.T(), testData, restoreResult)
+}
+
+func TestPGDumpTestSuite(t *testing.T) {
+	suite.Run(t, new(PGDumpTestSuite))
+}
+
+// pgDoBackup populates a database with data and performs a backup, optionally with restic
+func pgDoBackup(ctx context.Context, useRestic bool,
+	resticContainer commons.TestContainerSetup, format, path string) ([]TestStruct, error) {
+	// create a postgres container to test backup function
+	pgBackupTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
+	if err != nil {
+		return []TestStruct{}, err
 	}
-	return []byte(fmt.Sprintf(`
-pgdump:
+	defer func() {
+		backupErr := pgBackupTarget.Container.Terminate(ctx)
+		if backupErr != nil {
+			log.WithError(backupErr).Error("failed to termninate pgdump backup container")
+		}
+	}()
+
+	// connect to postgres database using the driver
+	backupConnectionString := createConnectionString(pgBackupTarget)
+	var db *sql.DB
+	db, err = sql.Open(dbDriver, backupConnectionString)
+	if err != nil {
+		return []TestStruct{}, err
+	}
+	defer func() {
+		dbErr := db.Close()
+		if dbErr != nil {
+			log.WithError(dbErr).Error("failed to close connection to pgdump backup database")
+		}
+	}()
+
+	// wait for postgres to be ready for connections
+	for ok := true; ok; ok = db.Ping() != nil {
+		time.Sleep(1 * time.Second)
+	}
+
+	// Create test table
+	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s(id serial PRIMARY KEY, name VARCHAR(100) NOT NULL)", tableName))
+	if err != nil {
+		return []TestStruct{}, err
+	}
+	// create test data and write it to database
+	var testData []TestStruct
+	testData, err = prepareTestData(db)
+	if err != nil {
+		return []TestStruct{}, err
+	}
+
+	testPGConfig := createPGConfig(pgBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, format, path)
+	err = viper.ReadConfig(bytes.NewBuffer(testPGConfig))
+	if err != nil {
+		return []TestStruct{}, err
+	}
+
+	// perform backup action on first postgres container
+	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
+	if err != nil {
+		return []TestStruct{}, err
+	}
+
+	return testData, nil
+}
+
+func pgDoRestore(ctx context.Context, useRestic bool, resticContainer commons.TestContainerSetup,
+	format, path string) ([]TestStruct, error) {
+
+	// setup second postgres container to test if correct data is restored
+	pgRestoreTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
+	if err != nil {
+		return []TestStruct{}, err
+	}
+	defer func() {
+		restoreErr := pgRestoreTarget.Container.Terminate(ctx)
+		if restoreErr != nil {
+			log.WithError(restoreErr).Error("failed to terminate pgdump restore container")
+		}
+	}()
+
+	restorePGConfig := createPGConfig(pgRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, format, path)
+	err = viper.ReadConfig(bytes.NewBuffer(restorePGConfig))
+	if err != nil {
+		return []TestStruct{}, err
+	}
+
+	restoreConnectionString := createConnectionString(pgRestoreTarget)
+	var dbRestore *sql.DB
+	dbRestore, err = sql.Open(dbDriver, restoreConnectionString)
+	if err != nil {
+		return []TestStruct{}, err
+	}
+	defer func() {
+		dbErr := dbRestore.Close()
+		if dbErr != nil {
+			log.WithError(dbErr).Error("failed to disconnect from pgdump restore database")
+		}
+	}()
+
+	// wait for postgres to be ready for connections
+	for ok := true; ok; ok = dbRestore.Ping() != nil {
+		time.Sleep(1 * time.Second)
+	}
+
+	if format == "plain" {
+		psqlErr := source.DoRestoreForKind(ctx, psql.Kind, false, useRestic, false)
+		if psqlErr != nil {
+			return []TestStruct{}, psqlErr
+		}
+	} else {
+		pgErr := source.DoRestoreForKind(ctx, pgrestore.Kind, false, useRestic, false)
+		if pgErr != nil {
+			return []TestStruct{}, pgErr
+		}
+	}
+
+	// retrieve data from db
+	var result *sql.Rows
+	result, err = dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
+	if err != nil {
+		return []TestStruct{}, err
+	}
+	if result.Err() != nil {
+		return []TestStruct{}, result.Err()
+	}
+	defer func() {
+		resultErr := result.Close()
+		if resultErr != nil {
+			log.WithError(resultErr).Error("failed to cloe pgdump restore result")
+		}
+	}()
+
+	var restoreResult []TestStruct
+	restoreResult, err = scanResult(result)
+	if err != nil {
+		return []TestStruct{}, err
+	}
+
+	return restoreResult, nil
+}
+
+// createPGConfig creates a brudi config for the pgdump and the correct restoration command based on format
+func createPGConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, format, path string) []byte {
+	var restoreConfig string
+	if format != plainKind {
+		restoreConfig = fmt.Sprintf(`pgrestore:		
   options:
     flags:
       host: %s
       port: %s
       password: %s
       username: %s
-      dbName: %s
-      file: %s
-      format: %s
+      dbname: %s
     additionalArgs: []
-restic:
+    sourcefile: %s
+`, hostName, container.Port, postgresPW, postgresUser, postgresDB, path)
+	} else {
+		restoreConfig = fmt.Sprintf(`psql:
+  options:
+    flags:
+      host: %s
+      port: %s
+      user: %s
+      password: %s
+      dbname: %s
+    additionalArgs: []
+    sourcefile: %s
+`, hostName, container.Port, postgresUser, postgresPW, postgresDB, path)
+	}
+
+	var resticConfig string
+	if useRestic {
+		resticConfig = fmt.Sprintf(`restic:
   global:
     flags:
       repo: rest:http://%s:%s/
@@ -103,10 +313,33 @@ restic:
       keepLast: 1
       keepHourly: 0
       keepDaily: 0
-      keepWeekly: 0
+      eepWeekly: 0
       keepMonthly: 0
       keepYearly: 0
-`, hostName, container.Port, postgresPW, postgresUser, postgresDB, backupPath, format, resticIP, resticPort))
+  restore:
+    flags:
+      target: "/"
+    id: "latest"
+`, resticIP, resticPort)
+	}
+
+	result := []byte(fmt.Sprintf(`
+pgdump:
+  options:
+    flags:
+      host: %s
+      port: %s
+      password: %s
+      username: %s
+      dbName: %s
+      file: %s
+      format: %s
+    additionalArgs: []
+%s
+%s
+
+`, hostName, container.Port, postgresPW, postgresUser, postgresDB, path, format, restoreConfig, resticConfig))
+	return result
 }
 
 // prepareTestData creates and isnerts testdata into the specified pg database
@@ -145,178 +378,8 @@ func scanResult(result *sql.Rows) ([]TestStruct, error) {
 	return restoreResult, nil
 }
 
-// restorePGDump pulls data from restic repository and uses pg_restore to restore it to the given databse
-func restorePGDump(ctx context.Context, resticContainer, restoreTarget commons.TestContainerSetup) error {
-	pathToBackup := backupPath
-	if resticContainer.Address != "" {
-		resticErr := commons.DoResticRestore(ctx, resticContainer, dataDir)
-		if resticErr != nil {
-			return resticErr
-		}
-		pathToBackup = fmt.Sprintf("%s/%s", dataDir, backupPath)
-	}
-	// restore server from pgdump
-	command := exec.CommandContext(ctx, restoreKind, fmt.Sprintf("--dbname=%s", postgresDB),
-		fmt.Sprintf("--host=%s", hostName), fmt.Sprintf("--port=%s", restoreTarget.Port),
-		fmt.Sprintf("--username=%s", postgresUser), pathToBackup)
-	_, err := command.CombinedOutput()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// restorePsqlDump restores plain-text psql dumps
-func restorePsqlDump(ctx context.Context, resticContainer, restoreTarget commons.TestContainerSetup) error {
-	err := commons.DoResticRestore(ctx, resticContainer, dataDir)
-	if err != nil {
-		return err
-	}
-	// restore server from pgdump
-	command := exec.CommandContext(ctx, psqlKind, fmt.Sprintf("--host=%s", hostName), fmt.Sprintf("--port=%s", restoreTarget.Port),
-		fmt.Sprintf("--username=%s", postgresUser), fmt.Sprintf("--command=\\i %s%s", dataDir, backupPath))
-	_, err = command.CombinedOutput()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
+// createConnectionString returns a connection string for the given testcontainer
 func createConnectionString(target commons.TestContainerSetup) string {
 	return fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable", postgresUser,
 		postgresPW, target.Address, target.Port, postgresDB)
-}
-
-// pgDoBackup populates a database with data and performs a backup, optionally with restic
-func pgDoBackup(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, useRestic bool,
-	resticContainer commons.TestContainerSetup, format string) []TestStruct {
-	// create a postgres container to test backup function
-	pgBackupTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
-	pgDumpTestSuite.Require().NoError(err)
-	defer func() {
-		backupErr := pgBackupTarget.Container.Terminate(ctx)
-		pgDumpTestSuite.Require().NoError(backupErr)
-	}()
-
-	// connect to postgres database using the driver
-	backupConnectionString := createConnectionString(pgBackupTarget)
-	db, err := sql.Open(dbDriver, backupConnectionString)
-	pgDumpTestSuite.Require().NoError(err)
-	defer func() {
-		dbErr := db.Close()
-		pgDumpTestSuite.Require().NoError(dbErr)
-	}()
-
-	// wait for postgres to be ready for connections
-	for ok := true; ok; ok = db.Ping() != nil {
-		time.Sleep(1 * time.Second)
-	}
-
-	// Create test table
-	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s(id serial PRIMARY KEY, name VARCHAR(100) NOT NULL)", tableName))
-	pgDumpTestSuite.Require().NoError(err)
-
-	// create test data and write it to database
-	testData, err := prepareTestData(db)
-	pgDumpTestSuite.Require().NoError(err)
-
-	testPGConfig := createPGConfig(pgBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, format)
-	err = viper.ReadConfig(bytes.NewBuffer(testPGConfig))
-	pgDumpTestSuite.Require().NoError(err)
-
-	// perform backup action on first postgres container
-	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
-	pgDumpTestSuite.Require().NoError(err)
-	return testData
-}
-
-func pgDoRestore(ctx context.Context, pgDumpTestSuite *PGDumpTestSuite, resticContainer commons.TestContainerSetup,
-	format string) []TestStruct {
-	// setup second postgres container to test if correct data is restored
-	pgRestoreTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
-	pgDumpTestSuite.Require().NoError(err)
-	defer func() {
-		restoreErr := pgRestoreTarget.Container.Terminate(ctx)
-		pgDumpTestSuite.Require().NoError(restoreErr)
-	}()
-
-	restoreConnectionString := createConnectionString(pgRestoreTarget)
-	dbRestore, err := sql.Open(dbDriver, restoreConnectionString)
-	pgDumpTestSuite.Require().NoError(err)
-	defer func() {
-		dbErr := dbRestore.Close()
-		pgDumpTestSuite.Require().NoError(dbErr)
-	}()
-
-	// wait for postgres to be ready for connections
-	for ok := true; ok; ok = dbRestore.Ping() != nil {
-		time.Sleep(1 * time.Second)
-	}
-
-	if format == "plain" {
-		err = restorePsqlDump(ctx, resticContainer, pgRestoreTarget)
-		pgDumpTestSuite.Require().NoError(err)
-	} else {
-		err = restorePGDump(ctx, resticContainer, pgRestoreTarget)
-		pgDumpTestSuite.Require().NoError(err)
-	}
-
-	// check if data was restored correctly
-	result, err := dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
-	pgDumpTestSuite.Require().NoError(err)
-	pgDumpTestSuite.Require().NoError(result.Err())
-	defer func() {
-		resultErr := result.Close()
-		pgDumpTestSuite.Require().NoError(resultErr)
-	}()
-
-	restoreResult, err := scanResult(result)
-	pgDumpTestSuite.Require().NoError(err)
-
-	return restoreResult
-}
-
-// TestBasicPGDump performs an integration test for brudi pgdump, without use of restic
-func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
-	ctx := context.Background()
-
-	defer func() {
-		removeErr := os.Remove(backupPath)
-		pgDumpTestSuite.Require().NoError(removeErr)
-	}()
-
-	testData := pgDoBackup(ctx, pgDumpTestSuite, false, commons.TestContainerSetup{Port: "", Address: ""}, "tar")
-	// setup second postgres container to test if correct data is restored
-	restoreResult := pgDoRestore(ctx, pgDumpTestSuite, commons.TestContainerSetup{Port: "", Address: ""}, "tar")
-
-	assert.DeepEqual(pgDumpTestSuite.T(), testData, restoreResult)
-}
-
-// TestPGDumpRestic performs an integration test for brudi pgdump with restic
-func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
-	ctx := context.Background()
-
-	defer func() {
-		// delete folder with backup file
-		removeErr := os.RemoveAll(dataDir)
-		pgDumpTestSuite.Require().NoError(removeErr)
-	}()
-
-	// setup a container running the restic rest-server
-	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
-	pgDumpTestSuite.Require().NoError(err)
-	defer func() {
-		resticErr := resticContainer.Container.Terminate(ctx)
-		pgDumpTestSuite.Require().NoError(resticErr)
-	}()
-
-	testData := pgDoBackup(ctx, pgDumpTestSuite, true, resticContainer, "tar")
-
-	restoreResult := pgDoRestore(ctx, pgDumpTestSuite, resticContainer, "tar")
-
-	assert.DeepEqual(pgDumpTestSuite.T(), testData, restoreResult)
-}
-
-func TestPGDumpTestSuite(t *testing.T) {
-	suite.Run(t, new(PGDumpTestSuite))
 }

@@ -5,6 +5,6 @@ pgrestore:
       port: 5432
       username: postgresuser
       dbname: postgres
+      file: /tmp/postgres.dump
       password: postgresroot
     additionalArgs: []
-    sourcefile: /tmp/postgres.dump
