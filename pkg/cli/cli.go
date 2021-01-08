@@ -2,8 +2,13 @@ package cli
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
+	"io"
+	"net/http"
+	"os"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -14,6 +19,7 @@ import (
 )
 
 const flagTag = "flag"
+const gzipType = "application/x-gzip"
 
 // includeFlag returns an string slice of [<flag>, <val>], or [<val>]
 func includeFlag(flag, val string) []string {
@@ -192,7 +198,6 @@ func Run(ctx context.Context, cmd CommandType) ([]byte, error) {
 	var err error
 	commandLine := ParseCommandLine(cmd)
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("executing command")
-
 	if ctx != nil {
 		out, err = exec.CommandContext(ctx, commandLine[0], commandLine[1:]...).CombinedOutput()
 		if ctx.Err() != nil {
@@ -305,4 +310,78 @@ func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPi
 	).Debug("successfully executed command")
 
 	return out.Bytes(), nil
+}
+
+// CheckAndGunzipFile checks if a file is gzipped and extracts it in that case...
+// ... it also returns the name of the unzipped file
+func CheckAndGunzipFile(fileName string) (string, error) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	defer func() {
+		fileErr := file.Close()
+		if fileErr != nil {
+			log.WithError(fileErr).Errorf("failed to close source file %s", fileName)
+		}
+	}()
+
+	// read first 512 bytes for http.DetectContentType
+	headerBytes := make([]byte, 512)
+	_, err = file.Read(headerBytes)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	// check if file is gzipped
+	fileType := http.DetectContentType(headerBytes)
+	if fileType != gzipType {
+		return fileName, nil
+	}
+	// open gzipped file
+	archive, archErr := os.Open(fileName)
+	if archErr != nil {
+		return "", errors.WithStack(err)
+	}
+	defer func() {
+		archDeferredErr := archive.Close()
+		if archDeferredErr != nil {
+			log.WithError(archDeferredErr).Errorf("failed to close archive file %s", fileName)
+		}
+	}()
+
+	// unzip gzipped file
+	var archiveReader *gzip.Reader
+	archiveReader, err = gzip.NewReader(archive)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	defer func() {
+		readerErr := archiveReader.Close()
+		if readerErr != nil {
+			log.WithError(readerErr).Error("failed to close archive reader")
+		}
+	}()
+
+	// open output file
+	var outFile *os.File
+	outName := archiveReader.Name
+	outFile, err = os.Create(outName)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		outErr := outFile.Close()
+		if outErr != nil {
+			log.WithError(outErr).Errorf("failed to close output file %s", outName)
+		}
+	}()
+
+	// write unzipped file to file system
+	_, err = io.Copy(outFile, archiveReader)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	extractedName := archiveReader.Name
+	return extractedName, nil
 }

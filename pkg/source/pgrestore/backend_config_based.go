@@ -1,4 +1,4 @@
-package tar
+package pgrestore
 
 import (
 	"context"
@@ -16,10 +16,11 @@ type ConfigBasedBackend struct {
 
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	config := &Config{
-		Options: &Options{
+		&Options{
 			Flags:          &Flags{},
-			Paths:          []string{},
 			AdditionalArgs: []string{},
+			SourceFile:     "",
+			PGRestore:      false,
 		},
 	}
 
@@ -31,10 +32,13 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	return &ConfigBasedBackend{cfg: config}, nil
 }
 
-func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
+func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
+	args := append(cli.StructToCLI(b.cfg.Options.Flags), b.cfg.Options.AdditionalArgs...)
+	args = append(args, b.cfg.Options.SourceFile)
+	fmt.Println(args)
 	cmd := cli.CommandType{
 		Binary: binary,
-		Args:   cli.StructToCLI(b.cfg.Options),
+		Args:   args,
 	}
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
@@ -45,11 +49,11 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {
-	return b.cfg.Options.Flags.File
+	return b.cfg.Options.SourceFile
 }
 
 func (b *ConfigBasedBackend) GetHostname() string {
-	return b.cfg.HostName
+	return b.cfg.Options.Flags.Host
 }
 
 func (b *ConfigBasedBackend) CleanUp() error {

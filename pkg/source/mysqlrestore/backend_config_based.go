@@ -1,4 +1,4 @@
-package tar
+package mysqlrestore
 
 import (
 	"context"
@@ -16,13 +16,12 @@ type ConfigBasedBackend struct {
 
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	config := &Config{
-		Options: &Options{
+		&Options{
 			Flags:          &Flags{},
-			Paths:          []string{},
 			AdditionalArgs: []string{},
+			SourceFile:     "",
 		},
 	}
-
 	err := config.InitFromViper()
 	if err != nil {
 		return nil, err
@@ -31,12 +30,21 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	return &ConfigBasedBackend{cfg: config}, nil
 }
 
-func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
+func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
+	fileName, err := cli.CheckAndGunzipFile(b.cfg.Options.SourceFile)
+	if err != nil {
+		return err
+	}
+	if b.cfg.Options.Flags.Execute == "" {
+		b.cfg.Options.Flags.Execute = fmt.Sprintf("source %s", fileName)
+	}
+	args := append(cli.StructToCLI(b.cfg.Options.Flags), b.cfg.Options.AdditionalArgs...)
 	cmd := cli.CommandType{
 		Binary: binary,
-		Args:   cli.StructToCLI(b.cfg.Options),
+		Args:   args,
 	}
-	out, err := cli.Run(ctx, cmd)
+	var out []byte
+	out, err = cli.Run(ctx, cmd)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
 	}
@@ -45,11 +53,11 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {
-	return b.cfg.Options.Flags.File
+	return b.cfg.Options.SourceFile
 }
 
 func (b *ConfigBasedBackend) GetHostname() string {
-	return b.cfg.HostName
+	return b.cfg.Options.Flags.Host
 }
 
 func (b *ConfigBasedBackend) CleanUp() error {
