@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"os"
 	"os/exec"
@@ -70,6 +71,9 @@ func DoResticRestore(ctx context.Context, resticContainer TestContainerSetup, da
 	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
 		resticContainer.Address, resticContainer.Port),
 		"--target", dataDir, "latest")
-	_, err := cmd.CombinedOutput()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return errors.Errorf("failed to execute restic restore: \n Output: %s \n Error: %s", out, err)
+	}
 	return err
 }

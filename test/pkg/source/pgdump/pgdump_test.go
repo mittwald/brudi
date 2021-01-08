@@ -353,7 +353,7 @@ pgdump:
 	return result
 }
 
-// prepareTestData creates and isnerts testdata into the specified pg database
+// prepareTestData creates and inserts testdata into the specified pg database
 func prepareTestData(database *sql.DB) ([]TestStruct, error) {
 	var err error
 	testStruct1 := TestStruct{2, "TEST"}
