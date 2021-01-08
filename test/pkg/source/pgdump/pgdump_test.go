@@ -76,7 +76,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 			log.WithError(removeErr).Error("failed to remove pgdump backup files")
 		}
 	}()
-
+	log.Info("Testing postgres restoration with tar dump via pg_restore")
 	testData, err := pgDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"tar", backupPath)
 	pgDumpTestSuite.Require().NoError(err)
@@ -88,13 +88,14 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 
 	assert.DeepEqual(pgDumpTestSuite.T(), testData, restoreResult)
 
+	log.Info("Testing postgres restoration with plain-text dump via psql")
 	var testDataPlain []TestStruct
 	testDataPlain, err = pgDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"plain", backupPathPlain)
 	pgDumpTestSuite.Require().NoError(err)
 	// setup second postgres container to test if correct data is restored
 	var restoreResultPlain []TestStruct
-	restoreResult, err = pgDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
+	restoreResultPlain, err = pgDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"plain", backupPathPlain)
 	pgDumpTestSuite.Require().NoError(err)
 
@@ -298,7 +299,7 @@ func createPGConfig(container commons.TestContainerSetup, useRestic bool, restic
       password: %s
       dbname: %s
     additionalArgs: []
-    sourcefile: %s
+    sourcefile: %s 
 `, hostName, container.Port, postgresUser, postgresPW, postgresDB, path)
 	}
 
