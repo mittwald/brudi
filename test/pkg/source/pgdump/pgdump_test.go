@@ -76,10 +76,19 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 			log.WithError(removeErr).Error("failed to remove pgdump backup files")
 		}
 	}()
+
+	defer func() {
+		removePlainErr := os.Remove(backupPathPlain)
+		if removePlainErr != nil {
+			log.WithError(removePlainErr).Error("failed to remove psql backup files")
+		}
+	}()
+
 	log.Info("Testing postgres restoration with tar dump via pg_restore")
 	testData, err := pgDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"tar", backupPath)
 	pgDumpTestSuite.Require().NoError(err)
+
 	// setup second postgres container to test if correct data is restored
 	var restoreResult []TestStruct
 	restoreResult, err = pgDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
@@ -93,6 +102,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	testDataPlain, err = pgDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"plain", backupPathPlain)
 	pgDumpTestSuite.Require().NoError(err)
+
 	// setup second postgres container to test if correct data is restored
 	var restoreResultPlain []TestStruct
 	restoreResultPlain, err = pgDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},

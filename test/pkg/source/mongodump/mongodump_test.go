@@ -96,7 +96,8 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	}()
 
 	// backup database and remember test data for verification
-	testData, err := mongoDoBackup(ctx, true, resticContainer)
+	var testData []interface{}
+	testData, err = mongoDoBackup(ctx, true, resticContainer)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	// restore database from backup and pull test data for verification
@@ -189,7 +190,8 @@ func mongoDoRestore(ctx context.Context, useRestic bool,
 		return []interface{}{}, err
 	}
 
-	restoreClient, err := newMongoClient(&mongoRestoreTarget)
+	var restoreClient mongo.Client
+	restoreClient, err = newMongoClient(&mongoRestoreTarget)
 	if err != nil {
 		return []interface{}{}, err
 	}

@@ -151,7 +151,8 @@ func mySQLDoBackup(ctx context.Context, useRestic bool,
 	// establish connection
 	backupConnectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
 		mySQLRoot, mySQLRootPW, mySQLBackupTarget.Address, mySQLBackupTarget.Port, mySQLDatabase)
-	db, err := sql.Open(dbDriver, backupConnectionString)
+	var db *sql.DB
+	db, err = sql.Open(dbDriver, backupConnectionString)
 	if err != nil {
 		return []TestStruct{}, err
 	}
@@ -220,7 +221,8 @@ func mySQLDoRestore(ctx context.Context, useRestic bool,
 	// establish connection for restoring data
 	restoreConnectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
 		mySQLRoot, mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase)
-	dbRestore, err := sql.Open(dbDriver, restoreConnectionString)
+	var dbRestore *sql.DB
+	dbRestore, err = sql.Open(dbDriver, restoreConnectionString)
 	if err != nil {
 		return []TestStruct{}, err
 	}
@@ -232,7 +234,8 @@ func mySQLDoRestore(ctx context.Context, useRestic bool,
 	}()
 
 	// attempt to retrieve test data from database
-	result, err := dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
+	var result *sql.Rows
+	result, err = dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
 	if err != nil {
 		return []TestStruct{}, err
 	}
