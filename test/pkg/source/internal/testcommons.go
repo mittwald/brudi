@@ -13,6 +13,7 @@ import (
 )
 
 const ResticPort = "8000/tcp"
+const ResticPassword = "resticRepo"
 
 // TestContainerSetup is a wrapper for testcontainers that gives easy access to container-address and container-port
 type TestContainerSetup struct {
@@ -27,7 +28,7 @@ var ResticReq = testcontainers.ContainerRequest{
 	ExposedPorts: []string{ResticPort},
 	Env: map[string]string{
 		"OPTIONS":         "--no-auth",
-		"RESTIC_PASSWORD": "mongorepo",
+		"RESTIC_PASSWORD": ResticPassword,
 	},
 }
 
@@ -62,7 +63,7 @@ func TestSetup() {
 	viper.SetConfigType("yaml")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
-	os.Setenv("RESTIC_PASSWORD", "mongorepo")
+	os.Setenv("RESTIC_PASSWORD", ResticPassword)
 }
 
 func DoResticRestore(ctx context.Context, resticContainer TestContainerSetup, dataDir string) error {
