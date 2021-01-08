@@ -91,10 +91,10 @@ func newMongoClient(target *commons.TestContainerSetup) (mongo.Client, error) {
 }
 
 // createMongoConfig creates a brudi config for the `mongodump` command
-func createMongoConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
+func createMongoConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, kind string) []byte {
 	if !useRestic {
 		return []byte(fmt.Sprintf(`
-      mongodump:
+      %s:
         options:
           flags:
             host: %s
@@ -104,10 +104,10 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
             gzip: true
             archive: %s
           additionalArgs: []
-`, container.Address, container.Port, mongoUser, mongoPW, backupPath))
+`, kind, container.Address, container.Port, mongoUser, mongoPW, backupPath))
 	}
 	return []byte(fmt.Sprintf(`
-      mongodump:
+      %s:
         options:
           flags:
             host: %s
@@ -129,7 +129,11 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
             keepWeekly: 0
             keepMonthly: 0
             keepYearly: 0
-`, container.Address, container.Port, mongoUser, mongoPW, backupPath, resticIP, resticPort))
+        restore:
+          flags:
+            target: "/"
+          id: "latest"
+`, kind, container.Address, container.Port, mongoUser, mongoPW, backupPath, resticIP, resticPort))
 }
 
 // prepareTestData creates test data and writes it into a database using the provided client
@@ -190,7 +194,7 @@ func mongoDoBackup(ctx context.Context, mongoDumpTestSuite *MongoDumpTestSuite, 
 	testData, err = prepareTestData(&backupClient)
 	mongoDumpTestSuite.Require().NoError(err)
 
-	testMongoConfig := createMongoConfig(mongoBackupTarget, useRestic, resticContainer.Address, resticContainer.Port)
+	testMongoConfig := createMongoConfig(mongoBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, dumpKind)
 	err = viper.ReadConfig(bytes.NewBuffer(testMongoConfig))
 	mongoDumpTestSuite.Require().NoError(err)
 
@@ -201,18 +205,8 @@ func mongoDoBackup(ctx context.Context, mongoDumpTestSuite *MongoDumpTestSuite, 
 	return testData
 }
 
-// TestBasicMongoDBDump performs an integration test for the `mongodump` command
-func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
-	ctx := context.Background()
-
-	defer func() {
-		removeErr := os.Remove(backupPath)
-		mongoDumpTestSuite.Require().NoError(removeErr)
-	}()
-
-	// backup test data with brudi and return the  data so it can be used to verify the restoration
-	testData := mongoDoBackup(ctx, mongoDumpTestSuite, false, commons.TestContainerSetup{Port: "", Address: ""})
-
+func mongoDoRestore(ctx context.Context, mongoDumpTestSuite *MongoDumpTestSuite, useRestic bool,
+	resticContainer commons.TestContainerSetup) []interface{} {
 	// setup a new mongodb-container which will be used to ensure data was backed up correctly
 	mongoRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
 	mongoDumpTestSuite.Require().NoError(err)
@@ -221,11 +215,12 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 		mongoDumpTestSuite.Require().NoError(restoreErr)
 	}()
 
+	restoreMongoConfig := createMongoConfig(mongoRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, restoreKind)
+	err = viper.ReadConfig(bytes.NewBuffer(restoreMongoConfig))
+	mongoDumpTestSuite.Require().NoError(err)
+
 	// use `mongorestore` to restore backed up data to new container
-	_, err = execCommand(ctx, restoreKind, fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
-		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port), fmt.Sprintf("--archive=%s", backupPath),
-		"--gzip", fmt.Sprintf("--username=%s", mongoUser),
-		fmt.Sprintf("--password=%s", mongoPW))
+	err = source.DoRestoreForKind(ctx, restoreKind, false, useRestic, false)
 	mongoDumpTestSuite.Require().NoError(err)
 
 	restoreClient, err := newMongoClient(&mongoRestoreTarget)
@@ -245,7 +240,22 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 	var results []interface{}
 	results, err = getResultsFromCursor(cur)
 	mongoDumpTestSuite.Require().NoError(err)
+	return results
+}
 
+// TestBasicMongoDBDump performs an integration test for the `mongodump` command
+func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
+	ctx := context.Background()
+
+	defer func() {
+		removeErr := os.Remove(backupPath)
+		mongoDumpTestSuite.Require().NoError(removeErr)
+	}()
+
+	// backup test data with brudi and return the  data so it can be used to verify the restoration
+	testData := mongoDoBackup(ctx, mongoDumpTestSuite, false, commons.TestContainerSetup{Port: "", Address: ""})
+
+	results := mongoDoRestore(ctx, mongoDumpTestSuite, false, commons.TestContainerSetup{Port: "", Address: ""})
 	// check if the original data was restored
 	assert.DeepEqual(mongoDumpTestSuite.T(), testData, results)
 }
@@ -277,38 +287,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	err = commons.DoResticRestore(ctx, resticContainer, dataDir)
 	mongoDumpTestSuite.Require().NoError(err)
 
-	// restore data to mongodb-container
-	cmd := exec.CommandContext(ctx, restoreKind, fmt.Sprintf("--host=%s", mongoRestoreTarget.Address),
-		fmt.Sprintf("--port=%s", mongoRestoreTarget.Port),
-		fmt.Sprintf("--archive=%s/%s", dataDir, backupPath), "--gzip", fmt.Sprintf("--username=%s", mongoUser),
-		fmt.Sprintf("--password=%s", mongoPW))
-	_, err = cmd.CombinedOutput()
-	mongoDumpTestSuite.Require().NoError(err)
-
-	// remove backup directory
-	err = os.RemoveAll(dataDir)
-	mongoDumpTestSuite.Require().NoError(err)
-
-	// setup a client to connect to restored database
-	var restoreClient mongo.Client
-	restoreClient, err = newMongoClient(&mongoRestoreTarget)
-	mongoDumpTestSuite.Require().NoError(err)
-	defer func() {
-		clientErr := restoreClient.Disconnect(ctx)
-		mongoDumpTestSuite.Require().NoError(clientErr)
-	}()
-
-	// pull restored data from database
-	restoredCollection := restoreClient.Database(dbName).Collection(collName)
-	findOptions := options.Find()
-	var cur *mongo.Cursor
-	cur, err = restoredCollection.Find(context.TODO(), bson.D{{}}, findOptions)
-	mongoDumpTestSuite.Require().NoError(err)
-
-	var results []interface{}
-	results, err = getResultsFromCursor(cur)
-	mongoDumpTestSuite.Require().NoError(err)
-
+	results := mongoDoRestore(ctx, mongoDumpTestSuite, true, resticContainer)
 	assert.DeepEqual(mongoDumpTestSuite.T(), testData, results)
 }
 
