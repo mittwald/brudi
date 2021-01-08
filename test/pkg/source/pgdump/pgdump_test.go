@@ -31,6 +31,8 @@ const postgresUser = "postgresuser"
 const postgresDB = "postgres"
 const tableName = "test"
 const dumpKind = "pgdump"
+
+// mysql and psql are a bit picky when it comes to localhost, use ip instead
 const hostName = "127.0.0.1"
 const dbDriver = "pgx"
 const pgImage = "quay.io/bitnami/postgresql:latest"
@@ -38,23 +40,6 @@ const plainKind = "plain"
 
 type PGDumpTestSuite struct {
 	suite.Suite
-}
-
-type TestStruct struct {
-	ID   int
-	Name string
-}
-
-// testcontainers request for a postgres testcontainer
-var pgRequest = testcontainers.ContainerRequest{
-	Image:        pgImage,
-	ExposedPorts: []string{pgPort},
-	Env: map[string]string{
-		"POSTGRES_PASSWORD": postgresPW,
-		"POSTGRES_USER":     postgresUser,
-		"POSTGRES_DB":       postgresDB,
-	},
-	WaitingFor: wait.ForLog("database system is ready to accept connections"),
 }
 
 func (pgDumpTestSuite *PGDumpTestSuite) SetupTest() {
@@ -70,6 +55,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TearDownTest() {
 func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	ctx := context.Background()
 
+	// remove backup files after test
 	defer func() {
 		removeErr := os.Remove(backupPath)
 		if removeErr != nil {
@@ -77,6 +63,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 		}
 	}()
 
+	// remove backup files for plain dump after test
 	defer func() {
 		removePlainErr := os.Remove(backupPathPlain)
 		if removePlainErr != nil {
@@ -85,12 +72,13 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	}()
 
 	log.Info("Testing postgres restoration with tar dump via pg_restore")
+	// backup test data with brudi and retain test data for verification
 	testData, err := pgDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"tar", backupPath)
 	pgDumpTestSuite.Require().NoError(err)
 
 	// setup second postgres container to test if correct data is restored
-	var restoreResult []TestStruct
+	var restoreResult []testStruct
 	restoreResult, err = pgDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"tar", backupPath)
 	pgDumpTestSuite.Require().NoError(err)
@@ -98,13 +86,13 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	assert.DeepEqual(pgDumpTestSuite.T(), testData, restoreResult)
 
 	log.Info("Testing postgres restoration with plain-text dump via psql")
-	var testDataPlain []TestStruct
+	var testDataPlain []testStruct
 	testDataPlain, err = pgDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"plain", backupPathPlain)
 	pgDumpTestSuite.Require().NoError(err)
 
-	// setup second postgres container to test if correct data is restored
-	var restoreResultPlain []TestStruct
+	// restore test data with brudi and retreive it from the db for verification
+	var restoreResultPlain []testStruct
 	restoreResultPlain, err = pgDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"plain", backupPathPlain)
 	pgDumpTestSuite.Require().NoError(err)
@@ -116,6 +104,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 	ctx := context.Background()
 
+	// remove backup files after test
 	defer func() {
 		// delete folder with backup file
 		removeErr := os.RemoveAll(backupPath)
@@ -130,12 +119,14 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 		log.WithError(resticErr).Error("failed to terminate pgdump restic container")
 	}()
 
-	var testData []TestStruct
+	// backup test data with brudi and retain test data for verification
+	var testData []testStruct
 	testData, err = pgDoBackup(ctx, true, resticContainer,
 		"tar", backupPath)
 	pgDumpTestSuite.Require().NoError(err)
 
-	var restoreResult []TestStruct
+	// restore test data with brudi and retrieve it from the db for verification
+	var restoreResult []testStruct
 	restoreResult, err = pgDoRestore(ctx, true, resticContainer,
 		"tar", backupPath)
 	pgDumpTestSuite.Require().NoError(err)
@@ -149,11 +140,11 @@ func TestPGDumpTestSuite(t *testing.T) {
 
 // pgDoBackup populates a database with data and performs a backup, optionally with restic
 func pgDoBackup(ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup, format, path string) ([]TestStruct, error) {
+	resticContainer commons.TestContainerSetup, format, path string) ([]testStruct, error) {
 	// create a postgres container to test backup function
 	pgBackupTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
 	if err != nil {
-		return []TestStruct{}, err
+		return []testStruct{}, err
 	}
 	defer func() {
 		backupErr := pgBackupTarget.Container.Terminate(ctx)
@@ -167,7 +158,7 @@ func pgDoBackup(ctx context.Context, useRestic bool,
 	var db *sql.DB
 	db, err = sql.Open(dbDriver, backupConnectionString)
 	if err != nil {
-		return []TestStruct{}, err
+		return []testStruct{}, err
 	}
 	defer func() {
 		dbErr := db.Close()
@@ -184,37 +175,39 @@ func pgDoBackup(ctx context.Context, useRestic bool,
 	// Create test table
 	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s(id serial PRIMARY KEY, name VARCHAR(100) NOT NULL)", tableName))
 	if err != nil {
-		return []TestStruct{}, err
+		return []testStruct{}, err
 	}
 	// create test data and write it to database
-	var testData []TestStruct
+	var testData []testStruct
 	testData, err = prepareTestData(db)
 	if err != nil {
-		return []TestStruct{}, err
+		return []testStruct{}, err
 	}
 
+	// create a brudi config for pgdump
 	testPGConfig := createPGConfig(pgBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, format, path)
 	err = viper.ReadConfig(bytes.NewBuffer(testPGConfig))
 	if err != nil {
-		return []TestStruct{}, err
+		return []testStruct{}, err
 	}
 
-	// perform backup action on first postgres container
+	// perform backup action on database
 	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
 	if err != nil {
-		return []TestStruct{}, err
+		return []testStruct{}, err
 	}
 
 	return testData, nil
 }
 
+// pgDoRestore restores data from backup and retrieves it for verification, optionally using restic
 func pgDoRestore(ctx context.Context, useRestic bool, resticContainer commons.TestContainerSetup,
-	format, path string) ([]TestStruct, error) {
+	format, path string) ([]testStruct, error) {
 
 	// setup second postgres container to test if correct data is restored
 	pgRestoreTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
 	if err != nil {
-		return []TestStruct{}, err
+		return []testStruct{}, err
 	}
 	defer func() {
 		restoreErr := pgRestoreTarget.Container.Terminate(ctx)
@@ -223,17 +216,19 @@ func pgDoRestore(ctx context.Context, useRestic bool, resticContainer commons.Te
 		}
 	}()
 
+	// create a brudi configuration for pgrestore, depending on backup format
 	restorePGConfig := createPGConfig(pgRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, format, path)
 	err = viper.ReadConfig(bytes.NewBuffer(restorePGConfig))
 	if err != nil {
-		return []TestStruct{}, err
+		return []testStruct{}, err
 	}
 
+	// connect to restored database
 	restoreConnectionString := createConnectionString(pgRestoreTarget)
 	var dbRestore *sql.DB
 	dbRestore, err = sql.Open(dbDriver, restoreConnectionString)
 	if err != nil {
-		return []TestStruct{}, err
+		return []testStruct{}, err
 	}
 	defer func() {
 		dbErr := dbRestore.Close()
@@ -247,15 +242,16 @@ func pgDoRestore(ctx context.Context, useRestic bool, resticContainer commons.Te
 		time.Sleep(1 * time.Second)
 	}
 
+	// use correct restoration function based on backup format
 	if format == "plain" {
 		psqlErr := source.DoRestoreForKind(ctx, psql.Kind, false, useRestic, false)
 		if psqlErr != nil {
-			return []TestStruct{}, psqlErr
+			return []testStruct{}, psqlErr
 		}
 	} else {
 		pgErr := source.DoRestoreForKind(ctx, pgrestore.Kind, false, useRestic, false)
 		if pgErr != nil {
-			return []TestStruct{}, pgErr
+			return []testStruct{}, pgErr
 		}
 	}
 
@@ -263,10 +259,10 @@ func pgDoRestore(ctx context.Context, useRestic bool, resticContainer commons.Te
 	var result *sql.Rows
 	result, err = dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
 	if err != nil {
-		return []TestStruct{}, err
+		return []testStruct{}, err
 	}
 	if result.Err() != nil {
-		return []TestStruct{}, result.Err()
+		return []testStruct{}, result.Err()
 	}
 	defer func() {
 		resultErr := result.Close()
@@ -275,10 +271,11 @@ func pgDoRestore(ctx context.Context, useRestic bool, resticContainer commons.Te
 		}
 	}()
 
-	var restoreResult []TestStruct
+	// scan query result into testStructs
+	var restoreResult []testStruct
 	restoreResult, err = scanResult(result)
 	if err != nil {
-		return []TestStruct{}, err
+		return []testStruct{}, err
 	}
 
 	return restoreResult, nil
@@ -354,35 +351,35 @@ pgdump:
 }
 
 // prepareTestData creates and inserts testdata into the specified pg database
-func prepareTestData(database *sql.DB) ([]TestStruct, error) {
+func prepareTestData(database *sql.DB) ([]testStruct, error) {
 	var err error
-	testStruct1 := TestStruct{2, "TEST"}
-	testData := []TestStruct{testStruct1}
+	testStruct1 := testStruct{2, "TEST"}
+	testData := []testStruct{testStruct1}
 	var insert *sql.Rows
 	for idx := range testData {
 		insert, err = database.Query(fmt.Sprintf("INSERT INTO %s (id, name) VALUES ( %d, '%s' )", tableName, testData[idx].ID, testData[idx].Name))
 		if err != nil {
-			return []TestStruct{}, err
+			return []testStruct{}, err
 		}
 		if insert.Err() != nil {
-			return []TestStruct{}, insert.Err()
+			return []testStruct{}, insert.Err()
 		}
 	}
 	err = insert.Close()
 	if err != nil {
-		return []TestStruct{}, err
+		return []testStruct{}, err
 	}
 	return testData, nil
 }
 
 // scanResult parses the output from a database query back into TestStructs
-func scanResult(result *sql.Rows) ([]TestStruct, error) {
-	var restoreResult []TestStruct
+func scanResult(result *sql.Rows) ([]testStruct, error) {
+	var restoreResult []testStruct
 	for result.Next() {
-		var test TestStruct
+		var test testStruct
 		err := result.Scan(&test.ID, &test.Name)
 		if err != nil {
-			return []TestStruct{}, err
+			return []testStruct{}, err
 		}
 		restoreResult = append(restoreResult, test)
 	}
@@ -393,4 +390,21 @@ func scanResult(result *sql.Rows) ([]TestStruct, error) {
 func createConnectionString(target commons.TestContainerSetup) string {
 	return fmt.Sprintf("user=%s password=%s host=%s port=%s database=%s sslmode=disable", postgresUser,
 		postgresPW, target.Address, target.Port, postgresDB)
+}
+
+type testStruct struct {
+	ID   int
+	Name string
+}
+
+// testcontainers request for a postgres testcontainer
+var pgRequest = testcontainers.ContainerRequest{
+	Image:        pgImage,
+	ExposedPorts: []string{pgPort},
+	Env: map[string]string{
+		"POSTGRES_PASSWORD": postgresPW,
+		"POSTGRES_USER":     postgresUser,
+		"POSTGRES_DB":       postgresDB,
+	},
+	WaitingFor: wait.ForLog("database system is ready to accept connections"),
 }

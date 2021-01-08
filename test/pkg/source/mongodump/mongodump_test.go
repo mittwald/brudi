@@ -30,12 +30,6 @@ const collName = "testColl"
 const mongoImage = "quay.io/bitnami/mongodb:latest"
 const logString = "Waiting for connections"
 
-// TestColl holds test data for integration tests
-type TestColl struct {
-	Name string
-	Age  int
-}
-
 type MongoDumpTestSuite struct {
 	suite.Suite
 }
@@ -61,7 +55,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 		}
 	}()
 
-	// backup test data with brudi and remember test data for verification
+	// backup test data with brudi and retain test data for verification
 	testData, err := mongoDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""})
 	mongoDumpTestSuite.Require().NoError(err)
 
@@ -95,7 +89,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 		}
 	}()
 
-	// backup database and remember test data for verification
+	// backup database and retain test data for verification
 	var testData []interface{}
 	testData, err = mongoDoBackup(ctx, true, resticContainer)
 	mongoDumpTestSuite.Require().NoError(err)
@@ -162,6 +156,7 @@ func mongoDoBackup(ctx context.Context, useRestic bool,
 	return testData, nil
 }
 
+// mongoDoRestore restores data from backup using brudi and retrieves it for verification, optionally using restic
 func mongoDoRestore(ctx context.Context, useRestic bool,
 	resticContainer commons.TestContainerSetup) ([]interface{}, error) {
 	// setup a new mongodb container which will be used to ensure data was backed up correctly
@@ -169,7 +164,6 @@ func mongoDoRestore(ctx context.Context, useRestic bool,
 	if err != nil {
 		return []interface{}{}, err
 	}
-
 	defer func() {
 		restoreErr := mongoRestoreTarget.Container.Terminate(ctx)
 		if restoreErr != nil {
@@ -190,6 +184,7 @@ func mongoDoRestore(ctx context.Context, useRestic bool,
 		return []interface{}{}, err
 	}
 
+	// client to retrieve restored data
 	var restoreClient mongo.Client
 	restoreClient, err = newMongoClient(&mongoRestoreTarget)
 	if err != nil {
@@ -217,6 +212,7 @@ func mongoDoRestore(ctx context.Context, useRestic bool,
 		}
 	}()
 
+	// get results from cursor
 	var results []interface{}
 	results, err = getResultsFromCursor(cur)
 	if err != nil {
@@ -328,4 +324,10 @@ func getResultsFromCursor(cur *mongo.Cursor) ([]interface{}, error) {
 		results = append(results, elem)
 	}
 	return results, nil
+}
+
+// TestColl holds test data for integration tests
+type TestColl struct {
+	Name string
+	Age  int
 }

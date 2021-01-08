@@ -36,11 +36,6 @@ type RedisDumpTestSuite struct {
 	suite.Suite
 }
 
-type testStruct struct {
-	Name string
-	Type string
-}
-
 func (redisDumpTestSuite *RedisDumpTestSuite) SetupTest() {
 	commons.TestSetup()
 }
@@ -54,6 +49,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TearDownTest() {
 func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	ctx := context.Background()
 
+	// remove backup files after test
 	defer func() {
 		removeErr := os.RemoveAll(backupPath)
 		if removeErr != nil {
@@ -77,6 +73,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 	ctx := context.Background()
 
+	// remove backup files after test
 	defer func() {
 		removeErr := os.RemoveAll(backupPath)
 		if removeErr != nil {
@@ -115,11 +112,11 @@ func TestRedisDumpTestSuite(t *testing.T) {
 // redisDoBackup populates a database with test data and performs a backup
 func redisDoBackup(ctx context.Context, useRestic bool,
 	resticContainer commons.TestContainerSetup) (testStruct, error) {
+	// setup a redis container to backup from
 	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, redisPort)
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
 	}
-
 	defer func() {
 		backupErr := redisBackupTarget.Container.Terminate(ctx)
 		if backupErr != nil {
@@ -127,6 +124,7 @@ func redisDoBackup(ctx context.Context, useRestic bool,
 		}
 	}()
 
+	// connect to database to prepare for test data insertion
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%s", redisBackupTarget.Address, redisBackupTarget.Port),
 	})
@@ -137,11 +135,13 @@ func redisDoBackup(ctx context.Context, useRestic bool,
 		}
 	}()
 
+	// test connection
 	_, err = redisClient.Ping().Result()
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
 	}
 
+	//  setup test data and write it to database
 	testData := testStruct{Name: testName, Type: testType}
 	err = redisClient.Set(nameKey, testData.Name, 0).Err()
 	if err != nil {
@@ -153,6 +153,7 @@ func redisDoBackup(ctx context.Context, useRestic bool,
 		return testStruct{}, errors.WithStack(err)
 	}
 
+	// create a brudi config for redisdump
 	redisBackupConfig := createRedisConfig(redisBackupTarget, useRestic, resticContainer.Address, resticContainer.Port)
 	err = viper.ReadConfig(bytes.NewBuffer(redisBackupConfig))
 	if err != nil {
@@ -168,7 +169,7 @@ func redisDoBackup(ctx context.Context, useRestic bool,
 	return testData, nil
 }
 
-// redisDoRestore restores a redis database from backup, optionally by pulling from restic repo
+// redisDoRestore restores data from backup and retrieves it for verification, optionally using restic
 func redisDoRestore(ctx context.Context, useRestic bool,
 	resticContainer commons.TestContainerSetup) (testStruct, error) {
 	// setup container to restore data to
@@ -284,4 +285,9 @@ restic:
       target: "/"
     id: "latest"
 `, container.Address, container.Port, redisPW, backupPath, resticIP, resticPort))
+}
+
+type testStruct struct {
+	Name string
+	Type string
 }

@@ -67,6 +67,7 @@ func TestSetup() {
 	os.Setenv("RESTIC_PASSWORD", ResticPassword)
 }
 
+// DoResticRestore pulls the given backup from the given restic repo
 func DoResticRestore(ctx context.Context, resticContainer TestContainerSetup, dataDir string) error {
 	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
 		resticContainer.Address, resticContainer.Port),

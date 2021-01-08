@@ -28,12 +28,13 @@ const mySQLDatabase = "mysql"
 const mySQLUser = "mysqluser"
 const mySQLRoot = "root"
 const mySQLPw = "mysql"
-const dataDir = "data"
 const dumpKind = "mysqldump"
 const restoreKind = "mysqlrestore"
 const dbDriver = "mysql"
 const tableName = "testTable"
-const hostName = "127.0.0.1" // mysql does not like localhost, therefore use this as address
+
+// mysql and psql are a bit picky when it comes to localhost, use ip instead
+const hostName = "127.0.0.1"
 const logString = "ready for connections"
 const mysqlImage = "quay.io/bitnami/mysql:latest"
 
@@ -45,21 +46,6 @@ type MySQLDumpTestSuite struct {
 type TestStruct struct {
 	ID   int
 	Name string
-}
-
-//v--default-authentication-plugin=mysql_native_password"
-// testcontainer request for a mysql container
-var mySQLRequest = testcontainers.ContainerRequest{
-	Image:        mysqlImage,
-	ExposedPorts: []string{sqlPort},
-	Env: map[string]string{
-		"MYSQL_ROOT_PASSWORD": mySQLRootPW,
-		"MYSQL_DATABASE":      mySQLDatabase,
-		"MYSQL_USER":          mySQLUser,
-		"MYSQL_PASSWORD":      mySQLPw,
-		"MYSQL_EXTRA:FLAGS":   "--default-authentication-plugin=mysql_native_password",
-	},
-	WaitingFor: wait.ForLog(logString),
 }
 
 // SetupTest resets and
@@ -76,6 +62,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TearDownTest() {
 func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 	ctx := context.Background()
 
+	// remove backup files after test
 	defer func() {
 		removeErr := os.Remove(backupPath)
 		if removeErr != nil {
@@ -83,11 +70,11 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 		}
 	}()
 
-	// backup test data with brudi and remember test data for verification
+	// backup test data with brudi and retain test data for verification
 	testData, err := mySQLDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""})
 	mySQLDumpTestSuite.Require().NoError(err)
 
-	// restore database from backup and pull test data from it for verification
+	// restore test data with brudi and retrieve it from the db for verification
 	var restoreResult []TestStruct
 	restoreResult, err = mySQLDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""})
 	mySQLDumpTestSuite.Require().NoError(err)
@@ -116,7 +103,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 		}
 	}()
 
-	// backup test data with brudi and remember test data for verification
+	// backup test data with brudi and retain test data for verification
 	var testData []TestStruct
 	testData, err = mySQLDoBackup(ctx, true, resticContainer)
 	mySQLDumpTestSuite.Require().NoError(err)
@@ -136,7 +123,7 @@ func TestMySQLDumpTestSuite(t *testing.T) {
 // mySQLDoBackup inserts test data into the given database and then executes brudi's `mysqldump`
 func mySQLDoBackup(ctx context.Context, useRestic bool,
 	resticContainer commons.TestContainerSetup) ([]TestStruct, error) {
-
+	// setup a mysql container to backup from
 	mySQLBackupTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	if err != nil {
 		return []TestStruct{}, err
@@ -162,8 +149,9 @@ func mySQLDoBackup(ctx context.Context, useRestic bool,
 			log.WithError(dbErr).Error("failed to close connection to mysql backup database")
 		}
 	}()
-
+	// sleep to give mysql server time to get ready
 	time.Sleep(1 * time.Second)
+
 	// create table for test data
 	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));", tableName))
 	if err != nil {
@@ -194,6 +182,7 @@ func mySQLDoBackup(ctx context.Context, useRestic bool,
 // mySQLDoRestore restores data from backup and retrieves it for verification, optionally using restic
 func mySQLDoRestore(ctx context.Context, useRestic bool,
 	resticContainer commons.TestContainerSetup) ([]TestStruct, error) {
+	// create a mysql container to restore data to
 	mySQLRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	if err != nil {
 		return []TestStruct{}, err
@@ -205,20 +194,23 @@ func mySQLDoRestore(ctx context.Context, useRestic bool,
 		}
 	}()
 
+	// create a brudi config for mysql restore
 	MySQLRestoreConfig := createMySQLConfig(mySQLRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port)
 	err = viper.ReadConfig(bytes.NewBuffer(MySQLRestoreConfig))
 	if err != nil {
 		return []TestStruct{}, err
 	}
 
+	// sleep to give mysql time to get ready
 	time.Sleep(1 * time.Second)
+
 	// restore server from mysqldump
 	err = source.DoRestoreForKind(ctx, restoreKind, false, useRestic, false)
 	if err != nil {
 		return []TestStruct{}, err
 	}
 
-	// establish connection for restoring data
+	// establish connection for retrieving restored data
 	restoreConnectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
 		mySQLRoot, mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase)
 	var dbRestore *sql.DB
@@ -336,4 +328,18 @@ func prepareTestData(database *sql.DB) ([]TestStruct, error) {
 		return []TestStruct{}, err
 	}
 	return testData, nil
+}
+
+// testcontainer request for a mysql container
+var mySQLRequest = testcontainers.ContainerRequest{
+	Image:        mysqlImage,
+	ExposedPorts: []string{sqlPort},
+	Env: map[string]string{
+		"MYSQL_ROOT_PASSWORD": mySQLRootPW,
+		"MYSQL_DATABASE":      mySQLDatabase,
+		"MYSQL_USER":          mySQLUser,
+		"MYSQL_PASSWORD":      mySQLPw,
+		"MYSQL_EXTRA:FLAGS":   "--default-authentication-plugin=mysql_native_password",
+	},
+	WaitingFor: wait.ForLog(logString),
 }
