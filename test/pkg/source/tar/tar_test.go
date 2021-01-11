@@ -5,16 +5,18 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
+	"io"
+	"os"
+	"testing"
+
 	"github.com/mittwald/brudi/pkg/source"
 	commons "github.com/mittwald/brudi/test/pkg/source/internal"
+
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 	"gotest.tools/assert"
-	"io"
-	"os"
-	"testing"
 )
 
 const backupPath = "../../../testdata/tarTestFile.yaml"
