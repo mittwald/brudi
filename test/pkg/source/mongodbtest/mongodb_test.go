@@ -150,7 +150,7 @@ func mongoDoBackup(ctx context.Context, useRestic bool,
 	}
 
 	// perform backup action on mongodb-container
-	err = source.DoBackupForKind(ctx, dumpKind, source.ExtraResticFlags{}, false, useRestic, false)
+	err = source.DoBackupForKind(ctx, dumpKind, commons.ExtraFlags, false, useRestic, false)
 	if err != nil {
 		return []interface{}{}, err
 	}

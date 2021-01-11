@@ -83,6 +83,15 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 	return nil
 }
 
+func (c *Client) DoResticRestore(ctx context.Context, backupPath string) error {
+	c.Logger.Info("running 'restic restore'")
+	_, err := RestoreBackup(ctx, c.Config.Global, c.Config.Restore, false)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("error while while running restic restore: %s", err.Error()))
+	}
+	return nil
+}
+
 func (c *Client) DoResticForget(ctx context.Context) error {
 	c.Logger.Info("running 'restic forget'")
 

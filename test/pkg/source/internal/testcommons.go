@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/source"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"os"
@@ -31,6 +32,14 @@ var ResticReq = testcontainers.ContainerRequest{
 		"OPTIONS":         "--no-auth",
 		"RESTIC_PASSWORD": ResticPassword,
 	},
+}
+
+var ExtraFlags = source.ExtraResticFlags{
+	ResticCheck:   false,
+	ResticRebuild: false,
+	ResticTags:    false,
+	ResticPrune:   false,
+	ResticList:    false,
 }
 
 // NewTestContainerSetup creates a TestContainerSetup which acts as a wrapper for the testcontainer specified by request

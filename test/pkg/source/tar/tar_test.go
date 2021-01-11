@@ -76,7 +76,7 @@ func TestTarTestSuite(t *testing.T) {
 // tarDoBackup uses brudi to compress a test file into a tar.gz archive and returns the uncompressed files md5 hash
 func tarDoBackup(ctx context.Context) (string, error) {
 	hash, err := hashFile(backupPath)
-	err = source.DoBackupForKind(ctx, "tar", source.ExtraResticFlags{}, false, false, false)
+	err = source.DoBackupForKind(ctx, "tar", commons.ExtraFlags, false, false, false)
 	if err != nil {
 		return "", err
 	}
