@@ -1,4 +1,4 @@
-package mongodump_test
+package mongodb_test
 
 import (
 	"bytes"
@@ -32,21 +32,21 @@ const collName = "testColl"
 const mongoImage = "quay.io/bitnami/mongodb:latest"
 const logString = "Waiting for connections"
 
-type MongoDumpTestSuite struct {
+type MongoDumpAndRestoreTestSuite struct {
 	suite.Suite
 }
 
-func (mongoDumpTestSuite *MongoDumpTestSuite) SetupTest() {
+func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) SetupTest() {
 	commons.TestSetup()
 }
 
 // TearDownTest resets viper after a test
-func (mongoDumpTestSuite *MongoDumpTestSuite) TearDownTest() {
+func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
 // TestBasicMongoDBDump performs an integration test for the `mongodump` command
-func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
+func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongoDBDumpAndRestore() {
 	ctx := context.Background()
 
 	// remove files after test is done
@@ -59,19 +59,19 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDump() {
 
 	// backup test data with brudi and retain test data for verification
 	testData, err := mongoDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""})
-	mongoDumpTestSuite.Require().NoError(err)
+	mongoDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore database from backup and pull test data from it for verification
 	var results []interface{}
 	results, err = mongoDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""})
-	mongoDumpTestSuite.Require().NoError(err)
+	mongoDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// check if the original data was restored
-	assert.DeepEqual(mongoDumpTestSuite.T(), testData, results)
+	assert.DeepEqual(mongoDumpAndRestoreTestSuite.T(), testData, results)
 }
 
 // TestBasicMongoDBDumpRestic performs an integration test for the `mongodump` command with restic support
-func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
+func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongoDBDumpAndRestoreRestic() {
 	ctx := context.Background()
 
 	// remove files after test is done
@@ -83,7 +83,7 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	}()
 	// create a container running the restic rest-server
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
-	mongoDumpTestSuite.Require().NoError(err)
+	mongoDumpAndRestoreTestSuite.Require().NoError(err)
 	defer func() {
 		resticErr := resticContainer.Container.Terminate(ctx)
 		if resticErr != nil {
@@ -94,17 +94,17 @@ func (mongoDumpTestSuite *MongoDumpTestSuite) TestBasicMongoDBDumpRestic() {
 	// backup database and retain test data for verification
 	var testData []interface{}
 	testData, err = mongoDoBackup(ctx, true, resticContainer)
-	mongoDumpTestSuite.Require().NoError(err)
+	mongoDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore database from backup and pull test data for verification
 	var results []interface{}
 	results, err = mongoDoRestore(ctx, true, resticContainer)
 
-	assert.DeepEqual(mongoDumpTestSuite.T(), testData, results)
+	assert.DeepEqual(mongoDumpAndRestoreTestSuite.T(), testData, results)
 }
 
-func TestMongoDumpTestSuite(t *testing.T) {
-	suite.Run(t, new(MongoDumpTestSuite))
+func TestMongoDumpAndRestoreTestSuite(t *testing.T) {
+	suite.Run(t, new(MongoDumpAndRestoreTestSuite))
 }
 
 // mongoDoBackup performs a mongodump and returns the test data that was used for verification purposes

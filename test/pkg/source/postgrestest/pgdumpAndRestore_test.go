@@ -1,4 +1,4 @@
-package pgdump_test
+package postgres_test
 
 import (
 	"bytes"
@@ -38,21 +38,21 @@ const dbDriver = "pgx"
 const pgImage = "quay.io/bitnami/postgresql:latest"
 const plainKind = "plain"
 
-type PGDumpTestSuite struct {
+type PGDumpAndRestoreTestSuite struct {
 	suite.Suite
 }
 
-func (pgDumpTestSuite *PGDumpTestSuite) SetupTest() {
+func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) SetupTest() {
 	commons.TestSetup()
 }
 
 // TearDownTest resets viper after test
-func (pgDumpTestSuite *PGDumpTestSuite) TearDownTest() {
+func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
 // TestBasicPGDump performs an integration test for brudi pgdump, without use of restic
-func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
+func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRestore() {
 	ctx := context.Background()
 
 	// remove backup files after test
@@ -75,33 +75,33 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestBasicPGDump() {
 	// backup test data with brudi and retain test data for verification
 	testData, err := pgDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"tar", backupPath)
-	pgDumpTestSuite.Require().NoError(err)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// setup second postgres container to test if correct data is restored
 	var restoreResult []testStruct
 	restoreResult, err = pgDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"tar", backupPath)
-	pgDumpTestSuite.Require().NoError(err)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
-	assert.DeepEqual(pgDumpTestSuite.T(), testData, restoreResult)
+	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testData, restoreResult)
 
 	log.Info("Testing postgres restoration with plain-text dump via psql")
 	var testDataPlain []testStruct
 	testDataPlain, err = pgDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"plain", backupPathPlain)
-	pgDumpTestSuite.Require().NoError(err)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore test data with brudi and retreive it from the db for verification
 	var restoreResultPlain []testStruct
 	restoreResultPlain, err = pgDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
 		"plain", backupPathPlain)
-	pgDumpTestSuite.Require().NoError(err)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
-	assert.DeepEqual(pgDumpTestSuite.T(), testDataPlain, restoreResultPlain)
+	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testDataPlain, restoreResultPlain)
 }
 
 // TestPGDumpRestic performs an integration test for brudi pgdump with restic
-func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
+func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreRestic() {
 	ctx := context.Background()
 
 	// remove backup files after test
@@ -113,7 +113,7 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 
 	// setup a container running the restic rest-server
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
-	pgDumpTestSuite.Require().NoError(err)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
 	defer func() {
 		resticErr := resticContainer.Container.Terminate(ctx)
 		log.WithError(resticErr).Error("failed to terminate pgdump restic container")
@@ -123,19 +123,19 @@ func (pgDumpTestSuite *PGDumpTestSuite) TestPGDumpRestic() {
 	var testData []testStruct
 	testData, err = pgDoBackup(ctx, true, resticContainer,
 		"tar", backupPath)
-	pgDumpTestSuite.Require().NoError(err)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore test data with brudi and retrieve it from the db for verification
 	var restoreResult []testStruct
 	restoreResult, err = pgDoRestore(ctx, true, resticContainer,
 		"tar", backupPath)
-	pgDumpTestSuite.Require().NoError(err)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
-	assert.DeepEqual(pgDumpTestSuite.T(), testData, restoreResult)
+	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }
 
-func TestPGDumpTestSuite(t *testing.T) {
-	suite.Run(t, new(PGDumpTestSuite))
+func TestPGDumpAndRestoreTestSuite(t *testing.T) {
+	suite.Run(t, new(PGDumpAndRestoreTestSuite))
 }
 
 // pgDoBackup populates a database with data and performs a backup, optionally with restic

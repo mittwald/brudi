@@ -1,4 +1,4 @@
-package mysqldump_test
+package mysql_test
 
 import (
 	"bytes"
@@ -38,7 +38,7 @@ const hostName = "127.0.0.1"
 const logString = "ready for connections"
 const mysqlImage = "quay.io/bitnami/mysql:latest"
 
-type MySQLDumpTestSuite struct {
+type MySQLDumpAndRestoreTestSuite struct {
 	suite.Suite
 }
 
@@ -49,17 +49,17 @@ type TestStruct struct {
 }
 
 // SetupTest resets and
-func (mySQLDumpTestSuite *MySQLDumpTestSuite) SetupTest() {
+func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) SetupTest() {
 	commons.TestSetup()
 }
 
 // TearDownTest resets viper after a test
-func (mySQLDumpTestSuite *MySQLDumpTestSuite) TearDownTest() {
+func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TearDownTest() {
 	viper.Reset()
 }
 
 // TestBasicMySQLDump performs an integration test for mysqldump, without restic
-func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
+func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQLDumpAndRestore() {
 	ctx := context.Background()
 
 	// remove backup files after test
@@ -72,18 +72,18 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestBasicMySQLDump() {
 
 	// backup test data with brudi and retain test data for verification
 	testData, err := mySQLDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""})
-	mySQLDumpTestSuite.Require().NoError(err)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore test data with brudi and retrieve it from the db for verification
 	var restoreResult []TestStruct
 	restoreResult, err = mySQLDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""})
-	mySQLDumpTestSuite.Require().NoError(err)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
-	assert.DeepEqual(mySQLDumpTestSuite.T(), testData, restoreResult)
+	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }
 
 // TestMySQLDumpRestic performs an integration test for mysqldump with restic
-func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
+func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpAndRestoreRestic() {
 	ctx := context.Background()
 
 	defer func() {
@@ -95,7 +95,7 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 
 	// setup a container running the restic rest-server
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
-	mySQLDumpTestSuite.Require().NoError(err)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 	defer func() {
 		resticErr := resticContainer.Container.Terminate(ctx)
 		if resticErr != nil {
@@ -106,18 +106,18 @@ func (mySQLDumpTestSuite *MySQLDumpTestSuite) TestMySQLDumpRestic() {
 	// backup test data with brudi and retain test data for verification
 	var testData []TestStruct
 	testData, err = mySQLDoBackup(ctx, true, resticContainer)
-	mySQLDumpTestSuite.Require().NoError(err)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore database from backup and pull test data from it for verification
 	var restoreResult []TestStruct
 	restoreResult, err = mySQLDoRestore(ctx, true, resticContainer)
-	mySQLDumpTestSuite.Require().NoError(err)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
-	assert.DeepEqual(mySQLDumpTestSuite.T(), testData, restoreResult)
+	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }
 
-func TestMySQLDumpTestSuite(t *testing.T) {
-	suite.Run(t, new(MySQLDumpTestSuite))
+func TestMySQLDumpAndRestoreTestSuite(t *testing.T) {
+	suite.Run(t, new(MySQLDumpAndRestoreTestSuite))
 }
 
 // mySQLDoBackup inserts test data into the given database and then executes brudi's `mysqldump`
