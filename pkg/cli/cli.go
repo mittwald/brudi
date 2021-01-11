@@ -360,6 +360,12 @@ func GzipFile(fileName string) (string, error) {
 		log.WithError(err).Error("failed to close archive reader")
 	}
 
+	// remove uncompressed source backup
+	err = os.Remove(fileName)
+	if err != nil {
+		log.WithError(err).Error("failed to remove uncompressed backup file")
+	}
+
 	return outName, nil
 }
 
@@ -417,9 +423,13 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 	// open output file
 	var outFile *os.File
 	outName := archiveReader.Name
+	// if archive header isn't set properly attempt to salvage by using filename without '.gz'
+	if outName == "" {
+		outName = strings.TrimRight(fileName, ".gz")
+	}
 	outFile, err = os.Create(outName)
 	if err != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
 	defer func() {
 		outErr := outFile.Close()
