@@ -1,27 +1,28 @@
-package restic
+package psql
 
 import (
+	"github.com/pkg/errors"
+
 	"github.com/mittwald/brudi/pkg/config"
 )
 
 const (
-	Kind = "restic"
+	Kind = "psql"
 )
 
 type Config struct {
-	Global    *GlobalOptions
-	Backup    *BackupOptions
-	Forget    *ForgetOptions
-	Restore   *RestoreOptions
-	Snapshots *SnapshotOptions
-	Tags      *TagOptions
-	Check     *CheckFlags
+	Options *Options
 }
 
 func (c *Config) InitFromViper() error {
 	err := config.InitializeStructFromViper(Kind, c)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
+	}
+
+	err = config.EnsureEnv(*c.Options.Flags)
+	if err != nil {
+		return errors.WithStack(err)
 	}
 
 	return config.Validate(c)

@@ -1,4 +1,4 @@
-package tar
+package mongorestore
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/mittwald/brudi/internal"
 	"github.com/mittwald/brudi/pkg/cli"
 )
 
@@ -16,9 +17,8 @@ type ConfigBasedBackend struct {
 
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	config := &Config{
-		Options: &Options{
+		&Options{
 			Flags:          &Flags{},
-			Paths:          []string{},
 			AdditionalArgs: []string{},
 		},
 	}
@@ -31,7 +31,7 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	return &ConfigBasedBackend{cfg: config}, nil
 }
 
-func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
+func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
 	cmd := cli.CommandType{
 		Binary: binary,
 		Args:   cli.StructToCLI(b.cfg.Options),
@@ -45,13 +45,27 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {
-	return b.cfg.Options.Flags.File
+	if b.cfg.Options.Flags.Archive != "" {
+		return b.cfg.Options.Flags.Archive
+	}
+
+	return b.cfg.Options.Flags.Out
 }
 
 func (b *ConfigBasedBackend) GetHostname() string {
-	return b.cfg.HostName
+	return b.cfg.Options.Flags.Host
 }
 
 func (b *ConfigBasedBackend) CleanUp() error {
-	return os.Remove(b.GetBackupPath())
+	var fileTypes []string
+
+	if b.cfg.Options.Flags.Archive != "" {
+		return os.Remove(b.cfg.Options.Flags.Archive)
+	} else if b.cfg.Options.Flags.Gzip {
+		fileTypes = append(fileTypes, ".bson.gz", ".json.gz")
+	} else {
+		fileTypes = append(fileTypes, ".bson", ".json")
+	}
+
+	return internal.ClearDirectory(b.GetBackupPath(), fileTypes...)
 }

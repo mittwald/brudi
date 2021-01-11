@@ -35,6 +35,10 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 			IDs:   []string{},
 		},
 		Check: &CheckFlags{},
+		Restore: &RestoreOptions{
+			Flags: &RestoreFlags{},
+			ID:    "",
+		},
 	}
 
 	err := conf.InitFromViper()
@@ -47,9 +51,9 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 	}
 
 	conf.Backup.Paths = append(conf.Backup.Paths, backupPaths...)
-
 	resticLogger := logger.WithField("cmd", "restic")
-
+	// obtain backup path for restic
+	conf.Restore.Flags.Path = backupPaths[0]
 	return &Client{
 		Logger: resticLogger,
 		Config: conf,
@@ -79,7 +83,6 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 	return nil
 }
 
-// DoResticForget executes Forget with the settings from c
 func (c *Client) DoResticForget(ctx context.Context) error {
 	c.Logger.Info("running 'restic forget'")
 
