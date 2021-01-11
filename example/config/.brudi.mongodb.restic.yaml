@@ -6,6 +6,8 @@ mongodump:
       username: root
       password: mongodbroot
       gzip: true
+      username: root
+      password: mongodbroot
       archive: /tmp/dump.tar.gz
     additionalArgs: []
 restic:

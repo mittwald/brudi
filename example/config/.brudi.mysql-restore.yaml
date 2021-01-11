@@ -1,0 +1,10 @@
+mysqlrestore:
+  options:
+    flags:
+      host: 127.0.0.1
+      port: 3306
+      password: mysqlroot
+      user: root
+      Database: test
+    additionalArgs: []
+    sourceFile: /tmp/test.sqldump
