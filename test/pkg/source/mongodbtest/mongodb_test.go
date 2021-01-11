@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/mittwald/brudi/pkg/source"".gz"
+	"github.com/mittwald/brudi/pkg/source"
 	commons "github.com/mittwald/brudi/test/pkg/source/internal"
 
 	log "github.com/sirupsen/logrus"
