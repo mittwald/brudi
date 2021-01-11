@@ -6,7 +6,6 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -237,7 +237,7 @@ func RunPipedWithTimeout(
 
 // RunPiped executes cmd1 and pipes its output to cmd2. Will return the output of cmd2
 func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPids) ([]byte, error) {
-	var errors []string
+	var errs []string
 	var err error
 	var cmd1Exec, cmd2Exec *exec.Cmd
 	var out bytes.Buffer
@@ -269,12 +269,12 @@ func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPi
 	cmd2Exec.Stderr = &out
 	err = cmd2Exec.Start()
 	if err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err.Error())
 	}
 
 	err = cmd1Exec.Start()
 	if err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err.Error())
 	}
 
 	if pids != nil {
@@ -290,17 +290,17 @@ func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPi
 	if err != nil {
 		msg, ok := err.(*exec.ExitError)
 		if !ok || !(cmd1.Binary == "tar" && msg.Sys().(syscall.WaitStatus).ExitStatus() == 1) { // ignore tar exit-code of 1
-			errors = append(errors, err.Error())
+			errs = append(errs, err.Error())
 		}
 	}
 
 	err = cmd2Exec.Wait()
 	if err != nil {
-		errors = append(errors, err.Error())
+		errs = append(errs, err.Error())
 	}
 
-	if len(errors) > 0 {
-		return out.Bytes(), fmt.Errorf(strings.Join(errors, "\n"))
+	if len(errs) > 0 {
+		return out.Bytes(), fmt.Errorf(strings.Join(errs, "\n"))
 	}
 
 	log.WithField("command",

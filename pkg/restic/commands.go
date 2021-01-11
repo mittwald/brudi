@@ -264,7 +264,8 @@ func ListSnapshots(ctx context.Context, opts *SnapshotOptions) ([]Snapshot, erro
 		return nil, err
 	}
 	var snapshots []Snapshot
-	if err = json.Unmarshal(out, &snapshots); err != nil {
+	err = json.Unmarshal(out, &snapshots)
+	if err != nil {
 		return nil, err
 	}
 	return snapshots, nil
@@ -273,14 +274,14 @@ func ListSnapshots(ctx context.Context, opts *SnapshotOptions) ([]Snapshot, erro
 // Find executes "restic find"
 func Find(ctx context.Context, opts *FindOptions) ([]FindResult, error) {
 	cmd := newCommand("find", cli.StructToCLI(&opts)...)
-
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return nil, err
 	}
 
 	var findResult []FindResult
-	if err = json.Unmarshal(out, &findResult); err != nil {
+	err = json.Unmarshal(out, &findResult)
+	if err != nil {
 		return nil, err
 	}
 	return findResult, nil
