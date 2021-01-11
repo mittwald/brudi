@@ -318,7 +318,7 @@ func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPi
 func GzipFile(fileName string) (string, error) {
 	var err error
 
-	//open input file
+	// open input file
 	var inFile *os.File
 	inFile, err = os.Open(fileName)
 	if err != nil {
@@ -348,8 +348,8 @@ func GzipFile(fileName string) (string, error) {
 	}()
 
 	// write compressed content to file
-	var archiveWriter *gzip.Writer
-	archiveWriter = gzip.NewWriter(outFile)
+	archiveWriter := gzip.NewWriter(outFile)
+	archiveWriter.Name = fileName
 	_, err = archiveWriter.Write(content)
 	if err != nil {
 		return "", errors.WithStack(err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -33,6 +34,11 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 
 // Do a bgsave of the given redis instance
 func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
+	var gzip bool
+	if strings.HasSuffix(b.cfg.Options.Flags.Rdb, cli.GzipSuffix) {
+		b.cfg.Options.Flags.Rdb = strings.TrimRight(b.cfg.Options.Flags.Rdb, cli.GzipSuffix)
+		gzip = true
+	}
 	cmd := cli.CommandType{
 		Binary: binary,
 		Args:   cli.StructToCLI(b.cfg.Options),
@@ -41,6 +47,13 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
+	}
+
+	if gzip {
+		b.cfg.Options.Flags.Rdb, err = cli.GzipFile(b.cfg.Options.Flags.Rdb)
+		if err != nil {
+			return errors.WithStack(err)
+		}
 	}
 
 	return nil

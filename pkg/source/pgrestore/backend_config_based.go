@@ -33,13 +33,18 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 }
 
 func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
+	fileName, err := cli.CheckAndGunzipFile(b.cfg.Options.SourceFile)
+	if err != nil {
+		return err
+	}
 	args := append(cli.StructToCLI(b.cfg.Options.Flags), b.cfg.Options.AdditionalArgs...)
-	args = append(args, b.cfg.Options.SourceFile)
+	args = append(args, fileName)
 	cmd := cli.CommandType{
 		Binary: binary,
 		Args:   args,
 	}
-	out, err := cli.Run(ctx, cmd)
+	var out []byte
+	out, err = cli.Run(ctx, cmd)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
 	}
