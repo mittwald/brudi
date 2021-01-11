@@ -19,7 +19,6 @@ var (
 	useRestic       bool
 	useResticForget bool
 	cleanup         bool
-	gzip            bool
 
 	rootCmd = &cobra.Command{
 		Use:   "brudi",
@@ -37,8 +36,6 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&useResticForget, "restic-forget", false, "executes 'restic forget' after backing up things with restic")
 
 	rootCmd.PersistentFlags().BoolVar(&cleanup, "cleanup", false, "cleanup backup files afterwards")
-
-	rootCmd.PersistentFlags().BoolVar(&gzip, "gzip", false, "gzip backup file after creation")
 
 	rootCmd.PersistentFlags().StringSliceVarP(&cfgFiles, "config", "c", []string{}, "config file (default is ${HOME}/.brudi.yaml)")
 }

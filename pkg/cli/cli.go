@@ -350,7 +350,6 @@ func GzipFile(fileName string) (string, error) {
 	// write compressed content to file
 	var archiveWriter *gzip.Writer
 	archiveWriter = gzip.NewWriter(outFile)
-	archiveWriter.Name = fileName
 	_, err = archiveWriter.Write(content)
 	if err != nil {
 		return "", errors.WithStack(err)
