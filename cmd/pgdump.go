@@ -19,8 +19,13 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			err := source.DoBackupForKind(ctx, pgdump.Kind, cleanup, useRestic, useResticForget, listResticSnapshots,
-				doResticCheck, doResticPrune, rebuildResticIndex, resticTags)
+			err := source.DoBackupForKind(ctx, pgdump.Kind, source.ExtraResticFlags{
+				ResticCheck:   doResticCheck,
+				ResticList:    listResticSnapshots,
+				ResticRebuild: rebuildResticIndex,
+				ResticPrune:   doResticPrune,
+				ResticTags:    resticTags,
+			}, cleanup, useRestic, useResticForget)
 			if err != nil {
 				panic(err)
 			}

@@ -36,8 +36,7 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 
 // DoBackupForKind performs the appropriate backup action for given arguments.
 // It also executes any given restic commands after files have been backed up,
-func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useResticForget, listResticSnapshots,
-	resticCheck, resticPrune, rebuildIndex, resticTags bool) error {
+func DoBackupForKind(ctx context.Context, kind string, resticFlags ExtraResticFlags, cleanup, useRestic, useResticForget bool) error {
 	logKind := log.WithFields(
 		log.Fields{
 			"kind": kind,
@@ -96,35 +95,35 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 		}
 	}
 
-	if listResticSnapshots {
+	if resticFlags.ResticList {
 		err = resticClient.DoResticListSnapshots(ctx)
 		if err != nil {
 			return err
 		}
 	}
 
-	if resticPrune {
+	if resticFlags.ResticPrune {
 		err = resticClient.DoResticPruneRepo(ctx)
 		if err != nil {
 			return err
 		}
 	}
 
-	if resticTags {
+	if resticFlags.ResticTags {
 		err = resticClient.DoResticTag(ctx)
 		if err != nil {
 			return err
 		}
 	}
 
-	if rebuildIndex {
+	if resticFlags.ResticRebuild {
 		err = resticClient.DoResticRebuildIndex(ctx)
 		if err != nil {
 			return err
 		}
 	}
 
-	if !resticCheck {
+	if !resticFlags.ResticCheck {
 		return nil
 	}
 
