@@ -160,7 +160,7 @@ func redisDoBackup(ctx context.Context, useRestic bool,
 	}
 
 	// perform backup action on first redis container
-	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
+	err = source.DoBackupForKind(ctx, dumpKind, source.ExtraResticFlags{}, false, useRestic, false)
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
 	}

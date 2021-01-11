@@ -192,7 +192,7 @@ func pgDoBackup(ctx context.Context, useRestic bool,
 	}
 
 	// perform backup action on database
-	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
+	err = source.DoBackupForKind(ctx, dumpKind, source.ExtraResticFlags{}, false, useRestic, false)
 	if err != nil {
 		return []testStruct{}, err
 	}

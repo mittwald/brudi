@@ -172,7 +172,7 @@ func mySQLDoBackup(ctx context.Context, useRestic bool,
 	}
 
 	// use brudi to create dump
-	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
+	err = source.DoBackupForKind(ctx, dumpKind, source.ExtraResticFlags{}, false, useRestic, false)
 	if err != nil {
 		return []TestStruct{}, err
 	}
