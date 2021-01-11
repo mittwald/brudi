@@ -22,7 +22,7 @@ type Flags struct {
 	DataOnly              bool   `flag:"--data-only"`
 	DBName                string `flag:"--dbname="`
 	DisableTriggers       bool   `flag:"--disable-triggers"`
-	ExitOnError           bool   `flag:--exit-on-error`
+	ExitOnError           bool   `flag:"--exit-on-error"`
 	File                  string `flag:"--file="`
 	Format                string `flag:"--format="`
 	Function              string `flag:"--function="`
@@ -32,7 +32,7 @@ type Flags struct {
 	Inserts               bool   `flag:"--inserts"`
 	Jobs                  int    `flag:"--jobs="`
 	List                  bool   `flag:"--list"`
-	ListFile              string `flag:--use-List=`
+	ListFile              string `flag:"--use-List="`
 	LoadViaPartitionRoot  bool   `flag:"--load-via-partition-root"`
 	LockWaitTimeout       string `flag:"--lock-wait-timeout="`
 	NoACL                 bool   `flag:"--no-acl"`

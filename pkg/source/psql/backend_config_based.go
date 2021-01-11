@@ -3,10 +3,11 @@ package psql
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
 
 	"github.com/mittwald/brudi/pkg/cli"
+
+	"github.com/pkg/errors"
 )
 
 type ConfigBasedBackend struct {
