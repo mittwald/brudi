@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/cli"
 
 	"github.com/mittwald/brudi/pkg/restic"
 
@@ -34,7 +35,7 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 	}
 }
 
-func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useResticForget bool) error {
+func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useResticForget, gzip bool) error {
 	logKind := log.WithFields(
 		log.Fields{
 			"kind": kind,
@@ -69,12 +70,20 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 
 	logKind.Info("finished backing up")
 
+	archiveName := backend.GetBackupPath()
+	if gzip && (kind != mongodump.Kind && kind != tar.Kind) {
+		archiveName, err = cli.GzipFile(backend.GetBackupPath())
+		if err != nil {
+			return err
+		}
+	}
+
 	if !useRestic {
 		return nil
 	}
 
 	var resticClient *restic.Client
-	resticClient, err = restic.NewResticClient(logKind, backend.GetHostname(), backend.GetBackupPath())
+	resticClient, err = restic.NewResticClient(logKind, backend.GetHostname(), archiveName)
 	if err != nil {
 		return err
 	}
