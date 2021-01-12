@@ -335,7 +335,7 @@ func GzipFile(fileName string) (string, error) {
 
 	// open output file
 	var outFile *os.File
-	outName := fmt.Sprintf("%s.gz", fileName)
+	outName := fmt.Sprintf("%s%s", fileName, GzipSuffix)
 	outFile, err = os.Create(outName)
 	if err != nil {
 		return "", errors.WithStack(err)
