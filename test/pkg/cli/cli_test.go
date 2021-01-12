@@ -67,7 +67,7 @@ func (cliTestSuite *CliTestSuite) TestCheckAndGunzipFile() {
 		log.WithError(err).Error("failed to read file header in TestCheckAndGunzipFile")
 	}
 
-	// check for unzip and correct file name
+	// check correct file type and file name
 	fileType := http.DetectContentType(headerBytes)
 	cliTestSuite.Assert().Equal(expectedFileType, fileType)
 	cliTestSuite.Assert().Equal(testFile, fileName)
