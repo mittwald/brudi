@@ -50,7 +50,7 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 
 	// zip backup, update flag with the name returned by GzipFile for correct handover to restic
 	if gzip {
-		b.cfg.Options.Flags.File, err = cli.GzipFile(b.cfg.Options.Flags.File)
+		b.cfg.Options.Flags.File, err = cli.GzipFile(b.cfg.Options.Flags.File, true)
 		if err != nil {
 			return err
 		}
