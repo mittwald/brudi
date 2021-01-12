@@ -32,9 +32,10 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 }
 
 func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
-	var gzip bool
-	if strings.HasSuffix(b.cfg.Options.Flags.File, ".gz") {
-		b.cfg.Options.Flags.File = strings.TrimRight(b.cfg.Options.Flags.File, ".gz")
+	gzip := false
+	// create temporary, unzipped backup first, thus trim '.gz' extension
+	if strings.HasSuffix(b.cfg.Options.Flags.File, cli.GzipSuffix) {
+		b.cfg.Options.Flags.File = strings.TrimSuffix(b.cfg.Options.Flags.File, cli.GzipSuffix)
 		gzip = true
 	}
 	cmd := cli.CommandType{
@@ -47,10 +48,11 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
 	}
 
+	// zip backup, update flag with the name returned by GzipFile for correct handover to restic
 	if gzip {
 		b.cfg.Options.Flags.File, err = cli.GzipFile(b.cfg.Options.Flags.File)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 	}
 

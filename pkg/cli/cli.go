@@ -424,7 +424,7 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 	outName := archiveReader.Name
 	// if archive header isn't set properly attempt to salvage by using filename without '.gz'
 	if outName == "" {
-		outName = strings.TrimRight(fileName, ".gz")
+		outName = strings.TrimRight(fileName, GzipSuffix)
 	}
 	outFile, err = os.Create(outName)
 	if err != nil {
