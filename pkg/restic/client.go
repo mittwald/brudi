@@ -3,6 +3,7 @@ package restic
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -113,12 +114,12 @@ func (c *Client) DoResticListSnapshots(ctx context.Context) error {
 
 	output, err := ListSnapshots(ctx, c.Config.Global, c.Config.Snapshots)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("%s - %s", err.Error(), output))
+		return errors.WithStack(err)
 	}
 	fmt.Println("output of 'restic snapshots':")
 	for index := range output {
-		fmt.Println(fmt.Sprintf("ID: %s; Time: %s; Host: %s; Tags: %s; Paths: %s",
-			output[index].ID, output[index].Time, output[index].Hostname, output[index].Tags, output[index].Paths))
+		fmt.Printf("ID: %d; Time: %s; Host: %s; Tags: %s; Paths: %s\n",
+			output[index].ID, output[index].Time, output[index].Hostname, output[index].Tags, output[index].Paths)
 	}
 	return nil
 }

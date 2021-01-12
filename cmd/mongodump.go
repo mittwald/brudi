@@ -19,13 +19,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			err := source.DoBackupForKind(ctx, mongodump.Kind, source.ExtraResticFlags{
-				ResticCheck:   doResticCheck,
-				ResticList:    listResticSnapshots,
-				ResticRebuild: rebuildResticIndex,
-				ResticPrune:   doResticPrune,
-				ResticTags:    resticTags,
-			}, cleanup, useRestic, useResticForget)
+			err := source.DoBackupForKind(ctx, mongodump.Kind, extaResticFlags, cleanup, useRestic, useResticForget)
 			if err != nil {
 				panic(err)
 			}

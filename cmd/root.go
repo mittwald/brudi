@@ -15,15 +15,11 @@ import (
 
 var (
 	// Used for flags.
-	cfgFiles            []string
-	useRestic           bool
-	useResticForget     bool
-	cleanup             bool
-	listResticSnapshots bool
-	doResticCheck       bool
-	doResticPrune       bool
-	rebuildResticIndex  bool
-	resticTags          bool
+	cfgFiles        []string
+	useRestic       bool
+	useResticForget bool
+	cleanup         bool
+	extaResticFlags config.ExtraResticFlags
 
 	rootCmd = &cobra.Command{
 		Use:   "brudi",
@@ -42,15 +38,20 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVar(&cleanup, "cleanup", false, "cleanup backup files afterwards")
 
-	rootCmd.PersistentFlags().BoolVar(&listResticSnapshots, "restic-snapshots", false, "list snapshots in restic repository afterwards")
+	rootCmd.PersistentFlags().BoolVar(&extaResticFlags.ResticList, "restic-snapshots", false,
+		"list snapshots in restic repository afterwards")
 
-	rootCmd.PersistentFlags().BoolVar(&doResticCheck, "restic-check", false, "perform 'restic check' on the repository")
+	rootCmd.PersistentFlags().BoolVar(&extaResticFlags.ResticCheck, "restic-check", false,
+		"perform 'restic check' on the repository")
 
-	rootCmd.PersistentFlags().BoolVar(&doResticPrune, "restic-prune", false, "perform 'restic prune' on the repository")
+	rootCmd.PersistentFlags().BoolVar(&extaResticFlags.ResticPrune, "restic-prune", false,
+		"perform 'restic prune' on the repository")
 
-	rootCmd.PersistentFlags().BoolVar(&rebuildResticIndex, "restic-rebuild-index", false, "perform 'restic rebuild-index' on the repository")
+	rootCmd.PersistentFlags().BoolVar(&extaResticFlags.ResticRebuild, "restic-rebuild-index", false,
+		"perform 'restic rebuild-index' on the repository")
 
-	rootCmd.PersistentFlags().BoolVar(&resticTags, "restic-tags", false, "executes 'restic tags' after backing up things with restic")
+	rootCmd.PersistentFlags().BoolVar(&extaResticFlags.ResticTags, "restic-tags", false,
+		"executes 'restic tags' after backing up things with restic")
 
 	rootCmd.PersistentFlags().StringSliceVarP(&cfgFiles, "config", "c", []string{}, "config file (default is ${HOME}/.brudi.yaml)")
 }

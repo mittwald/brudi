@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/mittwald/brudi/pkg/config"
+
 	"github.com/mittwald/brudi/pkg/restic"
 
 	"github.com/mittwald/brudi/pkg/source/pgdump"
@@ -36,7 +38,8 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 
 // DoBackupForKind performs the appropriate backup action for given arguments.
 // It also executes any given restic commands after files have been backed up,
-func DoBackupForKind(ctx context.Context, kind string, resticFlags ExtraResticFlags, cleanup, useRestic, useResticForget bool) error {
+func DoBackupForKind(ctx context.Context, kind string, resticFlags config.ExtraResticFlags,
+	cleanup, useRestic, useResticForget bool) error {
 	logKind := log.WithFields(
 		log.Fields{
 			"kind": kind,
@@ -128,5 +131,4 @@ func DoBackupForKind(ctx context.Context, kind string, resticFlags ExtraResticFl
 	}
 
 	return resticClient.DoResticCheck(ctx)
-
 }
