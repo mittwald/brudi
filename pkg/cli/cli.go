@@ -315,7 +315,7 @@ func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPi
 }
 
 // GzipFile compresses a file with gzip and returns the path of the created archive
-func GzipFile(fileName string, cleanup bool) (string, error) {
+func GzipFile(fileName string) (string, error) {
 	var err error
 
 	// open input file
@@ -360,11 +360,9 @@ func GzipFile(fileName string, cleanup bool) (string, error) {
 	}
 
 	// remove uncompressed source backup
-	if cleanup {
-		err = os.Remove(fileName)
-		if err != nil {
-			log.WithError(err).Error("failed to remove uncompressed backup file")
-		}
+	err = os.Remove(fileName)
+	if err != nil {
+		log.WithError(err).Error("failed to remove uncompressed backup file")
 	}
 
 	return outName, nil
