@@ -10,3 +10,10 @@ type Generic interface {
 	GetHostname() string
 	CleanUp() error
 }
+
+type GenericRestore interface {
+	RestoreBackup(ctx context.Context) error
+	GetBackupPath() string
+	GetHostname() string
+	CleanUp() error
+}

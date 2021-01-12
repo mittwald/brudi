@@ -1,4 +1,4 @@
-package tar
+package tarrestore
 
 import (
 	"context"
@@ -31,7 +31,7 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	return &ConfigBasedBackend{cfg: config}, nil
 }
 
-func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
+func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
 	cmd := cli.CommandType{
 		Binary: binary,
 		Args:   cli.StructToCLI(b.cfg.Options),

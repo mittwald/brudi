@@ -1,13 +1,13 @@
-package tar
+package psql
 
 import (
 	"context"
 	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
-
 	"github.com/mittwald/brudi/pkg/cli"
+
+	"github.com/pkg/errors"
 )
 
 type ConfigBasedBackend struct {
@@ -16,10 +16,10 @@ type ConfigBasedBackend struct {
 
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	config := &Config{
-		Options: &Options{
+		&Options{
 			Flags:          &Flags{},
-			Paths:          []string{},
 			AdditionalArgs: []string{},
+			SourceFile:     "",
 		},
 	}
 
@@ -31,25 +31,33 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	return &ConfigBasedBackend{cfg: config}, nil
 }
 
-func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
+func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
+	fileName, err := cli.CheckAndGunzipFile(b.cfg.Options.SourceFile)
+	if err != nil {
+		return err
+	}
+	if b.cfg.Options.Flags.Command == "" {
+		b.cfg.Options.Flags.Command = fmt.Sprintf("\\i %s", fileName)
+	}
+	args := append(cli.StructToCLI(b.cfg.Options.Flags), b.cfg.Options.AdditionalArgs...)
 	cmd := cli.CommandType{
 		Binary: binary,
-		Args:   cli.StructToCLI(b.cfg.Options),
+		Args:   args,
 	}
-	out, err := cli.Run(ctx, cmd)
+	var out []byte
+	out, err = cli.Run(ctx, cmd)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
 	}
-
 	return nil
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {
-	return b.cfg.Options.Flags.File
+	return b.cfg.Options.SourceFile
 }
 
 func (b *ConfigBasedBackend) GetHostname() string {
-	return b.cfg.HostName
+	return b.cfg.Options.Flags.Host
 }
 
 func (b *ConfigBasedBackend) CleanUp() error {

@@ -6,5 +6,6 @@ pgdump:
       password: postgresroot
       username: postgresuser
       dbName: postgres
+      format: tar
       file: /tmp/postgres.dump
     additionalArgs: []
