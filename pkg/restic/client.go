@@ -84,6 +84,7 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 	return nil
 }
 
+// DoResticRestore exectutes RestoreBackup with the settings from c
 func (c *Client) DoResticRestore(ctx context.Context, backupPath string) error {
 	c.Logger.Info("running 'restic restore'")
 	_, err := RestoreBackup(ctx, c.Config.Global, c.Config.Restore, false)
@@ -93,6 +94,7 @@ func (c *Client) DoResticRestore(ctx context.Context, backupPath string) error {
 	return nil
 }
 
+// DoResticForget excecutes Forget with the settings of c
 func (c *Client) DoResticForget(ctx context.Context) error {
 	c.Logger.Info("running 'restic forget'")
 

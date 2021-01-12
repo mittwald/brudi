@@ -25,7 +25,7 @@ var (
 	cmdTimeout = 6 * time.Hour
 )
 
-// InitBackup executes "restic init"
+// initBackup executes "restic init"
 func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) {
 	cmd := newCommand("init", cli.StructToCLI(globalOpts)...)
 
