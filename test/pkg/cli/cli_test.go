@@ -14,6 +14,9 @@ import (
 const testFile = "/tmp/gzip_testfile.txt"
 const binary = "gzip"
 
+// permissions for test file, readable by all, writable by user
+const fileMode = 0644
+
 type CliTestSuite struct {
 	suite.Suite
 }
@@ -53,7 +56,7 @@ const cupcakes = "Cupcake ipsum dolor sit amet. Cotton candy pudding oat cake mu
 
 func createTestFile() error {
 	content := []byte(cupcakes)
-	err := ioutil.WriteFile(testFile, content, 0644)
+	err := ioutil.WriteFile(testFile, content, fileMode)
 	if err != nil {
 		return errors.WithStack(err)
 	}
