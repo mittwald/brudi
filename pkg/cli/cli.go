@@ -1,11 +1,13 @@
 package cli
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -312,6 +314,60 @@ func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPi
 	return out.Bytes(), nil
 }
 
+// GzipFile compresses a file with gzip and returns the path of the created archive
+func GzipFile(fileName string) (string, error) {
+	var err error
+
+	// open input file
+	var inFile *os.File
+	inFile, err = os.Open(fileName)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	// read file content
+	var content []byte
+	reader := bufio.NewReader(inFile)
+	content, err = ioutil.ReadAll(reader)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	// open output file
+	var outFile *os.File
+	outName := fmt.Sprintf("%s%s", fileName, GzipSuffix)
+	outFile, err = os.Create(outName)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	defer func() {
+		outErr := outFile.Close()
+		if outErr != nil {
+			log.WithError(outErr).Errorf("failed to close output file %s", outName)
+		}
+	}()
+
+	// write compressed content to file
+	archiveWriter := gzip.NewWriter(outFile)
+	archiveWriter.Name = fileName
+	_, err = archiveWriter.Write(content)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	err = archiveWriter.Close()
+	if err != nil {
+		log.WithError(err).Error("failed to close archive reader")
+	}
+
+	// remove uncompressed source backup
+	err = os.Remove(fileName)
+	if err != nil {
+		log.WithError(err).Error("failed to remove uncompressed backup file")
+	}
+
+	return outName, nil
+}
+
 // CheckAndGunzipFile checks if a file is gzipped and extracts it in that case...
 // ... it also returns the name of the unzipped file
 func CheckAndGunzipFile(fileName string) (string, error) {
@@ -366,9 +422,13 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 	// open output file
 	var outFile *os.File
 	outName := archiveReader.Name
+	// if archive header isn't set properly attempt to salvage by using filename without '.gz'
+	if outName == "" {
+		outName = strings.TrimRight(fileName, GzipSuffix)
+	}
 	outFile, err = os.Create(outName)
 	if err != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
 	defer func() {
 		outErr := outFile.Close()

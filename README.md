@@ -304,9 +304,43 @@ export MONGODUMP_OPTIONS_FLAGS_PASSWORD="mongodbroot"
 
 As soon as a variable for a key exists in your environment, the value of this environment-variable is used in favour of your `.yaml`-config.
 
+#### Gzip support for binaries without native gzip support
+
+The tools `mysqldump`, `pg_dump` and `redis-cli` don't natively support `gzip`. However, if the desired path for the backup file is suffixed with `.gz`,
+brudi will automatically `gzip` the backup after creation and delete the uncompressed backup file. For restoration, the file will be automatically
+uncompressed. Example for mysql:
+
+```yaml
+mysqldump:
+  options:
+    flags:
+      host: 127.0.0.1
+      port: 3306
+      password: mysqlroot
+      user: root
+      opt: true
+      allDatabases: true
+      resultFile: /tmp/test.sqldump.gz
+    additionalArgs: []
+```
+
+```yaml
+mysqlrestore:
+  options:
+    flags:
+      host: 127.0.0.1
+      port: 3306
+      password: mysqlroot
+      user: root
+      Database: test
+    additionalArgs: []
+    sourceFile: /tmp/test.sqldump.gz
+```
+
+
 #### Restoring from backup
 
-#### TarRestore
+##### TarRestore
 
 ```yaml
 tarrestore:
@@ -347,7 +381,7 @@ Becomes the following command:
  
  All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/mongorestore/cli.go#L7).
 
-#### MySQLRestore
+##### MySQLRestore
 
 ```yaml
 mysqlrestore:
@@ -369,7 +403,7 @@ Becomes the following command:
 
 All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/mysqlrestore/cli.go#L7).
 
-#### PgRestore
+##### PgRestore
 
 Restoration for PostgreSQL databases is split into two commands, `psql` and `pgrestore`. Which one to use depends on the format of the dump created with `pg_dump`:
 
@@ -425,7 +459,7 @@ This command has to be used if the `format` option was set to `plain` in `pg_dum
 
 All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/psql/cli.go#L7).
 
-#### Restoring using restic
+##### Restoring using restic
 
 Backups can be pulled from a `restic` repository and applied to your server by using the `--restic` flag in your brudi command. 
 Example configuration for `mongorestore`:

@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/cli"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/mittwald/brudi/pkg/source"
@@ -24,6 +26,7 @@ const redisPort = "6379/tcp"
 const testName = "test"
 const testType = "gopher"
 const backupPath = "/tmp/redisdump.rdb"
+const backupPathZip = "/tmp/redisdump.rdb.gz"
 const redisPW = "redisdb"
 const nameKey = "name"
 const typeKey = "type"
@@ -57,11 +60,35 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	}()
 
 	// create a redis container to test backup function
-	testData, err := redisDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""})
+	testData, err := redisDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""}, backupPath)
 	redisDumpTestSuite.Require().NoError(err)
 
 	var restoredData testStruct
-	restoredData, err = redisDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""})
+	restoredData, err = redisDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""}, backupPath)
+	redisDumpTestSuite.Require().NoError(err)
+
+	assert.Equal(redisDumpTestSuite.T(), testData.Name, restoredData.Name)
+	assert.Equal(redisDumpTestSuite.T(), testData.Type, restoredData.Type)
+}
+
+// TestBasicRedisDumpGzip performs an integration test for brudi's `redisdump` command with gzip and without restic
+func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDumpGzip() {
+	ctx := context.Background()
+
+	// remove backup files after test
+	defer func() {
+		removeErr := os.RemoveAll(backupPathZip)
+		if removeErr != nil {
+			log.WithError(removeErr).Error("failed to remove redis backup files")
+		}
+	}()
+
+	// create a redis container to test backup function
+	testData, err := redisDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""}, backupPathZip)
+	redisDumpTestSuite.Require().NoError(err)
+
+	var restoredData testStruct
+	restoredData, err = redisDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""}, backupPathZip)
 	redisDumpTestSuite.Require().NoError(err)
 
 	assert.Equal(redisDumpTestSuite.T(), testData.Name, restoredData.Name)
@@ -92,12 +119,48 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 
 	// populate a redis database with test data, back it up with brudi and retain the test data it for verification
 	var testData testStruct
-	testData, err = redisDoBackup(ctx, true, resticContainer)
+	testData, err = redisDoBackup(ctx, true, resticContainer, backupPath)
 	redisDumpTestSuite.Require().NoError(err)
 
 	// restore a redis database from backup and pull test data for verification
 	var restoredData testStruct
-	restoredData, err = redisDoRestore(ctx, true, resticContainer)
+	restoredData, err = redisDoRestore(ctx, true, resticContainer, backupPath)
+	redisDumpTestSuite.Require().NoError(err)
+
+	assert.Equal(redisDumpTestSuite.T(), testData.Name, restoredData.Name)
+	assert.Equal(redisDumpTestSuite.T(), testData.Type, restoredData.Type)
+}
+
+// TestBasicRedisDumpRestic performs an integration test for brudi's `redisdump` command with restic and gzip
+func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpResticGzip() {
+	ctx := context.Background()
+
+	// remove backup files after test
+	defer func() {
+		removeErr := os.RemoveAll(backupPathZip)
+		if removeErr != nil {
+			log.WithError(removeErr).Error("failed to remove redis backup files")
+		}
+	}()
+
+	// setup a container running the restic rest-server
+	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
+	redisDumpTestSuite.Require().NoError(err)
+	defer func() {
+		resticErr := resticContainer.Container.Terminate(ctx)
+		if resticErr != nil {
+			log.WithError(resticErr).Error("failed to terminate redis restic container")
+		}
+	}()
+
+	// populate a redis database with test data, back it up with brudi and retain the test data it for verification
+	var testData testStruct
+	testData, err = redisDoBackup(ctx, true, resticContainer, backupPathZip)
+	redisDumpTestSuite.Require().NoError(err)
+
+	// restore a redis database from backup and pull test data for verification
+	var restoredData testStruct
+	restoredData, err = redisDoRestore(ctx, true, resticContainer, backupPathZip)
 	redisDumpTestSuite.Require().NoError(err)
 
 	assert.Equal(redisDumpTestSuite.T(), testData.Name, restoredData.Name)
@@ -110,7 +173,7 @@ func TestRedisDumpTestSuite(t *testing.T) {
 
 // redisDoBackup populates a database with test data and performs a backup
 func redisDoBackup(ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup) (testStruct, error) {
+	resticContainer commons.TestContainerSetup, path string) (testStruct, error) {
 	// setup a redis container to backup from
 	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, redisPort)
 	if err != nil {
@@ -153,7 +216,7 @@ func redisDoBackup(ctx context.Context, useRestic bool,
 	}
 
 	// create a brudi config for redisdump
-	redisBackupConfig := createRedisConfig(redisBackupTarget, useRestic, resticContainer.Address, resticContainer.Port)
+	redisBackupConfig := createRedisConfig(redisBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, path)
 	err = viper.ReadConfig(bytes.NewBuffer(redisBackupConfig))
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
@@ -170,9 +233,16 @@ func redisDoBackup(ctx context.Context, useRestic bool,
 
 // redisDoRestore restores data from backup and retrieves it for verification, optionally using restic
 func redisDoRestore(ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup) (testStruct, error) {
+	resticContainer commons.TestContainerSetup, path string) (testStruct, error) {
+	// unzip file if necessary
+	_, err := cli.CheckAndGunzipFile(path)
+	if err != nil {
+		return testStruct{}, err
+	}
+
 	// setup container to restore data to
-	redisRestoreTarget, err := commons.NewTestContainerSetup(ctx, &redisRestoreRequest, redisPort)
+	var redisRestoreTarget commons.TestContainerSetup
+	redisRestoreTarget, err = commons.NewTestContainerSetup(ctx, &redisRestoreRequest, redisPort)
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
 	}
@@ -239,13 +309,13 @@ var redisRestoreRequest = testcontainers.ContainerRequest{
 	Image:        redisImage,
 	ExposedPorts: []string{redisPort},
 	WaitingFor:   wait.ForLog(logString),
-	BindMounts:   map[string]string{backupPath: "/bitnami/redis/data/dump.rdb"},
+	BindMounts:   map[string]string{strings.TrimSuffix(backupPath, ".gz"): "/bitnami/redis/data/dump.rdb"},
 	Env: map[string]string{"ALLOW_EMPTY_PASSWORD": "yes",
 		"REDIS_AOF_ENABLED": "no"},
 }
 
 // createRedisConfig returns a brudi config for redis
-func createRedisConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort string) []byte {
+func createRedisConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, path string) []byte {
 	if !useRestic {
 		return []byte(fmt.Sprintf(`
 redisdump:
@@ -256,7 +326,7 @@ redisdump:
       password: %s
       rdb: %s
     additionalArgs: []
-`, container.Address, container.Port, redisPW, backupPath))
+`, container.Address, container.Port, redisPW, path))
 	}
 	return []byte(fmt.Sprintf(`
 redisdump:
@@ -283,7 +353,7 @@ restic:
     flags:
       target: "/"
     id: "latest"
-`, container.Address, container.Port, redisPW, backupPath, resticIP, resticPort))
+`, container.Address, container.Port, redisPW, path, resticIP, resticPort))
 }
 
 type testStruct struct {
