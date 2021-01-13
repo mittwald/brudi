@@ -93,7 +93,7 @@ func includeFlag(flag, val string) []string {
 //	Notice:
 //	----------------------------------------------------
 //		Zero values (0, "", nil, false) and "-" will be ignored
-func StructToCLI(optionStruct interface{}) []string { // nolint: gocyclo
+func StructToCLI(optionStruct interface{}) []string {
 	if optionStruct == reflect.Zero(reflect.TypeOf(optionStruct)).Interface() {
 		return nil
 	}
@@ -201,12 +201,12 @@ func Run(ctx context.Context, cmd CommandType) ([]byte, error) {
 	commandLine := ParseCommandLine(cmd)
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("executing command")
 	if ctx != nil {
-		out, err = exec.CommandContext(ctx, commandLine[0], commandLine[1:]...).CombinedOutput()
+		out, err = exec.CommandContext(ctx, commandLine[0], commandLine[1:]...).CombinedOutput() // nolint: gosec
 		if ctx.Err() != nil {
 			return out, fmt.Errorf("failed to execute command: timed out or canceled")
 		}
 	} else {
-		out, err = exec.Command(commandLine[0], commandLine[1:]...).CombinedOutput()
+		out, err = exec.Command(commandLine[0], commandLine[1:]...).CombinedOutput() // nolint: gosec
 	}
 	if err != nil {
 		return out, fmt.Errorf("failed to execute command: %s", err)
@@ -252,11 +252,11 @@ func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPi
 	).Debug("executing command")
 
 	if ctx != nil {
-		cmd1Exec = exec.CommandContext(ctx, cmdLine1[0], cmdLine1[1:]...)
-		cmd2Exec = exec.CommandContext(ctx, cmdLine2[0], cmdLine2[1:]...)
+		cmd1Exec = exec.CommandContext(ctx, cmdLine1[0], cmdLine1[1:]...) // nolint: gosec
+		cmd2Exec = exec.CommandContext(ctx, cmdLine2[0], cmdLine2[1:]...) // nolint: gosec
 	} else {
-		cmd1Exec = exec.Command(cmdLine1[0], cmdLine1[1:]...)
-		cmd2Exec = exec.Command(cmdLine2[0], cmdLine2[1:]...)
+		cmd1Exec = exec.Command(cmdLine1[0], cmdLine1[1:]...) // nolint: gosec
+		cmd2Exec = exec.Command(cmdLine2[0], cmdLine2[1:]...) // nolint: gosec
 	}
 
 	cmd2Exec.Stdin, err = cmd1Exec.StdoutPipe()
@@ -288,7 +288,8 @@ func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPi
 
 	err = cmd1Exec.Wait()
 	if err != nil {
-		msg, ok := err.(*exec.ExitError)
+		var msg exec.ExitError
+		ok := errors.As(err, &msg)
 		if !ok || !(cmd1.Binary == "tar" && msg.Sys().(syscall.WaitStatus).ExitStatus() == 1) { // ignore tar exit-code of 1
 			errs = append(errs, err.Error())
 		}
@@ -438,7 +439,7 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 	}()
 
 	// write unzipped file to file system
-	_, err = io.Copy(outFile, archiveReader)
+	_, err = io.Copy(outFile, archiveReader) // nolint: gosec // we work with potentially large backups
 	if err != nil {
 		return "", errors.WithStack(err)
 	}

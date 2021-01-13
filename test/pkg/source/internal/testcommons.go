@@ -3,11 +3,12 @@ package internal
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
@@ -69,8 +70,9 @@ func TestSetup() {
 
 // DoResticRestore pulls the given backup from the given restic repo
 func DoResticRestore(ctx context.Context, resticContainer TestContainerSetup, dataDir string) error {
-	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", fmt.Sprintf("rest:http://%s:%s/",
-		resticContainer.Address, resticContainer.Port),
+	cmd := exec.CommandContext(ctx, "restic", "restore", "-r", // nolint: gosec
+		fmt.Sprintf("rest:http://%s:%s/",
+			resticContainer.Address, resticContainer.Port),
 		"--target", dataDir, "latest")
 	out, err := cmd.CombinedOutput()
 	if err != nil {

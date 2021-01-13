@@ -55,7 +55,7 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 	c.Logger.Info("running 'restic backup'")
 
 	_, err := initBackup(ctx, c.Config.Global)
-	if err == ErrRepoAlreadyInitialized {
+	if errors.Is(err, ErrRepoAlreadyInitialized) {
 		c.Logger.Info("restic repo is already initialized")
 	} else if err != nil {
 		return errors.WithStack(fmt.Errorf("error while initializing restic repository: %s", err.Error()))
