@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/mittwald/brudi/pkg/config"
+
 	"github.com/mittwald/brudi/pkg/restic"
 
 	"github.com/mittwald/brudi/pkg/source/pgdump"
@@ -34,7 +36,10 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 	}
 }
 
-func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useResticForget bool) error {
+// DoBackupForKind performs the appropriate backup action for given arguments.
+// It also executes any given restic commands after files have been backed up,
+func DoBackupForKind(ctx context.Context, kind string, resticFlags config.ExtraResticFlags,
+	cleanup, useRestic, useResticForget bool) error {
 	logKind := log.WithFields(
 		log.Fields{
 			"kind": kind,
@@ -79,14 +84,51 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 		return err
 	}
 
+	// execute any applicable restic commands
+
 	err = resticClient.DoResticBackup(ctx)
 	if err != nil {
 		return err
 	}
 
-	if !useResticForget {
+	if useResticForget {
+		err = resticClient.DoResticForget(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	if resticFlags.ResticList {
+		err = resticClient.DoResticListSnapshots(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	if resticFlags.ResticPrune {
+		err = resticClient.DoResticPruneRepo(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	if resticFlags.ResticTags {
+		err = resticClient.DoResticTag(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	if resticFlags.ResticRebuild {
+		err = resticClient.DoResticRebuildIndex(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !resticFlags.ResticCheck {
 		return nil
 	}
 
-	return resticClient.DoResticForget(ctx)
+	return resticClient.DoResticCheck(ctx)
 }

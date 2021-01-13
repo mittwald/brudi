@@ -3,13 +3,15 @@ package internal
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/mittwald/brudi/pkg/config"
+
 	"github.com/docker/go-connections/nat"
+	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 	"github.com/testcontainers/testcontainers-go"
 )
 
@@ -31,6 +33,14 @@ var ResticReq = testcontainers.ContainerRequest{
 		"OPTIONS":         "--no-auth",
 		"RESTIC_PASSWORD": ResticPassword,
 	},
+}
+
+var ExtraFlags = config.ExtraResticFlags{
+	ResticCheck:   false,
+	ResticRebuild: false,
+	ResticTags:    false,
+	ResticPrune:   false,
+	ResticList:    false,
 }
 
 // NewTestContainerSetup creates a TestContainerSetup which acts as a wrapper for the testcontainer specified by request

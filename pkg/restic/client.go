@@ -13,6 +13,7 @@ type Client struct {
 	Config *Config
 }
 
+// NewResticClient creates a new restic client with the given hostname and backup paths
 func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) (*Client, error) {
 	conf := &Config{
 		Global: &GlobalOptions{
@@ -26,6 +27,15 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 			Flags: &ForgetFlags{},
 			IDs:   []string{},
 		},
+		Snapshots: &SnapshotOptions{
+			Flags: &SnapshotFlags{},
+			IDs:   []string{},
+		},
+		Tags: &TagOptions{
+			Flags: &TagFlags{},
+			IDs:   []string{},
+		},
+		Check: &CheckFlags{},
 		Restore: &RestoreOptions{
 			Flags: &RestoreFlags{},
 			ID:    "",
@@ -51,6 +61,7 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 	}, nil
 }
 
+// DoResticBackup executes initBackup and CreateBackup with the settings from c
 func (c *Client) DoResticBackup(ctx context.Context) error {
 	c.Logger.Info("running 'restic backup'")
 
@@ -73,6 +84,7 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 	return nil
 }
 
+// DoResticRestore executes RestoreBackup with the settings from c
 func (c *Client) DoResticRestore(ctx context.Context, backupPath string) error {
 	c.Logger.Info("running 'restic restore'")
 	_, err := RestoreBackup(ctx, c.Config.Global, c.Config.Restore, false)
@@ -82,6 +94,7 @@ func (c *Client) DoResticRestore(ctx context.Context, backupPath string) error {
 	return nil
 }
 
+// DoResticForget executes Forget with the settings of c
 func (c *Client) DoResticForget(ctx context.Context) error {
 	c.Logger.Info("running 'restic forget'")
 
@@ -94,5 +107,69 @@ func (c *Client) DoResticForget(ctx context.Context) error {
 		"snapshotsRemoved": removedSnapshots,
 	}).Info("successfully forgot restic snapshots")
 
+	return nil
+}
+
+// DoResticListSnapshots executes ListSnapshots with the settings from c
+func (c *Client) DoResticListSnapshots(ctx context.Context) error {
+	c.Logger.Info("running 'restic snapshots'")
+
+	output, err := ListSnapshots(ctx, c.Config.Global, c.Config.Snapshots)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	fmt.Println("output of 'restic snapshots':")
+	for index := range output {
+		fmt.Printf("ID: %d; Time: %s; Host: %s; Tags: %s; Paths: %s\n",
+			output[index].ID, output[index].Time, output[index].Hostname, output[index].Tags, output[index].Paths)
+	}
+	return nil
+}
+
+// DoResticCheck executes Check with the settings from c
+func (c *Client) DoResticCheck(ctx context.Context) error {
+	c.Logger.Info("running 'restic check'")
+
+	output, err := Check(ctx, c.Config.Global, c.Config.Check)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("%s - %s", err.Error(), output))
+	}
+	fmt.Println(string(output))
+	return nil
+}
+
+// DoResticPruneRepo executes Prune with the settings from c
+func (c *Client) DoResticPruneRepo(ctx context.Context) error {
+	c.Logger.Info("running 'restic prune")
+
+	output, err := Prune(ctx, c.Config.Global)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("%s - %s", err.Error(), output))
+	}
+	fmt.Println(string(output))
+	return nil
+}
+
+// DoResticRebuildIndex executes RebuildIndex with the settings from c
+func (c *Client) DoResticRebuildIndex(ctx context.Context) error {
+	c.Logger.Info("running 'restic rebuild-index'")
+
+	output, err := RebuildIndex(ctx, c.Config.Global)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("%s - %s", err.Error(), output))
+	}
+	fmt.Println(string(output))
+	return nil
+}
+
+// DoResticTag executes Tag with the settings from c
+func (c *Client) DoResticTag(ctx context.Context) error {
+	c.Logger.Info("running 'restic rebuild-index'")
+
+	output, err := Tag(ctx, c.Config.Global, c.Config.Tags)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("%s - %s", err.Error(), output))
+	}
+	fmt.Println(string(output))
 	return nil
 }

@@ -25,7 +25,7 @@ var (
 	cmdTimeout = 6 * time.Hour
 )
 
-// InitBackup executes "restic init"
+// initBackup executes "restic init"
 func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) {
 	cmd := newCommand("init", cli.StructToCLI(globalOpts)...)
 
@@ -256,11 +256,17 @@ func GetSnapshotSizeByPath(ctx context.Context, snapshotID, path string) (size u
 }
 
 // ListSnapshots executes "restic snapshots"
-func ListSnapshots(ctx context.Context, opts *SnapshotOptions) ([]Snapshot, error) {
-	cmd := newCommand("snapshots", cli.StructToCLI(&opts)...)
-
+func ListSnapshots(ctx context.Context, glob *GlobalOptions, opts *SnapshotOptions) ([]Snapshot, error) {
+	args := append([]string{"--json"}, cli.StructToCLI(opts)...)
+	args = append(args, cli.StructToCLI(glob)...)
+	cmd := cli.CommandType{
+		Binary:  binary,
+		Command: "snapshots",
+		Args:    args,
+	}
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
+		fmt.Println(string(out))
 		return nil, err
 	}
 	var snapshots []Snapshot
@@ -288,8 +294,12 @@ func Find(ctx context.Context, opts *FindOptions) ([]FindResult, error) {
 }
 
 // Check executes "restic check"
-func Check(ctx context.Context, flags *CheckFlags) ([]byte, error) {
-	cmd := newCommand("check", cli.StructToCLI(flags)...)
+func Check(ctx context.Context, glob *GlobalOptions, flags *CheckFlags) ([]byte, error) {
+	cmd := cli.CommandType{
+		Binary:  binary,
+		Command: "check",
+		Args:    append(cli.StructToCLI(glob), cli.StructToCLI(flags)...),
+	}
 	return cli.Run(ctx, cmd)
 }
 
@@ -332,20 +342,23 @@ func Forget(
 }
 
 // Prune executes "restic prune"
-func Prune(ctx context.Context) ([]byte, error) {
-	cmd := newCommand("prune", nil...)
-
+func Prune(ctx context.Context, glob *GlobalOptions) ([]byte, error) {
+	cmd := cli.CommandType{
+		Binary:  binary,
+		Command: "prune",
+		Args:    cli.StructToCLI(glob),
+	}
 	return cli.Run(ctx, cmd)
 }
 
 // RebuildIndex executes "restic rebuild-index"
-func RebuildIndex(ctx context.Context) ([]byte, error) {
+func RebuildIndex(ctx context.Context, glob *GlobalOptions) ([]byte, error) {
 	nice := 19
 	ionice := 2
 	cmd := cli.CommandType{
 		Binary:  binary,
 		Command: "rebuild-index",
-		Args:    nil,
+		Args:    cli.StructToCLI(glob),
 		Nice:    &nice,
 		IONice:  &ionice,
 	}
@@ -385,8 +398,11 @@ func Unlock(ctx context.Context, globalOpts *GlobalOptions, unlockOpts *UnlockOp
 }
 
 // Tag executes "restic tag"
-func Tag(ctx context.Context, opts *TagOptions) ([]byte, error) {
-	cmd := newCommand("tag", cli.StructToCLI(opts)...)
-
+func Tag(ctx context.Context, glob *GlobalOptions, opts *TagOptions) ([]byte, error) {
+	cmd := cli.CommandType{
+		Binary:  binary,
+		Command: "tag",
+		Args:    append(cli.StructToCLI(glob), cli.StructToCLI(opts)...),
+	}
 	return cli.Run(ctx, cmd)
 }

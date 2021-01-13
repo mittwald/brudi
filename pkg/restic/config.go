@@ -9,10 +9,13 @@ const (
 )
 
 type Config struct {
-	Global  *GlobalOptions
-	Backup  *BackupOptions
-	Forget  *ForgetOptions
-	Restore *RestoreOptions
+	Global    *GlobalOptions
+	Backup    *BackupOptions
+	Forget    *ForgetOptions
+	Restore   *RestoreOptions
+	Snapshots *SnapshotOptions
+	Tags      *TagOptions
+	Check     *CheckFlags
 }
 
 func (c *Config) InitFromViper() error {
