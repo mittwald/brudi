@@ -26,6 +26,8 @@ import (
 const pgPort = "5432/tcp"
 const backupPath = "/tmp/postgres.dump.tar"
 const backupPathPlain = "/tmp/postgres.dump"
+const backupPathZip = "/tmp/postgres.dump.tar.gz"
+const backupPathPlainZip = "/tmp/postgres.dump.gz"
 const postgresPW = "postgresroot"
 const postgresUser = "postgresuser"
 const postgresDB = "postgres"
@@ -100,6 +102,55 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testDataPlain, restoreResultPlain)
 }
 
+// TestBasicPGDumpZip performs an integration test for brudi pgdump, with gzip and without use of restic
+func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRestoreGzip() {
+	ctx := context.Background()
+
+	// remove backup files after test
+	defer func() {
+		removeErr := os.Remove(backupPathZip)
+		if removeErr != nil {
+			log.WithError(removeErr).Error("failed to remove pgdump backup files")
+		}
+	}()
+
+	// remove backup files for plain dump after test
+	defer func() {
+		removePlainErr := os.Remove(backupPathPlainZip)
+		if removePlainErr != nil {
+			log.WithError(removePlainErr).Error("failed to remove psql backup files")
+		}
+	}()
+
+	log.Info("Testing postgres restoration with tar dump via pg_restore")
+	// backup test data with brudi and retain test data for verification
+	testData, err := pgDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
+		"tar", backupPathZip)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+
+	// setup second postgres container to test if correct data is restored
+	var restoreResult []testStruct
+	restoreResult, err = pgDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
+		"tar", backupPathZip)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+
+	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testData, restoreResult)
+
+	log.Info("Testing postgres restoration with plain-text dump via psql")
+	var testDataPlain []testStruct
+	testDataPlain, err = pgDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
+		"plain", backupPathPlainZip)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+
+	// restore test data with brudi and retreive it from the db for verification
+	var restoreResultPlain []testStruct
+	restoreResultPlain, err = pgDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""},
+		"plain", backupPathPlainZip)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+
+	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testDataPlain, restoreResultPlain)
+}
+
 // TestPGDumpRestic performs an integration test for brudi pgdump with restic
 func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreRestic() {
 	ctx := context.Background()
@@ -108,7 +159,9 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 	defer func() {
 		// delete folder with backup file
 		removeErr := os.RemoveAll(backupPath)
-		log.WithError(removeErr).Error("failed to remove pgdump backup files")
+		if removeErr != nil {
+			log.WithError(removeErr).Error("failed to remove pgdump backup files")
+		}
 	}()
 
 	// setup a container running the restic rest-server
@@ -116,7 +169,9 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 	defer func() {
 		resticErr := resticContainer.Container.Terminate(ctx)
-		log.WithError(resticErr).Error("failed to terminate pgdump restic container")
+		if resticErr != nil {
+			log.WithError(resticErr).Error("failed to terminate pgdump restic container")
+		}
 	}()
 
 	// backup test data with brudi and retain test data for verification
@@ -129,6 +184,44 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 	var restoreResult []testStruct
 	restoreResult, err = pgDoRestore(ctx, true, resticContainer,
 		"tar", backupPath)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+
+	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testData, restoreResult)
+}
+
+// TestPGDumpResticGzip performs an integration test for brudi pgdump with restic and gzip
+func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreResticGzip() {
+	ctx := context.Background()
+
+	// remove backup files after test
+	defer func() {
+		// delete folder with backup file
+		removeErr := os.RemoveAll(backupPathZip)
+		if removeErr != nil {
+			log.WithError(removeErr).Error("failed to remove pgdump backup files")
+		}
+	}()
+
+	// setup a container running the restic rest-server
+	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+	defer func() {
+		resticErr := resticContainer.Container.Terminate(ctx)
+		if resticErr != nil {
+			log.WithError(resticErr).Error("failed to terminate pgdump restic container")
+		}
+	}()
+
+	// backup test data with brudi and retain test data for verification
+	var testData []testStruct
+	testData, err = pgDoBackup(ctx, true, resticContainer,
+		"tar", backupPathZip)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+
+	// restore test data with brudi and retrieve it from the db for verification
+	var restoreResult []testStruct
+	restoreResult, err = pgDoRestore(ctx, true, resticContainer,
+		"tar", backupPathZip)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
 	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testData, restoreResult)
