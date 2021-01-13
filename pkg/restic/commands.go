@@ -58,14 +58,12 @@ func parseSnapshotOut(jsonLog []byte) (BackupResult, error) {
 	var curSnapshotID string
 	for idx := range responseList {
 		v := responseList[idx]
-		if v[messageType] != nil {
-			if *v[messageType] == messageTypeSummary {
-				if v[snapshotID] != nil {
-					curSnapshotID = (*v[snapshotID]).(string)
-				}
-				if v[parentID] != nil {
-					parentSnapshotID = (*v[parentID]).(string)
-				}
+		if v[messageType] != nil && *v[messageType] == messageTypeSummary {
+			if v[snapshotID] != nil {
+				curSnapshotID = (*v[snapshotID]).(string)
+			}
+			if v[parentID] != nil {
+				parentSnapshotID = (*v[parentID]).(string)
 			}
 		}
 	}
@@ -109,7 +107,7 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 
 	// transform output from restic into list of json elements
 	out = []byte(fmt.Sprint("[" +
-		strings.Replace(strings.TrimRight(string(out), "\n"), "\n", ",", -1) +
+		strings.ReplaceAll(strings.TrimRight(string(out), "\n"), "\n", ",") +
 		"]"))
 
 	var backupRes BackupResult
@@ -145,7 +143,7 @@ func Ls(ctx context.Context, glob *GlobalOptions, opts *LsOptions) ([]LsResult, 
 	}
 
 	out = []byte(fmt.Sprint("[" +
-		strings.Replace(strings.TrimRight(string(out), "\n"), "\n", ",", -1) +
+		strings.ReplaceAll(strings.TrimRight(string(out), "\n"), "\n", ",") +
 		"]"))
 	var result []LsResult
 	result, err = LsResponseFromJSON(out, opts)
