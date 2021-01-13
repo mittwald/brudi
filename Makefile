@@ -1,7 +1,7 @@
 BINARY_NAME = brudi
 COMMIT_HASH = $(shell git rev-parse --verify HEAD)
 CURDIR = $(shell pwd)
-GOLANGCI_LINT_VER = v1.33.0
+GOLANGCI_LINT_VER = v1.35.0
 
 .PHONY: build test
 
