@@ -1,0 +1,19 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    name: Build and release image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: docker login -u "${{ secrets.QUAY_IO_USER }}" -p "${{ secrets.QUAY_IO_TOKEN }}" quay.io
+
+      - run: curl -sL https://git.io/goreleaser | bash -s -- --config build/ci/.goreleaser.yml --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_USER_TOKEN }}
