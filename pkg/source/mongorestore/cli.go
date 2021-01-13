@@ -12,14 +12,10 @@ type Options struct {
 type Flags struct {
 	URI                              string `flag:"--uri="`
 	Host                             string `flag:"--host=" validate:"min=1"`
-	Port                             int    `flag:"--port="`
-	Ssl                              bool   `flag:"--ssl"`
 	SslCAFile                        string `flag:"--sslCAFile="`
 	SslPEMKeyFile                    string `flag:"--sslPEMKeyFile="`
 	SslPEMKeyPassword                string `flag:"--sslPEMKeyPassword="`
 	SslCRLFile                       string `flag:"--sslCRLFile="`
-	SslFIPSMode                      bool   `flag:"	--sslFIPSMode"`
-	TlSInsecure                      bool   `flag:"--tlsInsecure"`
 	Username                         string `flag:"--username="`
 	Password                         string `flag:"--password="`
 	AuthenticationDatabase           string `flag:"--authenticationDatabase="`
@@ -33,30 +29,34 @@ type Flags struct {
 	NsFrom                           string `flag:"--nsFrom="`
 	NsTo                             string `flag:"--nsTo="`
 	ReadPreference                   string `flag:"--readPreference="`
+	OplogFile                        string `flag:"--oplogFile="`
+	Dir                              string `flag:"--dir="`
+	WriteConcern                     string `flag:"--writeConcern="`
+	Out                              string `flag:"--out="`
+	Archive                          string `flag:"--archive="`
+	ExcludeCollection                string `flag:"--excludeCollection="`
+	ExcludeCollectionsWithPrefix     string `flag:"--excludeCollectionsWithPrefix="`
+	Port                             int    `flag:"--port="`
+	OplogLimit                       int    `flag:"--oplogLimit="`
+	NumInsertionWorkersPerCollection int    `flag:"--numInsertionWorkersPerCollection="`
+	NumParallelCollections           int    `flag:"--numParallelCollections="`
+	Ssl                              bool   `flag:"--ssl"`
+	SslFIPSMode                      bool   `flag:"	--sslFIPSMode"`
+	TlSInsecure                      bool   `flag:"--tlsInsecure"`
 	ForceTableScan                   bool   `flag:"--forceTableScan"`
 	Objcheck                         bool   `flag:"--objcheck"`
 	OplogReplay                      bool   `flag:"--oplogReplay"`
-	OplogLimit                       int    `flag:"--oplogLimit="`
-	OplogFile                        string `flag:"--oplogFile="`
 	RestoreOnUsersAndRoles           bool   `flag:"--restoreDbUsersAndRoles"`
-	Dir                              string `flag:"--dir="`
 	Drop                             bool   `flag:"--drop"`
 	DryRun                           bool   `flag:"--dryRun"`
-	WriteConcern                     string `flag:"--writeConcern="`
 	NoIndexRestore                   bool   `flag:"--noIndexRestore"`
 	ConvertLegacyIndexes             bool   `flag:"--convertLegacyIndexes"`
 	NoOptionRestore                  bool   `flag:"--noOptionsRestore"`
 	KeepIndexVersion                 bool   `flag:"--keepIndexVersion"`
 	MaintainInsertionOrder           bool   `flag:"--maintainInsertionOrder"`
-	NumInsertionWorkersPerCollection int    `flag:"--numInsertionWorkersPerCollection="`
 	StopOnError                      bool   `flag:"--stopOnError"`
 	BypassDocumentValidation         bool   `flag:"--bypassDocumentValidation"`
 	PreserveUUID                     bool   `flag:"--preserveUUID"`
 	FixDottedHashIndex               bool   `flag:"--fixDottedHashIndex"`
 	Gzip                             bool   `flag:"--gzip"`
-	Out                              string `flag:"--out="`
-	Archive                          string `flag:"--archive="`
-	ExcludeCollection                string `flag:"--excludeCollection="`
-	ExcludeCollectionsWithPrefix     string `flag:"--excludeCollectionsWithPrefix="`
-	NumParallelCollections           int    `flag:"--numParallelCollections="`
 }
