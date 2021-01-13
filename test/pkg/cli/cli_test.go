@@ -112,10 +112,10 @@ func createTestFile() error {
 }
 
 // content for test file
-const cupcakes = "Cupcake ipsum dolor sit amet. Cotton candy pudding oat cake muffin candy canes halvah dessert tiramisu donut. " +
-	"Marzipan dessert sweet wafer ice cream tootsie roll tootsie roll tart marshmallow. " +
-	"Caramels apple pie croissant chupa chups macaroon cupcake. Cookie chocolate bar dragée biscuit." +
-	" Sweet chocolate icing sweet cake. Tiramisu toffee tart lollipop halvah. Cake soufflé bonbon donut donut. " +
-	"Jelly sweet roll pastry tart cotton candy jelly beans marshmallow. Candy canes jelly-o donut ice cream. " +
-	"Jelly-o cookie oat cake cake ice cream soufflé. Chupa chups gummi bears chocolate cake chocolate cake jelly-o jelly-o " +
-	"oat cake ice cream. Dessert wafer pudding."
+const cupcakes = `Cupcake ipsum dolor sit amet. Cotton candy pudding oat cake muffin candy canes halvah dessert tiramisu donut.
+Marzipan dessert sweet wafer ice cream tootsie roll tootsie roll tart marshmallow.
+Caramels apple pie croissant chupa chups macaroon cupcake. Cookie chocolate bar dragée biscuit.
+Sweet chocolate icing sweet cake. Tiramisu toffee tart lollipop halvah. Cake soufflé bonbon donut donut.
+Jelly sweet roll pastry tart cotton candy jelly beans marshmallow. Candy canes jelly-o donut ice cream.
+Jelly-o cookie oat cake cake ice cream soufflé. Chupa chups gummi bears chocolate cake chocolate cake jelly-o jelly-o
+oat cake ice cream. Dessert wafer pudding.`
