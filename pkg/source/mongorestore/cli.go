@@ -32,7 +32,6 @@ type Flags struct {
 	OplogFile                        string `flag:"--oplogFile="`
 	Dir                              string `flag:"--dir="`
 	WriteConcern                     string `flag:"--writeConcern="`
-	Out                              string `flag:"--out="`
 	Archive                          string `flag:"--archive="`
 	ExcludeCollection                string `flag:"--excludeCollection="`
 	ExcludeCollectionsWithPrefix     string `flag:"--excludeCollectionsWithPrefix="`

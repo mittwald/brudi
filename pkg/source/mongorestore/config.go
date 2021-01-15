@@ -28,8 +28,8 @@ func (c *Config) InitFromViper() error {
 func configStructLevelValidation(sl validator.StructLevel) {
 	c := sl.Current().Interface().(Config)
 
-	if c.Options.Flags.Out == "" && c.Options.Flags.Archive == "" {
-		sl.ReportError(c.Options.Flags.Out, "out", "Out", "eitherOutOrArchiveRequired", "")
-		sl.ReportError(c.Options.Flags.Archive, "archive", "Archive", "eitherOutOrArchiveRequired", "")
+	if c.Options.Flags.Dir == "" && c.Options.Flags.Archive == "" {
+		sl.ReportError(c.Options.Flags.Dir, "dir", "Dir", "eitherDirOrArchiveRequired", "")
+		sl.ReportError(c.Options.Flags.Archive, "archive", "Archive", "eitherDirOrArchiveRequired", "")
 	}
 }
