@@ -63,9 +63,10 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 		c.Logger.Info("restic repo initialized successfully")
 	}
 
-	_, _, err = CreateBackup(ctx, c.Config.Global, c.Config.Backup, true)
+	var out []byte
+	_, out, err = CreateBackup(ctx, c.Config.Global, c.Config.Backup, true)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("error while while running restic backup: %s", err.Error()))
+		return errors.WithStack(fmt.Errorf("error while while running restic backup: %s - %s", err.Error(), out))
 	}
 
 	c.Logger.Info("successfully saved restic stuff")
@@ -75,9 +76,9 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 
 func (c *Client) DoResticRestore(ctx context.Context, backupPath string) error {
 	c.Logger.Info("running 'restic restore'")
-	_, err := RestoreBackup(ctx, c.Config.Global, c.Config.Restore, false)
+	out, err := RestoreBackup(ctx, c.Config.Global, c.Config.Restore, false)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("error while while running restic restore: %s", err.Error()))
+		return errors.WithStack(fmt.Errorf("error while while running restic restore: %s - %s", err.Error(), out))
 	}
 	return nil
 }
