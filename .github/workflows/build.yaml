@@ -20,6 +20,20 @@ jobs:
         version: latest
         args: release --rm-dist --snapshot --skip-publish -f build/ci/.goreleaser.yml
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: lint
+        uses: quay.io/mittwald/golangci-lint:0.0.8
+        env:
+          GOLANGCI_ADDITIONAL_YML: ${CI_PROJECT_DIR}/build/package/ci/.golangci.yml
+        run: |
+          golangci-lint run -v --fix ./...
+          git diff --exit-code
+
+
   test:
     runs-on: ubuntu-20.04
     steps:
