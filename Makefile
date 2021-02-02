@@ -27,7 +27,9 @@ test:
 
 lintci:
 	docker run --rm \
-	-e GOLANGCI_ADDITIONAL_YML=${CURDIR}/build/package/ci/.golangci.yml \
+    -v $(CURDIR):/app \
+    -w /app \
+	-e GOLANGCI_ADDITIONAL_YML=/app/build/package/ci/.golangci.yml \
 	quay.io/mittwald/golangci-lint:0.0.8 \
 		golangci-lint run -v --fix  ./...
 
