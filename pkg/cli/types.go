@@ -1,5 +1,7 @@
 package cli
 
+const GzipSuffix = ".gz"
+
 type CommandType struct {
 	Binary  string
 	Command string
