@@ -22,11 +22,9 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+    container: quay.io/mittwald/golangci-lint:0.0.8
     steps:
-      - uses: actions/checkout@v2
-
       - name: lint
-        uses: quay.io/mittwald/golangci-lint:0.0.8
         env:
           GOLANGCI_ADDITIONAL_YML: ${CI_PROJECT_DIR}/build/package/ci/.golangci.yml
         run: |
