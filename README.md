@@ -13,30 +13,33 @@ Besides creating backups, `brudi` can also be used to restore your data from bac
 
 ## Table of contents
 
-- [Usage](#usage)
-  - [CLI](#cli)
-  - [Configuration](#configuration)
-    - [Sources](#sources)
-      - [Tar](#tar)
-      - [MySQLDump](#mysqldump)
-      - [MongoDump](#mongodump)
-      - [PgDump](#pgdump)
-        - [Limitations](#limitations)
-      - [Redis](#redis)
-    - [Restic](#restic)
-      - [Forget](#forget)
-    - [Sensitive data: Environment variables](#sensitive-data--environment-variables)
-    - [Restoring from backup](#restoring-from-backup)
-      - [TarRestore](#tarrestore)
-      - [MongoRestore](#mongorestore)
-      - [MySQLRestore](#mysqlrestore)
-      - [PgRestore](#pgrestore)
-        - [Restore using pg_restore](#restore-using-pg_restore)
-        - [Restore using psql](#restore-using-psql)
-- [Featurestate](#featurestate)
-  - [Source backup methods](#source-backup-methods)
-  - [Restore backup methods](#restore-backup-methods)
-  - [Incremental backup of the source backups](#incremental-backup-of-the-source-backups)
+ - [Usage](#usage)
+   - [CLI](#cli)
+   - [Docker](#docker)
+   - [Configuration](#configuration)
+      - [Sources](#sources)
+         - [Tar](#tar)
+         - [MySQLDump](#mysqldump)
+         - [MongoDump](#mongodump)
+         - [PgDump](#pgdump)
+            - [Limitations](#limitations)
+         - [Redis](#redis)
+      - [Restic](#restic)
+         - [Forget](#forget)
+      - [Sensitive data: Environment variables](#sensitive-data-environment-variables)
+      - [Gzip support for binaries without native gzip support](#gzip-support-for-binaries-without-native-gzip-support)
+      - [Restoring from backup](#restoring-from-backup)
+         - [TarRestore](#tarrestore)
+         - [MongoRestore](#mongorestore)
+         - [MySQLRestore](#mysqlrestore)
+         - [PgRestore](#pgrestore)
+           - [Restore using pg_restore](#restore-using-pg_restore)
+           - [Restore using psql](#restore-using-psql)
+         - [Restoring using restic](#restoring-using-restic)
+ - [Featurestate](#featurestate)
+     - [Source backup methods](#source-backup-methods)
+     - [Restore backup methods](#restore-backup-methods)
+     - [Incremental backup of the source backups](#incremental-backup-of-the-source-backups)
 
 ## Usage
 
@@ -411,7 +414,7 @@ Restoration for PostgreSQL databases is split into two commands, `psql` and `pgr
 
 `pgrestore` can be used if the `format` option of `pg_dump` was set to `tar`, `directory` or `custom`.
 
-##### Restore using pg_restore
+###### Restore using pg_restore
 
 ```yaml
 pgrestore:
@@ -435,7 +438,7 @@ This command has to be used if the `format` option was set to `tar`, `directory`
 
 All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/pgrestore/cli.go#L7).
 
-##### Restore using psql
+###### Restore using psql
 
 ```yaml
 psql:

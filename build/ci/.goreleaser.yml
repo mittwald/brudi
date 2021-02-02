@@ -1,7 +1,7 @@
 before:
   hooks:
     - go mod download
-    - make lint
+    - make lintci
 builds:
 -
   env:

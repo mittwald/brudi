@@ -59,7 +59,7 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 					"cmd":  "cleanup",
 				},
 			)
-			if err := backend.CleanUp(); err != nil {
+			if err = backend.CleanUp(); err != nil {
 				cleanupLogger.WithError(err).Warn("failed to cleanup backup")
 			} else {
 				cleanupLogger.Info("successfully cleaned up backup")

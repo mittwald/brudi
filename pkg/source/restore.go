@@ -43,7 +43,7 @@ func DoRestoreForKind(ctx context.Context, kind string, cleanup, useRestic, useR
 		return err
 	}
 
-	if useRestic {
+	if useRestic { // nolint: nestif
 		var resticClient *restic.Client
 		resticClient, err = restic.NewResticClient(logKind, backend.GetHostname(), backend.GetBackupPath())
 		if err != nil {

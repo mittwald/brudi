@@ -49,7 +49,7 @@ func (b *ConfigBasedBackend) GetBackupPath() string {
 		return b.cfg.Options.Flags.Archive
 	}
 
-	return b.cfg.Options.Flags.Out
+	return b.cfg.Options.Flags.Dir
 }
 
 func (b *ConfigBasedBackend) GetHostname() string {
