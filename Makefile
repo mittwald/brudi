@@ -25,13 +25,19 @@ build:
 test:
 	go test -v ./...
 
+lintci:
+	docker run --rm \
+	-e GOLANGCI_ADDITIONAL_YML=${CURDIR}/build/package/ci/.golangci.yml \
+	quay.io/mittwald/golangci-lint:0.0.8 \
+		golangci-lint run -v --fix  ./...
+
 lint:
-		docker run --rm \
-    		-v $(shell go env GOPATH):/go \
-    		-v ${CURDIR}:/app -w /app \
-    		-e GOLANGCI_ADDITIONAL_YML=/app/build/package/ci/.golangci.yml \
-    		quay.io/mittwald/golangci-lint:0.0.8 \
-        		golangci-lint run -v --fix  ./...
+	docker run --rm \
+		-v $(shell go env GOPATH):/go \
+		-v ${CURDIR}:/app -w /app \
+		-e GOLANGCI_ADDITIONAL_YML=/app/build/package/ci/.golangci.yml \
+		quay.io/mittwald/golangci-lint:0.0.8 \
+			golangci-lint run -v --fix  ./...
 
 goreleaser:
 	curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --rm-dist
