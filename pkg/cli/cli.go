@@ -251,13 +251,8 @@ func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPi
 		),
 	).Debug("executing command")
 
-	if ctx != nil {
-		cmd1Exec = exec.CommandContext(ctx, cmdLine1[0], cmdLine1[1:]...) // nolint: gosec
-		cmd2Exec = exec.CommandContext(ctx, cmdLine2[0], cmdLine2[1:]...) // nolint: gosec
-	} else {
-		cmd1Exec = exec.Command(cmdLine1[0], cmdLine1[1:]...) // nolint: gosec
-		cmd2Exec = exec.Command(cmdLine2[0], cmdLine2[1:]...) // nolint: gosec
-	}
+	cmd1Exec = exec.CommandContext(ctx, cmdLine1[0], cmdLine1[1:]...) // nolint: gosec
+	cmd2Exec = exec.CommandContext(ctx, cmdLine2[0], cmdLine2[1:]...) // nolint: gosec
 
 	cmd2Exec.Stdin, err = cmd1Exec.StdoutPipe()
 	if err != nil {
