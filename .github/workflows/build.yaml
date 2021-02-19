@@ -20,6 +20,12 @@ jobs:
         version: latest
         args: release --rm-dist --snapshot --skip-publish -f build/ci/.goreleaser.yml
 
+    - name: Run GoReleaser for root version
+      uses: goreleaser/goreleaser-action@v2
+      with:
+        version: latest
+        args: release --rm-dist --snapshot --skip-publish -f build/ci/.goreleaser_root.yml
+
   test:
     runs-on: ubuntu-20.04
     steps:

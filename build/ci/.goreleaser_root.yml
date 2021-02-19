@@ -1,0 +1,49 @@
+before:
+  hooks:
+    - go mod download
+    - make lintci
+builds:
+  -
+    env:
+      - CGO_ENABLED=0
+    binary: brudi
+    ldflags:
+      - -s
+      - -w
+      - -X 'github.com/mittwald/brudi/cmd.tag={{ .Tag }}'
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+archives:
+  - replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+dockers:
+  -
+    image_templates:
+      - quay.io/mittwald/brudi_root:latest
+      - quay.io/mittwald/brudi_root:{{ .Major }}
+      - quay.io/mittwald/brudi_root:{{ .Major }}.{{ .Minor }}
+      - quay.io/mittwald/brudi_root:{{ .Tag }}
+      - quay.io/mittwald/brudi_root:stable
+    binaries:
+      - brudi
+    dockerfile: build/docker/Dockerfile_root
+    goos: linux
+    goarch: amd64
+    goarm: ''

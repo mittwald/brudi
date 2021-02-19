@@ -99,7 +99,30 @@ In case you don't want to install additional tools, you can also use `brudi` ins
 `docker run --rm -v ${HOME}/.brudi.yaml:/home/brudi/.brudi.yaml quay.io/mittwald/brudi mongodump --restic --cleanup`
 
 The docker-image comes with all required binaries, except for `xfsdump` and `xfsrestore`. Since usage of `xfsdump` requires root access,
-xfs-related functions are not available via the docker image.
+a separate docker image is provided, as detailed below.
+
+WARNING: The following image supports `xfsdump` and thus requires to be run in a <ins>privileged</ins> container, and <ins>the image itself runs as root</ins>. Only use this if you are fully aware of what you are doing and absolutely need `xfsdump` capabilities from the docker image
+
+An example docker run command could look like this:
+
+`sudo docker run --privileged --rm --mount 'type=bind,src=${HOME}.brudi.xfsdump.yaml,dst=/root/.brudi.yaml' -v ${HOME}examplemount:/home/examplemount -v ${HOME}example_backup_location:/home/example_backup_location quay.io/mittwald/brudi_root xfsdump`
+
+
+This command will run the `brudi_root` image in a <ins>privileged</ins> container, with an <ins>Ubuntu running as root</ins>, mount your config file, mount your local filesystem mounted at `/home/examplemount` into the container, mount a directory to save the backup in and finally run `brudi xfsdump`
+A matching config would look like this:
+
+```yaml
+xfsdump:
+  options:
+    flags:
+      level: 0
+      dontPromptOperator: true
+      destination: /home/example_backup_location/test.xfsdump
+    additionalArgs: []
+    targetFS: /home/examplemount
+```
+
+We highly recommend you use the normal `brudi` image, unless you absolutely need the xfsdump capability.
 
 ### Configuration
 
