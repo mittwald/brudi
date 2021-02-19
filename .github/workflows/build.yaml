@@ -41,7 +41,26 @@ jobs:
     - name: install redis-cli
       run: sudo apt-get install redis-tools
 
-    - name: Test
-      run: go test -v ./...
+    - name: install xfsprogs
+      run: sudo apt-get install xfsprogs
+
+    - name: install xfsdump
+      run: sudo apt-get install xfsdump
+
+    - name: create xfs filesystem
+      run: |
+        dd if=/dev/zero of=loopfile.img bs=1M count=20
+        mkfs.xfs loopfile.img
+        sudo losetup /dev/loop10 loopfile.img
+        mkdir xfsmount
+        sudo mount /dev/loop10 xfsmount
+
+    - name: Test xfs with sudo
+      run: sudo go test -v ./test/pkg/source/xfstest/...
+      env:
+        RESTIC_PASSWORD: mongorepo
+
+    - name: Test remaining sources
+      run: go test -v $(go list ./test/... | grep -v github.com/mittwald/brudi/test/pkg/source/xfstest)
       env:
         RESTIC_PASSWORD: mongorepo

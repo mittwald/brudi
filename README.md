@@ -5,7 +5,7 @@ In general everybody's doing some sort of `dump` or `tar` and backing up the res
 
 This is why `brudi` was born. `brudi` supports several backup-methods and is configurable by a simple `yaml` file.
 The advantage of `brudi` is, that you can create a backup of a source of your choice and save it with `restic` afterwards in one step.
-Under the hood, `brudi` uses the given binaries like `mysqldump`, `mongodump`, `pg_dump`, `tar` or `restic`.
+Under the hood, `brudi` uses the given binaries like `mysqldump`, `mongodump`, `pg_dump`, `tar`, `xfsdump` or `restic`.
 
 Using `brudi` will save you from finding yourself writing bash-scripts to create your backups.
 
@@ -13,33 +13,35 @@ Besides creating backups, `brudi` can also be used to restore your data from bac
 
 ## Table of contents
 
- - [Usage](#usage)
-   - [CLI](#cli)
-   - [Docker](#docker)
-   - [Configuration](#configuration)
-      - [Sources](#sources)
-         - [Tar](#tar)
-         - [MySQLDump](#mysqldump)
-         - [MongoDump](#mongodump)
-         - [PgDump](#pgdump)
-            - [Limitations](#limitations)
-         - [Redis](#redis)
-      - [Restic](#restic)
-         - [Forget](#forget)
-      - [Sensitive data: Environment variables](#sensitive-data-environment-variables)
-      - [Gzip support for binaries without native gzip support](#gzip-support-for-binaries-without-native-gzip-support)
-      - [Restoring from backup](#restoring-from-backup)
-         - [TarRestore](#tarrestore)
-         - [MongoRestore](#mongorestore)
-         - [MySQLRestore](#mysqlrestore)
-         - [PgRestore](#pgrestore)
-           - [Restore using pg_restore](#restore-using-pg_restore)
-           - [Restore using psql](#restore-using-psql)
-         - [Restoring using restic](#restoring-using-restic)
- - [Featurestate](#featurestate)
-     - [Source backup methods](#source-backup-methods)
-     - [Restore backup methods](#restore-backup-methods)
-     - [Incremental backup of the source backups](#incremental-backup-of-the-source-backups)
+- [Usage](#usage)
+  - [CLI](#cli)
+  - [Docker](#docker)
+  - [Configuration](#configuration)
+    - [Sources](#sources)
+      - [Tar](#tar)
+      - [MySQLDump](#mysqldump)
+      - [MongoDump](#mongodump)
+      - [PgDump](#pgdump)
+        - [Limitations](#limitations)
+      - [Redis](#redis)
+      - [XFSdump](#xfsdump)
+    - [Restic](#restic)
+      - [Forget](#forget)
+    - [Sensitive data: Environment variables](#sensitive-data-environment-variables)
+    - [Gzip support for binaries without native gzip support](#gzip-support-for-binaries-without-native-gzip-support)
+    - [Restoring from backup](#restoring-from-backup)
+      - [TarRestore](#tarrestore)
+      - [MongoRestore](#mongorestore)
+      - [MySQLRestore](#mysqlrestore)
+      - [PgRestore](#pgrestore)
+        - [Restore using pg_restore](#restore-using-pg_restore)
+        - [Restore using psql](#restore-using-psql)
+      - [XFSRestore](#xfsrestore)
+      - [Restoring using restic](#restoring-using-restic)
+- [Featurestate](#featurestate)
+  - [Source backup methods](#source-backup-methods)
+  - [Restore backup methods](#restore-backup-methods)
+  - [Incremental backup of the source backups](#incremental-backup-of-the-source-backups)
 
 ## Usage
 
@@ -51,8 +53,8 @@ In order to use the `brudi`-binary on your local machine or a remote server of y
 - `mysqldump` (required when running `brudi mysqldump`)
 - `tar` (required when running `brudi tar`)
 - `redis-cli` (required when running `brudi redisdump`)
+- `xfsdump` (required when running `brudi xfsdump`)
 - `restic` (required when running `brudi --restic`)
-
 
 ```shell
 $ brudi --help
@@ -75,6 +77,8 @@ Available Commands:
   redisdump      Creates an rdb dump of your desired server
   tar            Creates a tar archive of your desired 
   tarrestore     Restores files from a tar archive
+  xfsdump        Creates a dump of your desired xfs filesystem
+  xfsrestore     Restores a dump of an xfs filesystem
   version        Print the version number of brudi
 
 Flags:
@@ -92,9 +96,10 @@ Use "brudi [command] --help" for more information about a command.
 
 In case you don't want to install additional tools, you can also use `brudi` inside docker:
 
-`docker run --rm -v ${HOME}/.brudi.yml:/home/brudi/.brudi.yml quay.io/mittwald/brudi mongodump --restic --cleanup`
+`docker run --rm -v ${HOME}/.brudi.yaml:/home/brudi/.brudi.yaml quay.io/mittwald/brudi mongodump --restic --cleanup`
 
-The docker-image comes with all required binaries.
+The docker-image comes with all required binaries, except for `xfsdump` and `xfsrestore`. Since usage of `xfsdump` requires root access,
+xfs-related functions are not available via the docker image.
 
 ### Configuration
 
@@ -116,13 +121,14 @@ Therefore you can simply refer to the official documentation for explanations on
 - [`mongodump`](https://docs.mongodb.com/manual/reference/program/mongodump/#options)
 - [`mysqldump`](https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html#mysqldump-option-summary)
 - [`pg_dump`](https://www.postgresql.org/docs/12/app-pgdump.html)
+- [`xfsdump`](https://man7.org/linux/man-pages/man8/xfsdump.8.html)
 
 Every source has a an `additionalArgs`-key which's value is an array of strings. The value of this key is appended to the command, generated by `brudi`.
 Even though `brudi` should support all cli-flags to be configured via the `.yaml`-file, there may be flags which are not.  
 In this case, use the `additionalArgs`-key.
 
 It is also possible to provide more than one configuration file, for example `-c mongodump.yaml -c restic.yaml`. These configs get merged at runtime.
-If available, the default config will always be laoded first and then overwritten with any values from user-specified files. 
+If available, the default config will always be laoded first and then overwritten with any values from user-specified files.
 In case the same config file has been provided more than once, only the first instance will be taken into account.
 
 #### Sources
@@ -243,6 +249,28 @@ Becomes the following command:
 As `redis-cli` is not a dedicated backup tool but a client for `redis`, only a limited number of flags are available by default,
 as you can see [here](pkg/source/redisdump/cli.go#L7).
 
+##### XFSdump
+
+Please be aware that `xfsdump` requires root privileges in order to work
+
+```yaml
+xfsdump:
+  options:
+    flags:
+      level: 0
+      destination: test.xfsdump
+      dontPromptOperator: true
+    additionalArgs: []
+    targetFS: /testmount
+```
+
+Running: `brudi xfsdump -c ${HOME}/.brudi.yml`
+
+Becomes the following command:  
+`xfsdump -f test.xfsdump -F -l 0 /testmount`
+
+All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/xfsdump/cli.go#L7).
+
 #### Restic
 
 In case you're running your backup with the `--restic`-flag, you need to provide a [valid configuration for restic](https://restic.readthedocs.io/en/latest/030_preparing_a_new_repo.html).  
@@ -340,7 +368,6 @@ mysqlrestore:
     sourceFile: /tmp/test.sqldump.gz
 ```
 
-
 #### Restoring from backup
 
 ##### TarRestore
@@ -360,7 +387,7 @@ tarrestore:
 Running: `brudi tarrestore -c ${HOME}/.brudi.yml`
 
 Becomes the following command:
-`tar -x -z -f /tmp/test.tar.gz -C /`   
+`tar -x -z -f /tmp/test.tar.gz -C /`
 
 ##### MongoRestore
 
@@ -376,12 +403,12 @@ Becomes the following command:
        archive: /tmp/dump.tar.gz
      additionalArgs: []
  ```
- 
- Running: `brudi mongorestore -c ${HOME}/.brudi.yml `
- 
+
+ Running: `brudi mongorestore -c ${HOME}/.brudi.yml`
+
  Becomes the following command:  
  `mongorestore --host=127.0.0.1 --port=27017 --username=root --password=mongodbroot --gzip --archive=/tmp/dump.tar.gz`  
- 
+
  All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/mongorestore/cli.go#L7).
 
 ##### MySQLRestore
@@ -455,17 +482,37 @@ psql:
 
 Running: `brudi pgrestore -c ${HOME}/.brudi.yml`
 
-Becomes the following command: 
+Becomes the following command:
 `psql  --host=127.0.0.1  --port=5432 --user=postgresuser --db-name=postgres < /tmp/postgress.dump`  
 
 This command has to be used if the `format` option was set to `plain` in `pg_dump`, which is the default.
 
 All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/psql/cli.go#L7).
 
+###### XFSrestore
+
+```yaml
+xfsrestore:
+  options:
+    flags:
+      source: test.xfsdump
+      inhibitInteractivePrompts: true
+    additionalArgs: []
+    destFS: /testmount
+```
+
+Running: `brudi xfsrestore -c ${HOME}/.brudi.yml`
+
+Becomes the following command:  
+`xfsrestore -f test.xfsdump -F -l 0 /testmount`
+
+All available flags to be set in the `.yaml`-configuration can be found [here](pkg/source/xfsrestore/cli.go#L7).
+
 ##### Restoring using restic
 
-Backups can be pulled from a `restic` repository and applied to your server by using the `--restic` flag in your brudi command. 
+Backups can be pulled from a `restic` repository and applied to your server by using the `--restic` flag in your brudi command.
 Example configuration for `mongorestore`:
+
 ```yaml
 mongorestore:
   options:
@@ -488,7 +535,7 @@ restic:
 ```
 
 This will pull the latest snapshot of `/tmp/dump.tar.gz` from the repository, which `mongorestore` then uses to restore the server.
-It is also possible to specify concrete snapshot-ids instead of `latest`.      
+It is also possible to specify concrete snapshot-ids instead of `latest`.
 
 ## Featurestate
 
@@ -502,12 +549,12 @@ It is also possible to specify concrete snapshot-ids instead of `latest`.
 
 ### Restore backup methods
 
-- [x] `mysqlrestore` 
+- [x] `mysqlrestore`
 - [x] `mongorestore`
 - [x] `tarrestore`
 - [x] `pgrestore`
 - [ ]  `redisrestore`
- 
+
 ### Incremental backup of the source backups
 
 - [x] `restic`

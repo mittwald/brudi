@@ -1,0 +1,8 @@
+xfsdump:
+  options:
+    flags:
+      level: 0
+      dontPromptOperator: true
+      destination: /home/ybramkamp/test66.xfsdump
+    additionalArgs: []
+    targetFS: /home/ybramkamp/testmount
