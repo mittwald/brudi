@@ -14,6 +14,9 @@ jobs:
       with:
         go-version: 1.15
 
+    - name: Lint
+      run: make lintci
+
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v2
       with:
@@ -24,7 +27,7 @@ jobs:
       uses: goreleaser/goreleaser-action@v2
       with:
         version: latest
-        args: release --rm-dist --snapshot --skip-publish -f build/ci/.goreleaser_root.yml
+        args: release --rm-dist --snapshot --skip-publish -f build/ci/.goreleaser_privileged.yml
 
   test:
     runs-on: ubuntu-20.04

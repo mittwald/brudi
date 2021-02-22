@@ -1,7 +1,7 @@
 before:
   hooks:
     - go mod download
-    - make lintci
+
 builds:
   -
     env:
@@ -43,7 +43,7 @@ dockers:
       - quay.io/mittwald/brudi_root:stable
     binaries:
       - brudi
-    dockerfile: build/docker/Dockerfile_root
+    dockerfile: build/docker/Dockerfile_privileged
     goos: linux
     goarch: amd64
     goarm: ''

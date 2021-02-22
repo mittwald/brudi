@@ -58,6 +58,9 @@ func (xfsTestSuite *XFSTestSuite) TestBasicXFSDump() {
 
 	err = os.Remove(dumpName)
 	xfsTestSuite.Require().NoError(err)
+
+	err = os.Remove(dirName)
+	xfsTestSuite.Require().NoError(err)
 }
 
 func (xfsTestSuite *XFSTestSuite) TestXFSDumpRestic() {
@@ -79,7 +82,7 @@ func (xfsTestSuite *XFSTestSuite) TestXFSDumpRestic() {
 
 	dirName := fmt.Sprintf("%s/testdir", mountPoint)
 
-	os.Mkdir(dirName, 744)
+	err = os.Mkdir(dirName, 744)
 	xfsTestSuite.Require().NoError(err)
 
 	err = source.DoBackupForKind(ctx, "xfsdump", false, true, false)
@@ -94,6 +97,8 @@ func (xfsTestSuite *XFSTestSuite) TestXFSDumpRestic() {
 	_, err = os.Stat(dirName)
 	xfsTestSuite.Require().NoError(err)
 	err = os.Remove(dumpName)
+	xfsTestSuite.Require().NoError(err)
+	err = os.Remove(dirName)
 	xfsTestSuite.Require().NoError(err)
 }
 

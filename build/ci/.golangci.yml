@@ -3,5 +3,6 @@
 run:
   skip-dirs:
     - test/
+    - dist/
   timeout: 10m
 
