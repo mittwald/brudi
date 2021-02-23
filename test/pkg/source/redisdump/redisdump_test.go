@@ -223,7 +223,7 @@ func redisDoBackup(ctx context.Context, useRestic bool,
 	}
 
 	// perform backup action on first redis container
-	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
+	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, true)
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
 	}
@@ -342,13 +342,15 @@ restic:
     flags:
       repo: rest:http://%s:%s/
   forget:
-    flags:
-      keepLast: 1
-      keepHourly: 0
-      keepDaily: 0
-      keepWeekly: 0
-      keepMonthly: 0
-      keepYearly: 0
+    forget:
+      flags:
+        keepDaily: 7
+        keepHourly: 24
+        keepLast: 48
+        keepMonthly: 6
+        keepWeekly: 2
+        keepYearly: 2
+      ids: []
   restore:
     flags:
       target: "/"
