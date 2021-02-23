@@ -302,6 +302,7 @@ func Forget(
 	var args []string
 	args = cli.StructToCLI(globalOpts)
 	args = append(args, cli.StructToCLI(forgetOpts)...)
+	args = append(args, "--json")
 
 	cmd := cli.CommandType{
 		Binary:  binary,
