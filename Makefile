@@ -1,9 +1,9 @@
 BINARY_NAME = brudi
 COMMIT_HASH = $(shell git rev-parse --verify HEAD)
 CURDIR = $(shell pwd)
-GOLANGCI_LINT_VER = v1.33.0
+GOLANGCI_LINT_VER = v1.35.0
 
-.PHONY: build
+.PHONY: build test
 
 all: dep test lint build
 
@@ -25,14 +25,21 @@ build:
 test:
 	go test -v ./...
 
-lintpull:
-	docker pull golangci/golangci-lint:$(GOLANGCI_LINT_VER)
+lintci:
+	docker run --rm \
+    -v $(CURDIR):/app \
+    -w /app \
+	-e GOLANGCI_ADDITIONAL_YML=/app/build/package/ci/.golangci.yml \
+	quay.io/mittwald/golangci-lint:0.0.8 \
+		golangci-lint run -v --fix  ./...
 
-lint: lintpull
-	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:$(GOLANGCI_LINT_VER) golangci-lint -c build/ci/.golangci.yml run -v
-
-lintfix: lintpull
-	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:$(GOLANGCI_LINT_VER) golangci-lint -c build/ci/.golangci.yml run -v --fix
+lint:
+	docker run --rm \
+		-v $(shell go env GOPATH):/go \
+		-v ${CURDIR}:/app -w /app \
+		-e GOLANGCI_ADDITIONAL_YML=/app/build/package/ci/.golangci.yml \
+		quay.io/mittwald/golangci-lint:0.0.8 \
+			golangci-lint run -v --fix  ./...
 
 goreleaser:
 	curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --rm-dist

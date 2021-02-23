@@ -26,6 +26,10 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 			Flags: &ForgetFlags{},
 			IDs:   []string{},
 		},
+		Restore: &RestoreOptions{
+			Flags: &RestoreFlags{},
+			ID:    "",
+		},
 	}
 
 	err := conf.InitFromViper()
@@ -38,9 +42,9 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 	}
 
 	conf.Backup.Paths = append(conf.Backup.Paths, backupPaths...)
-
 	resticLogger := logger.WithField("cmd", "restic")
-
+	// obtain backup path for restic
+	conf.Restore.Flags.Path = backupPaths[0]
 	return &Client{
 		Logger: resticLogger,
 		Config: conf,
@@ -51,7 +55,7 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 	c.Logger.Info("running 'restic backup'")
 
 	_, err := initBackup(ctx, c.Config.Global)
-	if err == ErrRepoAlreadyInitialized {
+	if errors.Is(err, ErrRepoAlreadyInitialized) {
 		c.Logger.Info("restic repo is already initialized")
 	} else if err != nil {
 		return errors.WithStack(fmt.Errorf("error while initializing restic repository: %s", err.Error()))
@@ -59,13 +63,23 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 		c.Logger.Info("restic repo initialized successfully")
 	}
 
-	_, _, err = CreateBackup(ctx, c.Config.Global, c.Config.Backup, true)
+	var out []byte
+	_, out, err = CreateBackup(ctx, c.Config.Global, c.Config.Backup, true)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("error while while running restic backup: %s", err.Error()))
+		return errors.WithStack(fmt.Errorf("error while while running restic backup: %s - %s", err.Error(), out))
 	}
 
 	c.Logger.Info("successfully saved restic stuff")
 
+	return nil
+}
+
+func (c *Client) DoResticRestore(ctx context.Context, backupPath string) error {
+	c.Logger.Info("running 'restic restore'")
+	out, err := RestoreBackup(ctx, c.Config.Global, c.Config.Restore, false)
+	if err != nil {
+		return errors.WithStack(fmt.Errorf("error while while running restic restore: %s - %s", err.Error(), out))
+	}
 	return nil
 }
 

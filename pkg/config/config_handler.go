@@ -36,7 +36,7 @@ func ReadPaths(cfgFiles ...string) [][]byte {
 		}
 	}
 
-	var cfgContent [][]byte
+	var cfgContent = make([][]byte, 0, len(cfgFiles))
 	for _, file := range cfgFiles {
 		content, err := ioutil.ReadFile(file)
 		if err != nil {
@@ -49,7 +49,7 @@ func ReadPaths(cfgFiles ...string) [][]byte {
 
 // RawConfigs creates templates for provided configs
 func RawConfigs(configContent [][]byte) []*template.Template {
-	var tpl []*template.Template
+	var tpl = make([]*template.Template, 0, len(configContent))
 
 	for _, content := range configContent {
 		tpltemp, err := template.New("").Parse(string(content))
@@ -78,7 +78,7 @@ func RenderConfigs(templates []*template.Template) []*bytes.Buffer {
 		}
 	}
 
-	var cfgsRendered []*bytes.Buffer
+	var cfgsRendered = make([]*bytes.Buffer, 0, len(templates))
 	for _, template := range templates {
 		renderedCfg := new(bytes.Buffer)
 		err := template.Execute(renderedCfg, &data)
