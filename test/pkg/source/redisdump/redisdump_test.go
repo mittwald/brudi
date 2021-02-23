@@ -342,15 +342,14 @@ restic:
     flags:
       repo: rest:http://%s:%s/
   forget:
-    forget:
-      flags:
-        keepDaily: 7
-        keepHourly: 24
-        keepLast: 48
-        keepMonthly: 6
-        keepWeekly: 2
-        keepYearly: 2
-      ids: []
+    flags:
+      keepDaily: 7
+      keepHourly: 24
+      keepLast: 48
+      keepMonthly: 6
+      keepWeekly: 2
+      keepYearly: 2
+    ids: []
   restore:
     flags:
       target: "/"

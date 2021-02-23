@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/mittwald/brudi/pkg/cli"
 )
 
@@ -314,6 +316,10 @@ func Forget(
 	if err != nil {
 		return nil, out, err
 	}
+	if len(out) == 0 {
+		return nil, out, errors.New("No restic forget output, check your flag config")
+	}
+
 	var deletedSnapshots []string
 	var forgetTags []*ForgetTag
 	err = json.Unmarshal(out, &forgetTags)
