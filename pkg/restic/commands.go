@@ -317,7 +317,7 @@ func Forget(
 		return nil, out, err
 	}
 	if len(out) == 0 {
-		return nil, out, errors.New("No restic forget output, check your flag config")
+		return nil, out, errors.New("no restic forget output, check your flag config")
 	}
 
 	var deletedSnapshots []string
