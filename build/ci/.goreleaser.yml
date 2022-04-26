@@ -41,7 +41,7 @@ dockers:
       - quay.io/mittwald/brudi:{{ .Major }}.{{ .Minor }}
       - quay.io/mittwald/brudi:{{ .Tag }}
       - quay.io/mittwald/brudi:stable
-    binaries:
+    ids:
       - brudi
     dockerfile: build/docker/Dockerfile
     goos: linux

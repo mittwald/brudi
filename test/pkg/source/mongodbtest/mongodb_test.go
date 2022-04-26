@@ -29,7 +29,7 @@ const dumpKind = "mongodump"
 const restoreKind = "mongorestore"
 const dbName = "test"
 const collName = "testColl"
-const mongoImage = "quay.io/bitnami/mongodb:latest"
+const mongoImage = "docker.io/bitnami/mongodb:latest"
 const logString = "Waiting for connections"
 
 type MongoDumpAndRestoreTestSuite struct {
