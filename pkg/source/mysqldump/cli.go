@@ -112,6 +112,7 @@ type Flags struct {
 	SkipCompact                bool     `flag:"--skip-compact"`
 	SkipDisableKeys            bool     `flag:"--skip-disable-keys"`
 	SkipExtendedInsert         bool     `flag:"--skip-extended-insert"`
+	SkipLockTables             bool     `flag:"--skip-lock-tables"`
 	SkipOpt                    bool     `flag:"--skip-opt"`
 	SkipQuick                  bool     `flag:"--skip-quick"`
 	SkipQuoteNames             bool     `flag:"--skip-quote-names"`
