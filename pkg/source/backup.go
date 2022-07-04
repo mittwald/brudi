@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/mittwald/brudi/pkg/restic"
-
 	"github.com/mittwald/brudi/pkg/source/pgdump"
+	"github.com/mittwald/brudi/pkg/source/xfsdump"
 
 	"github.com/mittwald/brudi/pkg/source/tar"
 
@@ -29,6 +29,8 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 		return redisdump.NewConfigBasedBackend()
 	case tar.Kind:
 		return tar.NewConfigBasedBackend()
+	case xfsdump.Kind:
+		return xfsdump.NewConfigBasedBackend()
 	default:
 		return nil, fmt.Errorf("unsupported kind '%s'", kind)
 	}

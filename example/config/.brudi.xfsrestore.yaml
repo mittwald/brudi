@@ -1,0 +1,7 @@
+xfsrestore:
+  options:
+    flags:
+      source: test.xfsdump
+      dontPrompOperator: false
+    additionalArgs: []
+    DestFS: /testmount

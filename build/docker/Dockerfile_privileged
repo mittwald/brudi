@@ -1,0 +1,28 @@
+FROM        ubuntu:18.04
+
+LABEL       maintainer="Mittwald CM Service <https://github.com/mittwald>"
+
+ENV         BRUDI_USER="brudi" \
+            BRUDI_GID="1000" \
+            BRUDI_UID="1000"
+
+COPY        brudi /usr/local/bin/brudi
+
+COPY        --from=restic/restic:0.11.0 /usr/bin/restic /usr/local/bin/restic
+COPY        --from=redis:alpine /usr/local/bin/redis-cli /usr/local/bin/redis-cli
+
+RUN         apt-get update \
+            && apt-get install -y wget gnupg \
+            && wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc | apt-key add - \
+            && echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.4 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list \
+            && apt-get update \
+            && \
+            apt-get -y install \
+                mongodb-org-tools \
+                mysql-client \
+                postgresql-client \
+                xfsdump
+
+USER        root
+
+ENTRYPOINT  ["brudi"]

@@ -17,3 +17,7 @@ jobs:
       - run: curl -sL https://git.io/goreleaser | bash -s -- --config build/ci/.goreleaser.yml --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_USER_TOKEN }}
+
+      - run: curl -sL https://git.io/goreleaser | bash -s -- --config build/ci/.goreleaser_privileged.yml --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_USER_TOKEN }}
