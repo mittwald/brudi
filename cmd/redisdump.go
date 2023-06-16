@@ -19,7 +19,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			err := source.DoBackupForKind(ctx, redisdump.Kind, cleanup, useRestic, useResticForget)
+			err := source.DoBackupForKind(ctx, redisdump.Kind, cleanup, useRestic, useResticForget, useResticPrune)
 			if err != nil {
 				panic(err)
 			}

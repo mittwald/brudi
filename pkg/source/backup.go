@@ -34,7 +34,7 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 	}
 }
 
-func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useResticForget bool) error {
+func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useResticForget, useResticPrune bool) error {
 	logKind := log.WithFields(
 		log.Fields{
 			"kind": kind,
@@ -79,14 +79,31 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 		return err
 	}
 
-	err = resticClient.DoResticBackup(ctx)
-	if err != nil {
-		return err
+	// as of now (16.06.2023) there is no JSON-output for `restic forget --prune`
+	// if we use forget with the `prune`-flag we encounter a parse-error because of invalid json
+	// therefore we do not pass the `--prune`-flag to restic but execute `restic prune`
+	if resticClient.Config.Forget.Flags.Prune {
+		useResticPrune = true
+		resticClient.Config.Forget.Flags.Prune = false
 	}
 
-	if !useResticForget {
-		return nil
+	if doBackupErr := resticClient.DoResticBackup(ctx); doBackupErr != nil {
+		return doBackupErr
 	}
 
-	return resticClient.DoResticForget(ctx)
+	if useResticForget {
+		forgetErr := resticClient.DoResticForget(ctx)
+		if forgetErr != nil {
+			return forgetErr
+		}
+	}
+
+	if useResticPrune {
+		pruneErr := resticClient.DoResticPrune(ctx)
+		if pruneErr != nil {
+			return pruneErr
+		}
+	}
+
+	return nil
 }

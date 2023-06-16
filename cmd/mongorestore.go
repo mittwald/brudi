@@ -19,7 +19,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			err := source.DoRestoreForKind(ctx, mongorestore.Kind, cleanup, useRestic, useResticForget)
+			err := source.DoRestoreForKind(ctx, mongorestore.Kind, cleanup, useRestic)
 			if err != nil {
 				panic(err)
 			}

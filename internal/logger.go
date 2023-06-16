@@ -4,7 +4,7 @@ import (
 	"os"
 
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/crypto/ssh/terminal"
+	terminal "golang.org/x/term"
 )
 
 func InitLogger() {

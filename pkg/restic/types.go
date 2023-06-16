@@ -69,6 +69,8 @@ type StatsFlags struct {
 }
 
 // Stats for "restic stats" json-logging
+//
+//nolint:tagliatelle // upstream type
 type Stats struct {
 	TotalSize      uint64 `json:"total_size"`
 	TotalFileCount uint64 `json:"total_file_count"`
@@ -245,6 +247,8 @@ type FindResult struct {
 }
 
 // FindMatch represents one match of "restic find"
+//
+//nolint:tagliatelle // upstream type
 type FindMatch struct {
 	Path        string `json:"path"`
 	Permissions string `json:"permissions"`
@@ -285,6 +289,8 @@ type LsResult struct {
 }
 
 // LsMessage for "resitc ls" json-logging
+//
+//nolint:tagliatelle // upstream restic type
 type LsMessage struct {
 	Time       string   `json:"time"`
 	Tree       string   `json:"tree"`

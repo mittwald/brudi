@@ -58,12 +58,22 @@ func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongo
 	}()
 
 	// backup test data with brudi and retain test data for verification
-	testData, err := mongoDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""})
+	testData, err := mongoDoBackup(
+		ctx, false, commons.TestContainerSetup{
+			Port:    "",
+			Address: "",
+		},
+	)
 	mongoDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore database from backup and pull test data from it for verification
 	var results []interface{}
-	results, err = mongoDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""})
+	results, err = mongoDoRestore(
+		ctx, false, commons.TestContainerSetup{
+			Port:    "",
+			Address: "",
+		},
+	)
 	mongoDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// check if the original data was restored
@@ -108,8 +118,10 @@ func TestMongoDumpAndRestoreTestSuite(t *testing.T) {
 }
 
 // mongoDoBackup performs a mongodump and returns the test data that was used for verification purposes
-func mongoDoBackup(ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup) ([]interface{}, error) {
+func mongoDoBackup(
+	ctx context.Context, useRestic bool,
+	resticContainer commons.TestContainerSetup,
+) ([]interface{}, error) {
 	// create a mongodb-container to test backup function
 	mongoBackupTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
 	if err != nil {
@@ -150,7 +162,7 @@ func mongoDoBackup(ctx context.Context, useRestic bool,
 	}
 
 	// perform backup action on mongodb-container
-	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
+	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false, false)
 	if err != nil {
 		return []interface{}{}, err
 	}
@@ -159,8 +171,10 @@ func mongoDoBackup(ctx context.Context, useRestic bool,
 }
 
 // mongoDoRestore restores data from backup using brudi and retrieves it for verification, optionally using restic
-func mongoDoRestore(ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup) ([]interface{}, error) {
+func mongoDoRestore(
+	ctx context.Context, useRestic bool,
+	resticContainer commons.TestContainerSetup,
+) ([]interface{}, error) {
 	// setup a new mongodb container which will be used to ensure data was backed up correctly
 	mongoRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
 	if err != nil {
@@ -181,7 +195,7 @@ func mongoDoRestore(ctx context.Context, useRestic bool,
 	}
 
 	// use `mongorestore` to restore backed up data to new container
-	err = source.DoRestoreForKind(ctx, restoreKind, false, useRestic, false)
+	err = source.DoRestoreForKind(ctx, restoreKind, false, useRestic)
 	if err != nil {
 		return []interface{}{}, err
 	}
@@ -237,9 +251,18 @@ var mongoRequest = testcontainers.ContainerRequest{
 
 // newMongoClient creates a mongo client connected to the provided commons.TestContainerSetup
 func newMongoClient(target *commons.TestContainerSetup) (mongo.Client, error) {
-	backupClientOptions := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", target.Address,
-		target.Port))
-	clientAuth := options.Client().SetAuth(options.Credential{Username: mongoUser, Password: mongoPW})
+	backupClientOptions := options.Client().ApplyURI(
+		fmt.Sprintf(
+			"mongodb://%s:%s", target.Address,
+			target.Port,
+		),
+	)
+	clientAuth := options.Client().SetAuth(
+		options.Credential{
+			Username: mongoUser,
+			Password: mongoPW,
+		},
+	)
 	client, err := mongo.Connect(context.TODO(), backupClientOptions, clientAuth)
 	if err != nil {
 
@@ -256,7 +279,8 @@ func newMongoClient(target *commons.TestContainerSetup) (mongo.Client, error) {
 // createMongoConfig creates a brudi config for the brudi command specified via kind
 func createMongoConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, kind string) []byte {
 	if !useRestic {
-		return []byte(fmt.Sprintf(`
+		return []byte(fmt.Sprintf(
+			`
       %s:
         options:
           flags:
@@ -267,9 +291,11 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
             gzip: true
             archive: %s
           additionalArgs: []
-`, kind, container.Address, container.Port, mongoUser, mongoPW, backupPath))
+`, kind, container.Address, container.Port, mongoUser, mongoPW, backupPath,
+		))
 	}
-	return []byte(fmt.Sprintf(`
+	return []byte(fmt.Sprintf(
+		`
       %s:
         options:
           flags:
@@ -296,15 +322,29 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
           flags:
             target: "/"
           id: "latest"
-`, kind, container.Address, container.Port, mongoUser, mongoPW, backupPath, resticIP, resticPort))
+`, kind, container.Address, container.Port, mongoUser, mongoPW, backupPath, resticIP, resticPort,
+	))
 }
 
 // prepareTestData creates test data and writes it into a database using the provided client
 func prepareTestData(client *mongo.Client) ([]interface{}, error) {
-	fooColl := TestColl{"Foo", 10}
-	barColl := TestColl{"Bar", 13}
-	gopherColl := TestColl{"Gopher", 42}
-	testData := []interface{}{fooColl, barColl, gopherColl}
+	fooColl := TestColl{
+		"Foo",
+		10,
+	}
+	barColl := TestColl{
+		"Bar",
+		13,
+	}
+	gopherColl := TestColl{
+		"Gopher",
+		42,
+	}
+	testData := []interface{}{
+		fooColl,
+		barColl,
+		gopherColl,
+	}
 
 	collection := client.Database(dbName).Collection(collName)
 	_, err := collection.InsertMany(context.TODO(), testData)

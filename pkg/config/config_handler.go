@@ -3,7 +3,6 @@ package config
 import (
 	"bytes"
 	"html/template"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -38,7 +37,7 @@ func ReadPaths(cfgFiles ...string) [][]byte {
 
 	var cfgContent = make([][]byte, 0, len(cfgFiles))
 	for _, file := range cfgFiles {
-		content, err := ioutil.ReadFile(file)
+		content, err := os.ReadFile(file)
 		if err != nil {
 			log.WithError(err).Fatalf("failed while reading config file '%s'", file)
 		}

@@ -18,6 +18,7 @@ var (
 	cfgFiles        []string
 	useRestic       bool
 	useResticForget bool
+	useResticPrune  bool
 	cleanup         bool
 
 	rootCmd = &cobra.Command{
@@ -33,7 +34,9 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().BoolVar(&useRestic, "restic", false, "backup result with 'restic backup'")
 
-	rootCmd.PersistentFlags().BoolVar(&useResticForget, "restic-forget", false, "executes 'restic forget' after backing up things with restic")
+	rootCmd.PersistentFlags().BoolVar(&useResticForget, "restic-forget", false, "executes 'restic forget' after backing up things with restic (NO PRUNING)")
+
+	rootCmd.PersistentFlags().BoolVar(&useResticPrune, "restic-prune", false, "executes 'restic prune'")
 
 	rootCmd.PersistentFlags().BoolVar(&cleanup, "cleanup", false, "cleanup backup files afterwards")
 
