@@ -1,6 +1,5 @@
 before:
   hooks:
-    - go mod download
     - make lintci
     - git diff --exit-code
 builds:
@@ -17,13 +16,6 @@ builds:
     - linux
   goarch:
     - amd64
-archives:
-- replacements:
-    darwin: Darwin
-    linux: Linux
-    windows: Windows
-    386: i386
-    amd64: x86_64
 checksum:
   name_template: 'checksums.txt'
 snapshot:
