@@ -1,6 +1,8 @@
 before:
   hooks:
     - go mod tidy
+    - make lintci
+    - git diff --exit-code
 
 builds:
 -

@@ -41,7 +41,7 @@ lint:
 			golangci-lint run -v --fix  ./...
 
 goreleaser:
-	curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --clean
+	curl -sL https://git.io/goreleaser | bash -s -- --debug --snapshot --skip-publish --clean
 
 upTestMongo: downTestMongo
 	trap 'cd $(CURDIR) && make downTestMongo' 0 1 2 3 6 9 15
