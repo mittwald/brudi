@@ -18,7 +18,7 @@ jobs:
       uses: goreleaser/goreleaser-action@v2
       with:
         version: latest
-        args: release --rm-dist --snapshot --skip-publish -f build/ci/.goreleaser.yml
+        args: release --debug --clean --snapshot --skip-publish -f build/ci/.goreleaser.yml
 
   test:
     runs-on: ubuntu-20.04
