@@ -108,9 +108,11 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	}
 
 	// transform output from restic into list of json elements
-	out = []byte(fmt.Sprint("[" +
-		strings.ReplaceAll(strings.TrimRight(string(out), "\n"), "\n", ",") +
-		"]"))
+	out = []byte(fmt.Sprint(
+		"[" +
+			strings.ReplaceAll(strings.TrimRight(string(out), "\n"), "\n", ",") +
+			"]",
+	))
 
 	var backupRes BackupResult
 	backupRes, err = parseSnapshotOut(out)
@@ -144,9 +146,11 @@ func Ls(ctx context.Context, glob *GlobalOptions, opts *LsOptions) ([]LsResult, 
 		return nil, err
 	}
 
-	out = []byte(fmt.Sprint("[" +
-		strings.ReplaceAll(strings.TrimRight(string(out), "\n"), "\n", ",") +
-		"]"))
+	out = []byte(fmt.Sprint(
+		"[" +
+			strings.ReplaceAll(strings.TrimRight(string(out), "\n"), "\n", ",") +
+			"]",
+	))
 	var result []LsResult
 	result, err = LsResponseFromJSON(out, opts)
 	if err != nil {
@@ -183,9 +187,11 @@ func LsResponseFromJSON(jsonLog []byte, opts *LsOptions) ([]LsResult, error) {
 		}
 		if !opts.Flags.Long {
 			if currentMessage.Type == fileType {
-				current.Files = append(current.Files, LsFile{
-					Path: currentMessage.Path,
-				})
+				current.Files = append(
+					current.Files, LsFile{
+						Path: currentMessage.Path,
+					},
+				)
 			}
 			continue
 		}
@@ -194,14 +200,16 @@ func LsResponseFromJSON(jsonLog []byte, opts *LsOptions) ([]LsResult, error) {
 			// valid entries for files should have uid, guid and permissions if -l is set
 			// use pointers to distinguish empty value from 0 for root user
 			if currentMessage.Mode != nil && currentMessage.UID != nil && currentMessage.GID != nil {
-				current.Files = append(current.Files, LsFile{
-					Permissions: *currentMessage.Mode,
-					User:        *currentMessage.UID,
-					Group:       *currentMessage.GID,
-					Size:        currentMessage.Size,
-					Time:        currentMessage.Time,
-					Path:        currentMessage.Path,
-				})
+				current.Files = append(
+					current.Files, LsFile{
+						Permissions: *currentMessage.Mode,
+						User:        *currentMessage.UID,
+						Group:       *currentMessage.GID,
+						Size:        currentMessage.Size,
+						Time:        currentMessage.Time,
+						Path:        currentMessage.Path,
+					},
+				)
 			}
 		}
 	}
@@ -297,7 +305,7 @@ func Check(ctx context.Context, flags *CheckFlags) ([]byte, error) {
 func Forget(
 	ctx context.Context, globalOpts *GlobalOptions, forgetOpts *ForgetOptions,
 ) (
-	removedSnapshots []string, output []byte, err error,
+	[]string, []byte, error,
 ) {
 	forgetOpts.Flags.Compact = true // make sure compact mode is enabled to parse result correctly
 

@@ -31,7 +31,7 @@ func getGenericRestoreBackendForKind(kind string) (GenericRestore, error) {
 	}
 }
 
-func DoRestoreForKind(ctx context.Context, kind string, cleanup, useRestic, useResticForget bool) error {
+func DoRestoreForKind(ctx context.Context, kind string, cleanup, useRestic bool) error {
 	logKind := log.WithFields(
 		log.Fields{
 			"kind": kind,
@@ -54,13 +54,6 @@ func DoRestoreForKind(ctx context.Context, kind string, cleanup, useRestic, useR
 		if err != nil {
 			return err
 		}
-
-		if useResticForget {
-			err = resticClient.DoResticForget(ctx)
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	err = backend.RestoreBackup(ctx)
@@ -76,8 +69,8 @@ func DoRestoreForKind(ctx context.Context, kind string, cleanup, useRestic, useR
 					"cmd":  "cleanup",
 				},
 			)
-			if err := backend.CleanUp(); err != nil {
-				cleanupLogger.WithError(err).Warn("failed to cleanup backup")
+			if cleanupErr := backend.CleanUp(); cleanupErr != nil {
+				cleanupLogger.WithError(cleanupErr).Warn("failed to cleanup backup")
 			} else {
 				cleanupLogger.Info("successfully cleaned up backup")
 			}

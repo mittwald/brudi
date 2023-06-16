@@ -2,18 +2,15 @@ package cli
 
 import (
 	"bufio"
-	"bytes"
 	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
 	"reflect"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -93,6 +90,8 @@ func includeFlag(flag, val string) []string {
 //	Notice:
 //	----------------------------------------------------
 //		Zero values (0, "", nil, false) and "-" will be ignored
+//
+//nolint:gocognit,cyclop // refactor this at some point
 func StructToCLI(optionStruct interface{}) []string {
 	if optionStruct == reflect.Zero(reflect.TypeOf(optionStruct)).Interface() {
 		return nil
@@ -168,11 +167,21 @@ func ParseCommandLine(cmd CommandType) []string {
 	}
 
 	if cmd.Nice != nil {
-		commandLine = append([]string{"nice", fmt.Sprintf("-n%d", *cmd.Nice)}, commandLine...)
+		commandLine = append(
+			[]string{
+				"nice",
+				fmt.Sprintf("-n%d", *cmd.Nice),
+			}, commandLine...,
+		)
 	}
 
 	if cmd.IONice != nil {
-		commandLine = append([]string{"ionice", fmt.Sprintf("-c%d", *cmd.IONice)}, commandLine...)
+		commandLine = append(
+			[]string{
+				"ionice",
+				fmt.Sprintf("-c%d", *cmd.IONice),
+			}, commandLine...,
+		)
 	}
 
 	return commandLine
@@ -180,15 +189,7 @@ func ParseCommandLine(cmd CommandType) []string {
 
 // RunWithTimeout executes the given binary within a max execution time
 func RunWithTimeout(runContext context.Context, cmd CommandType, timeout time.Duration) ([]byte, error) {
-	var ctx context.Context
-
-	if runContext != nil {
-		ctx = runContext
-	} else {
-		ctx = context.Background()
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(runContext, timeout)
 	defer cancel()
 
 	return Run(ctx, cmd)
@@ -201,12 +202,12 @@ func Run(ctx context.Context, cmd CommandType) ([]byte, error) {
 	commandLine := ParseCommandLine(cmd)
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("executing command")
 	if ctx != nil {
-		out, err = exec.CommandContext(ctx, commandLine[0], commandLine[1:]...).CombinedOutput() // nolint: gosec
+		out, err = exec.CommandContext(ctx, commandLine[0], commandLine[1:]...).CombinedOutput() //nolint: gosec
 		if ctx.Err() != nil {
 			return out, fmt.Errorf("failed to execute command: timed out or canceled")
 		}
 	} else {
-		out, err = exec.Command(commandLine[0], commandLine[1:]...).CombinedOutput() // nolint: gosec
+		out, err = exec.Command(commandLine[0], commandLine[1:]...).CombinedOutput() //nolint: gosec
 	}
 	if err != nil {
 		return out, fmt.Errorf("failed to execute command: %s", err)
@@ -214,100 +215,6 @@ func Run(ctx context.Context, cmd CommandType) ([]byte, error) {
 
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("successfully executed command")
 	return out, nil
-}
-
-// RunPipedWithTimeout executes "RunPiped" within a max execution time
-func RunPipedWithTimeout(
-	runContext context.Context,
-	cmd1, cmd2 CommandType,
-	timeout time.Duration, pids *PipedCommandsPids) ([]byte, error) {
-	var ctx context.Context
-
-	if runContext != nil {
-		ctx = runContext
-	} else {
-		ctx = context.Background()
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	return RunPiped(ctx, cmd1, cmd2, pids)
-}
-
-// RunPiped executes cmd1 and pipes its output to cmd2. Will return the output of cmd2
-func RunPiped(ctx context.Context, cmd1, cmd2 CommandType, pids *PipedCommandsPids) ([]byte, error) {
-	var errs []string
-	var err error
-	var cmd1Exec, cmd2Exec *exec.Cmd
-	var out bytes.Buffer
-	cmdLine1 := ParseCommandLine(cmd1)
-	cmdLine2 := ParseCommandLine(cmd2)
-	log.WithField("command",
-		fmt.Sprintf(
-			"%s | %s",
-			strings.Join(cmdLine1, " "),
-			strings.Join(cmdLine2, " "),
-		),
-	).Debug("executing command")
-
-	cmd1Exec = exec.CommandContext(ctx, cmdLine1[0], cmdLine1[1:]...) // nolint: gosec
-	cmd2Exec = exec.CommandContext(ctx, cmdLine2[0], cmdLine2[1:]...) // nolint: gosec
-
-	cmd2Exec.Stdin, err = cmd1Exec.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-
-	cmd1Exec.Stderr = &out
-	cmd2Exec.Stdout = &out
-	cmd2Exec.Stderr = &out
-	err = cmd2Exec.Start()
-	if err != nil {
-		errs = append(errs, err.Error())
-	}
-
-	err = cmd1Exec.Start()
-	if err != nil {
-		errs = append(errs, err.Error())
-	}
-
-	if pids != nil {
-		if cmd1Exec.Process.Pid != 0 {
-			pids.Pid1 = cmd1Exec.Process.Pid
-		}
-		if cmd2Exec.Process.Pid != 0 {
-			pids.Pid2 = cmd2Exec.Process.Pid
-		}
-	}
-
-	err = cmd1Exec.Wait()
-	if err != nil {
-		var msg exec.ExitError
-		ok := errors.As(err, &msg)
-		if !ok || !(cmd1.Binary == "tar" && msg.Sys().(syscall.WaitStatus).ExitStatus() == 1) { // ignore tar exit-code of 1
-			errs = append(errs, err.Error())
-		}
-	}
-
-	err = cmd2Exec.Wait()
-	if err != nil {
-		errs = append(errs, err.Error())
-	}
-
-	if len(errs) > 0 {
-		return out.Bytes(), fmt.Errorf(strings.Join(errs, "\n"))
-	}
-
-	log.WithField("command",
-		fmt.Sprintf(
-			"%s | %s",
-			strings.Join(cmdLine1, " "),
-			strings.Join(cmdLine2, " "),
-		),
-	).Debug("successfully executed command")
-
-	return out.Bytes(), nil
 }
 
 // GzipFile compresses a file with gzip and returns the path of the created archive
@@ -324,7 +231,7 @@ func GzipFile(fileName string) (string, error) {
 	// read file content
 	var content []byte
 	reader := bufio.NewReader(inFile)
-	content, err = ioutil.ReadAll(reader)
+	content, err = io.ReadAll(reader)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -434,7 +341,7 @@ func CheckAndGunzipFile(fileName string) (string, error) {
 	}()
 
 	// write unzipped file to file system
-	_, err = io.Copy(outFile, archiveReader) // nolint: gosec // we work with potentially large backups
+	_, err = io.Copy(outFile, archiveReader) //nolint: gosec // we work with potentially large backups
 	if err != nil {
 		return "", errors.WithStack(err)
 	}

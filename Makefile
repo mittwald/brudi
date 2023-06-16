@@ -1,7 +1,6 @@
 BINARY_NAME = brudi
 COMMIT_HASH = $(shell git rev-parse --verify HEAD)
 CURDIR = $(shell pwd)
-GOLANGCI_LINT_VER = v1.35.0
 
 .PHONY: build test
 
@@ -29,20 +28,20 @@ lintci:
 	docker run --rm \
     -v $(CURDIR):/app \
     -w /app \
-	-e GOLANGCI_ADDITIONAL_YML=/app/build/package/ci/.golangci.yml \
-	quay.io/mittwald/golangci-lint:0.0.8 \
+	-e GOLANGCI_ADDITIONAL_YML=/app/build/ci/.golangci.yml \
+	quay.io/mittwald/golangci-lint:0.0.29 \
 		golangci-lint run -v --fix  ./...
 
 lint:
 	docker run --rm \
 		-v $(shell go env GOPATH):/go \
 		-v ${CURDIR}:/app -w /app \
-		-e GOLANGCI_ADDITIONAL_YML=/app/build/package/ci/.golangci.yml \
-		quay.io/mittwald/golangci-lint:0.0.8 \
+		-e GOLANGCI_ADDITIONAL_YML=/app/build/ci/.golangci.yml \
+		quay.io/mittwald/golangci-lint:0.0.29 \
 			golangci-lint run -v --fix  ./...
 
 goreleaser:
-	curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --rm-dist
+	curl -sL https://git.io/goreleaser | bash -s -- --debug --snapshot --skip-publish --clean
 
 upTestMongo: downTestMongo
 	trap 'cd $(CURDIR) && make downTestMongo' 0 1 2 3 6 9 15

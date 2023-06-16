@@ -23,6 +23,8 @@ const (
 // It simply does a 'viper.Get()' on the config-key provided by the 'viper'-tag and loads the result into the struct property
 // If no 'viper'-tags are provided by the target struct, the struct property name is used as config-key
 // Use '-' to skip env-resolving for a struct property
+//
+
 func InitializeStructFromViper(parentKey string, target interface{}) error {
 	var structElem reflect.Value
 
@@ -36,9 +38,11 @@ func InitializeStructFromViper(parentKey string, target interface{}) error {
 		field := structElem.Field(i)
 		flag := structElem.Type().Field(i).Tag.Get(flagTag)
 		if flag == "-" {
-			log.WithFields(log.Fields{
-				"field": structElem.Type().Field(i).Name,
-			}).Debug("skipping field")
+			log.WithFields(
+				log.Fields{
+					"field": structElem.Type().Field(i).Name,
+				},
+			).Debug("skipping field")
 			continue
 		}
 
@@ -77,15 +81,18 @@ func InitializeStructFromViper(parentKey string, target interface{}) error {
 	return nil
 }
 
+//nolint:cyclop // YOU are the cyclop
 func reflectSetValueFromConfigKey(viperConfigKey string, fieldToBeSet reflect.Value) {
 	viperVal := viper.Get(viperConfigKey)
 	reflectedVal := reflect.ValueOf(viperVal)
 
-	fieldLogger := log.WithFields(log.Fields{
-		"viperKey":       viperConfigKey,
-		"viperVal":       viperVal,
-		"reflectedValue": reflectedVal,
-	})
+	fieldLogger := log.WithFields(
+		log.Fields{
+			"viperKey":       viperConfigKey,
+			"viperVal":       viperVal,
+			"reflectedValue": reflectedVal,
+		},
+	)
 
 	fieldLogger.Debug("processing config key")
 

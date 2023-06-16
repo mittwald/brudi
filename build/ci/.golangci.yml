@@ -5,3 +5,10 @@ run:
     - test/
   timeout: 10m
 
+linters:
+  disable:
+    - forcetypeassert
+
+linters-settings:
+  cyclop:
+    max-complexity: 15

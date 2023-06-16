@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/mittwald/brudi/pkg/cli"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/mittwald/brudi/pkg/cli"
 
 	"github.com/mittwald/brudi/pkg/source"
 	commons "github.com/mittwald/brudi/test/pkg/source/internal"
@@ -60,11 +61,21 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDump() {
 	}()
 
 	// create a redis container to test backup function
-	testData, err := redisDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""}, backupPath)
+	testData, err := redisDoBackup(
+		ctx, false, commons.TestContainerSetup{
+			Port:    "",
+			Address: "",
+		}, backupPath,
+	)
 	redisDumpTestSuite.Require().NoError(err)
 
 	var restoredData testStruct
-	restoredData, err = redisDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""}, backupPath)
+	restoredData, err = redisDoRestore(
+		ctx, false, commons.TestContainerSetup{
+			Port:    "",
+			Address: "",
+		}, backupPath,
+	)
 	redisDumpTestSuite.Require().NoError(err)
 
 	assert.Equal(redisDumpTestSuite.T(), testData.Name, restoredData.Name)
@@ -84,11 +95,21 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDumpGzip() {
 	}()
 
 	// create a redis container to test backup function
-	testData, err := redisDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""}, backupPathZip)
+	testData, err := redisDoBackup(
+		ctx, false, commons.TestContainerSetup{
+			Port:    "",
+			Address: "",
+		}, backupPathZip,
+	)
 	redisDumpTestSuite.Require().NoError(err)
 
 	var restoredData testStruct
-	restoredData, err = redisDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""}, backupPathZip)
+	restoredData, err = redisDoRestore(
+		ctx, false, commons.TestContainerSetup{
+			Port:    "",
+			Address: "",
+		}, backupPathZip,
+	)
 	redisDumpTestSuite.Require().NoError(err)
 
 	assert.Equal(redisDumpTestSuite.T(), testData.Name, restoredData.Name)
@@ -172,8 +193,10 @@ func TestRedisDumpTestSuite(t *testing.T) {
 }
 
 // redisDoBackup populates a database with test data and performs a backup
-func redisDoBackup(ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup, path string) (testStruct, error) {
+func redisDoBackup(
+	ctx context.Context, useRestic bool,
+	resticContainer commons.TestContainerSetup, path string,
+) (testStruct, error) {
 	// setup a redis container to backup from
 	redisBackupTarget, err := commons.NewTestContainerSetup(ctx, &redisRequest, redisPort)
 	if err != nil {
@@ -187,9 +210,11 @@ func redisDoBackup(ctx context.Context, useRestic bool,
 	}()
 
 	// connect to database to prepare for test data insertion
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("%s:%s", redisBackupTarget.Address, redisBackupTarget.Port),
-	})
+	redisClient := redis.NewClient(
+		&redis.Options{
+			Addr: fmt.Sprintf("%s:%s", redisBackupTarget.Address, redisBackupTarget.Port),
+		},
+	)
 	defer func() {
 		redisErr := redisClient.Close()
 		if redisErr != nil {
@@ -204,7 +229,10 @@ func redisDoBackup(ctx context.Context, useRestic bool,
 	}
 
 	//  setup test data and write it to database
-	testData := testStruct{Name: testName, Type: testType}
+	testData := testStruct{
+		Name: testName,
+		Type: testType,
+	}
 	err = redisClient.Set(nameKey, testData.Name, 0).Err()
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
@@ -223,7 +251,7 @@ func redisDoBackup(ctx context.Context, useRestic bool,
 	}
 
 	// perform backup action on first redis container
-	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, true)
+	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, true, true)
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
 	}
@@ -232,8 +260,10 @@ func redisDoBackup(ctx context.Context, useRestic bool,
 }
 
 // redisDoRestore restores data from backup and retrieves it for verification, optionally using restic
-func redisDoRestore(ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup, path string) (testStruct, error) {
+func redisDoRestore(
+	ctx context.Context, useRestic bool,
+	resticContainer commons.TestContainerSetup, path string,
+) (testStruct, error) {
 	// unzip file if necessary
 	_, err := cli.CheckAndGunzipFile(path)
 	if err != nil {
@@ -262,9 +292,11 @@ func redisDoRestore(ctx context.Context, useRestic bool,
 	}
 
 	// connect to database to prepare for restoration
-	redisRestoreClient := redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("%s:%s", redisRestoreTarget.Address, redisRestoreTarget.Port),
-	})
+	redisRestoreClient := redis.NewClient(
+		&redis.Options{
+			Addr: fmt.Sprintf("%s:%s", redisRestoreTarget.Address, redisRestoreTarget.Port),
+		},
+	)
 	defer func() {
 		redisErr := redisRestoreClient.Close()
 		if redisErr != nil {
@@ -292,7 +324,10 @@ func redisDoRestore(ctx context.Context, useRestic bool,
 		return testStruct{}, errors.WithStack(err)
 	}
 
-	return testStruct{Name: nameVal, Type: typeVal}, err
+	return testStruct{
+		Name: nameVal,
+		Type: typeVal,
+	}, err
 }
 
 // redisRequest is a request for a blank redis container
@@ -300,8 +335,10 @@ var redisRequest = testcontainers.ContainerRequest{
 	Image:        redisImage,
 	ExposedPorts: []string{redisPort},
 	WaitingFor:   wait.ForLog(logString),
-	Env: map[string]string{"ALLOW_EMPTY_PASSWORD": "yes",
-		"REDIS_AOF_ENABLED": "no"},
+	Env: map[string]string{
+		"ALLOW_EMPTY_PASSWORD": "yes",
+		"REDIS_AOF_ENABLED":    "no",
+	},
 }
 
 // redisRestoreRequest is a request for a redis container that mounts an rdb-file from backupPath to initialize the database
@@ -309,15 +346,23 @@ var redisRestoreRequest = testcontainers.ContainerRequest{
 	Image:        redisImage,
 	ExposedPorts: []string{redisPort},
 	WaitingFor:   wait.ForLog(logString),
-	BindMounts:   map[string]string{strings.TrimSuffix(backupPath, ".gz"): "/bitnami/redis/data/dump.rdb"},
-	Env: map[string]string{"ALLOW_EMPTY_PASSWORD": "yes",
-		"REDIS_AOF_ENABLED": "no"},
+	Mounts: testcontainers.Mounts(
+		testcontainers.BindMount(
+			strings.TrimSuffix(backupPath, ".gz"),
+			"/bitnami/redis/data/dump.rdb",
+		),
+	),
+	Env: map[string]string{
+		"ALLOW_EMPTY_PASSWORD": "yes",
+		"REDIS_AOF_ENABLED":    "no",
+	},
 }
 
 // createRedisConfig returns a brudi config for redis
 func createRedisConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, path string) []byte {
 	if !useRestic {
-		return []byte(fmt.Sprintf(`
+		return []byte(fmt.Sprintf(
+			`
 redisdump:
   options:
     flags:
@@ -326,9 +371,11 @@ redisdump:
       password: %s
       rdb: %s
     additionalArgs: []
-`, container.Address, container.Port, redisPW, path))
+`, container.Address, container.Port, redisPW, path,
+		))
 	}
-	return []byte(fmt.Sprintf(`
+	return []byte(fmt.Sprintf(
+		`
 redisdump:
   options:
     flags:
@@ -354,7 +401,8 @@ restic:
     flags:
       target: "/"
     id: "latest"
-`, container.Address, container.Port, redisPW, path, resticIP, resticPort))
+`, container.Address, container.Port, redisPW, path, resticIP, resticPort,
+	))
 }
 
 type testStruct struct {

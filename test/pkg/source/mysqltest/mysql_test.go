@@ -72,12 +72,22 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQL
 	}()
 
 	// backup test data with brudi and retain test data for verification
-	testData, err := mySQLDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""}, backupPath)
+	testData, err := mySQLDoBackup(
+		ctx, false, commons.TestContainerSetup{
+			Port:    "",
+			Address: "",
+		}, backupPath,
+	)
 	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore test data with brudi and retrieve it from the db for verification
 	var restoreResult []TestStruct
-	restoreResult, err = mySQLDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""}, backupPath)
+	restoreResult, err = mySQLDoRestore(
+		ctx, false, commons.TestContainerSetup{
+			Port:    "",
+			Address: "",
+		}, backupPath,
+	)
 	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
 	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
@@ -96,12 +106,22 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQL
 	}()
 
 	// backup test data with brudi and retain test data for verification
-	testData, err := mySQLDoBackup(ctx, false, commons.TestContainerSetup{Port: "", Address: ""}, backupPathZip)
+	testData, err := mySQLDoBackup(
+		ctx, false, commons.TestContainerSetup{
+			Port:    "",
+			Address: "",
+		}, backupPathZip,
+	)
 	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore test data with brudi and retrieve it from the db for verification
 	var restoreResult []TestStruct
-	restoreResult, err = mySQLDoRestore(ctx, false, commons.TestContainerSetup{Port: "", Address: ""}, backupPathZip)
+	restoreResult, err = mySQLDoRestore(
+		ctx, false, commons.TestContainerSetup{
+			Port:    "",
+			Address: "",
+		}, backupPathZip,
+	)
 	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
 	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
@@ -180,8 +200,10 @@ func TestMySQLDumpAndRestoreTestSuite(t *testing.T) {
 }
 
 // mySQLDoBackup inserts test data into the given database and then executes brudi's `mysqldump`
-func mySQLDoBackup(ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup, path string) ([]TestStruct, error) {
+func mySQLDoBackup(
+	ctx context.Context, useRestic bool,
+	resticContainer commons.TestContainerSetup, path string,
+) ([]TestStruct, error) {
 	// setup a mysql container to backup from
 	mySQLBackupTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	if err != nil {
@@ -195,8 +217,10 @@ func mySQLDoBackup(ctx context.Context, useRestic bool,
 	}()
 
 	// establish connection
-	backupConnectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
-		mySQLRoot, mySQLRootPW, mySQLBackupTarget.Address, mySQLBackupTarget.Port, mySQLDatabase)
+	backupConnectionString := fmt.Sprintf(
+		"%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
+		mySQLRoot, mySQLRootPW, mySQLBackupTarget.Address, mySQLBackupTarget.Port, mySQLDatabase,
+	)
 	var db *sql.DB
 	db, err = sql.Open(dbDriver, backupConnectionString)
 	if err != nil {
@@ -231,7 +255,7 @@ func mySQLDoBackup(ctx context.Context, useRestic bool,
 	}
 
 	// use brudi to create dump
-	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false)
+	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false, false)
 	if err != nil {
 		return []TestStruct{}, err
 	}
@@ -239,8 +263,10 @@ func mySQLDoBackup(ctx context.Context, useRestic bool,
 }
 
 // mySQLDoRestore restores data from backup and retrieves it for verification, optionally using restic
-func mySQLDoRestore(ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup, path string) ([]TestStruct, error) {
+func mySQLDoRestore(
+	ctx context.Context, useRestic bool,
+	resticContainer commons.TestContainerSetup, path string,
+) ([]TestStruct, error) {
 	// create a mysql container to restore data to
 	mySQLRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	if err != nil {
@@ -264,14 +290,16 @@ func mySQLDoRestore(ctx context.Context, useRestic bool,
 	time.Sleep(1 * time.Second)
 
 	// restore server from mysqldump
-	err = source.DoRestoreForKind(ctx, restoreKind, false, useRestic, false)
+	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false, false)
 	if err != nil {
 		return []TestStruct{}, err
 	}
 
 	// establish connection for retrieving restored data
-	restoreConnectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
-		mySQLRoot, mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase)
+	restoreConnectionString := fmt.Sprintf(
+		"%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
+		mySQLRoot, mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase,
+	)
 	var dbRestore *sql.DB
 	dbRestore, err = sql.Open(dbDriver, restoreConnectionString)
 	if err != nil {
@@ -318,7 +346,8 @@ func mySQLDoRestore(ctx context.Context, useRestic bool,
 func createMySQLConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, path string) []byte {
 	var resticConfig string
 	if useRestic {
-		resticConfig = fmt.Sprintf(`
+		resticConfig = fmt.Sprintf(
+			`
 restic:
   global:
     flags:
@@ -335,10 +364,12 @@ restic:
     flags:
       target: "/"
     id: "latest"
-`, resticIP, resticPort)
+`, resticIP, resticPort,
+		)
 	}
 
-	result := []byte(fmt.Sprintf(`
+	result := []byte(fmt.Sprintf(
+		`
 mysqldump:
   options:
     flags:
@@ -363,14 +394,18 @@ mysqlrestore:
     sourceFile: %s%s
 `, hostName, container.Port, mySQLRootPW, mySQLRoot, path,
 		hostName, container.Port, mySQLRootPW, mySQLRoot, mySQLDatabase, path,
-		resticConfig))
+		resticConfig,
+	))
 	return result
 }
 
 // prepareTestData creates test data and inserts it into the given database
 func prepareTestData(database *sql.DB) ([]TestStruct, error) {
 	var err error
-	testStruct1 := TestStruct{2, "TEST"}
+	testStruct1 := TestStruct{
+		2,
+		"TEST",
+	}
 	testData := []TestStruct{testStruct1}
 	var insert *sql.Rows
 	for idx := range testData {
