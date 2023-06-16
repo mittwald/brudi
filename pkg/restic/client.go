@@ -103,7 +103,7 @@ func (c *Client) DoResticForget(ctx context.Context) error {
 func (c *Client) DoResticPrune(ctx context.Context) error {
 	c.Logger.Info("running 'restic prune'")
 
-	output, err := Prune(ctx)
+	output, err := Prune(ctx, c.Config.Global)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%s - %s", err.Error(), output))
 	}
