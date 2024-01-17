@@ -21,7 +21,6 @@ type ConfigBasedBackend struct {
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	if viper.GetBool(cli.DoStdinBackupKey) {
 		//config.Options.Flags.Pipe = true
-		// TODO: Is this error correct?
 		return nil, errors.Errorf("can't do a backup to STDOUT with redisdump but %s is set", cli.DoStdinBackupKey)
 	}
 
