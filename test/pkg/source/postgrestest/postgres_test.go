@@ -225,7 +225,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) pgDumpAndRestoreRest
 
 	// setup a container running the restic rest-server
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
-	pgDumpAndRestoreTestSuite.Require().NoError(err)
+	pgDumpAndRestoreTestSuite.Require().NoErrorf(err, "backupPath: '%s', useStdin: '%t'", backupPath, useStdin)
 	defer func() {
 		resticErr := resticContainer.Container.Terminate(ctx)
 		if resticErr != nil {
@@ -239,7 +239,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) pgDumpAndRestoreRest
 		ctx, true, resticContainer,
 		"tar", backupPath, useStdin,
 	)
-	pgDumpAndRestoreTestSuite.Require().NoError(err)
+	pgDumpAndRestoreTestSuite.Require().NoErrorf(err, "backupPath: '%s', useStdin: '%t'", backupPath, useStdin)
 
 	// restore test data with brudi and retrieve it from the db for verification
 	var restoreResult []testStruct
@@ -247,7 +247,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) pgDumpAndRestoreRest
 		ctx, true, resticContainer,
 		"tar", backupPath, useStdin,
 	)
-	pgDumpAndRestoreTestSuite.Require().NoError(err)
+	pgDumpAndRestoreTestSuite.Require().NoErrorf(err, "backupPath: '%s', useStdin: '%t'", backupPath, useStdin)
 
 	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }

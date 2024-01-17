@@ -145,7 +145,7 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) mySQLDumpAndRe
 
 	// setup a container running the restic rest-server
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	mySQLDumpAndRestoreTestSuite.Require().NoErrorf(err, "backupPath: '%s', useStdin: '%t'", backupPath, useStdin)
 	defer func() {
 		resticErr := resticContainer.Container.Terminate(ctx)
 		if resticErr != nil {
@@ -156,12 +156,12 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) mySQLDumpAndRe
 	// backup test data with brudi and retain test data for verification
 	var testData []TestStruct
 	testData, err = mySQLDoBackup(ctx, true, resticContainer, backupPath, useStdin)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	mySQLDumpAndRestoreTestSuite.Require().NoErrorf(err, "backupPath: '%s', useStdin: '%t'", backupPath, useStdin)
 
 	// restore database from backup and pull test data from it for verification
 	var restoreResult []TestStruct
 	restoreResult, err = mySQLDoRestore(ctx, true, resticContainer, backupPath)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	mySQLDumpAndRestoreTestSuite.Require().NoErrorf(err, "backupPath: '%s', useStdin: '%t'", backupPath, useStdin)
 
 	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }

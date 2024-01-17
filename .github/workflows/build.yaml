@@ -41,6 +41,11 @@ jobs:
     - name: install redis-cli
       run: sudo apt-get install redis-tools
 
+    - name: Update postgres tools
+      run: |
+        sudo apt update
+        sudo apt install -y postgresql-client
+
     - name: Test
       run: go test -v ./...
       env:

@@ -107,7 +107,7 @@ func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) basicMongoDBDu
 	}()
 	// create a container running the restic rest-server
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
-	mongoDumpAndRestoreTestSuite.Require().NoError(err)
+	mongoDumpAndRestoreTestSuite.Require().NoErrorf(err, "backupPath: '%s', useStdin: '%t'", backupPath, useStdin)
 	defer func() {
 		resticErr := resticContainer.Container.Terminate(ctx)
 		if resticErr != nil {
@@ -118,12 +118,12 @@ func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) basicMongoDBDu
 	// backup database and retain test data for verification
 	var testData []interface{}
 	testData, err = mongoDoBackup(ctx, true, resticContainer, useStdin)
-	mongoDumpAndRestoreTestSuite.Require().NoError(err)
+	mongoDumpAndRestoreTestSuite.Require().NoErrorf(err, "backupPath: '%s', useStdin: '%t'", backupPath, useStdin)
 
 	// restore database from backup and pull test data for verification
 	var results []interface{}
 	results, err = mongoDoRestore(ctx, true, resticContainer)
-	mongoDumpAndRestoreTestSuite.Require().NoError(err)
+	mongoDumpAndRestoreTestSuite.Require().NoErrorf(err, "backupPath: '%s', useStdin: '%t'", backupPath, useStdin)
 
 	assert.DeepEqual(mongoDumpAndRestoreTestSuite.T(), testData, results)
 }
