@@ -108,6 +108,9 @@ func StructToCLI(optionStruct interface{}) []string {
 		if flag == "-" {
 			continue
 		}
+		if fieldVal == nil {
+			continue
+		}
 
 		switch t := fieldVal.(type) {
 		case int:

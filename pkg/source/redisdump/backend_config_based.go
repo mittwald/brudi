@@ -3,6 +3,7 @@ package redisdump
 import (
 	"context"
 	"fmt"
+	"github.com/spf13/viper"
 	"os"
 	"strings"
 
@@ -16,6 +17,12 @@ type ConfigBasedBackend struct {
 }
 
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
+	if viper.GetBool(cli.DoStdinBackupKey) {
+		//config.Options.Flags.Pipe = true
+		// TODO: Is this error correct?
+		return nil, errors.Errorf("can't do a backup to STDOUT with redisdump but %s is set", cli.DoStdinBackupKey)
+	}
+
 	config := &Config{
 		&Options{
 			Flags:          &Flags{},
@@ -40,10 +47,7 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 		b.cfg.Options.Flags.Rdb = strings.TrimSuffix(b.cfg.Options.Flags.Rdb, cli.GzipSuffix)
 		gzip = true
 	}
-	cmd := cli.CommandType{
-		Binary: binary,
-		Args:   cli.StructToCLI(b.cfg.Options),
-	}
+	cmd := b.GetBackupCommand()
 
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
@@ -59,6 +63,13 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (b *ConfigBasedBackend) GetBackupCommand() cli.CommandType {
+	return cli.CommandType{
+		Binary: binary,
+		Args:   cli.StructToCLI(b.cfg.Options),
+	}
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {

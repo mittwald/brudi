@@ -3,6 +3,7 @@ package mysqldump
 import (
 	"context"
 	"fmt"
+	"github.com/spf13/viper"
 	"os"
 	"strings"
 
@@ -27,6 +28,9 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	if err != nil {
 		return nil, err
 	}
+	if viper.GetBool(cli.DoStdinBackupKey) {
+		config.Options.Flags.ResultFile = ""
+	}
 
 	return &ConfigBasedBackend{cfg: config}, nil
 }
@@ -39,10 +43,7 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 		gzip = true
 	}
 
-	cmd := cli.CommandType{
-		Binary: binary,
-		Args:   cli.StructToCLI(b.cfg.Options),
-	}
+	cmd := b.GetBackupCommand()
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
@@ -57,6 +58,13 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (b *ConfigBasedBackend) GetBackupCommand() cli.CommandType {
+	return cli.CommandType{
+		Binary: binary,
+		Args:   cli.StructToCLI(b.cfg.Options),
+	}
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {

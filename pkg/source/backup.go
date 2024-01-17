@@ -3,6 +3,8 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/cli"
+	"github.com/spf13/viper"
 
 	"github.com/mittwald/brudi/pkg/restic"
 
@@ -46,28 +48,34 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 		return err
 	}
 
-	err = backend.CreateBackup(ctx)
-	if err != nil {
-		return err
-	}
+	var backupCmd *cli.CommandType = nil
+	if viper.GetBool(cli.DoStdinBackupKey) {
+		bc := backend.GetBackupCommand()
+		backupCmd = &bc
+	} else {
+		err = backend.CreateBackup(ctx)
+		if err != nil {
+			return err
+		}
 
-	if cleanup {
-		defer func() {
-			cleanupLogger := logKind.WithFields(
-				log.Fields{
-					"path": backend.GetBackupPath(),
-					"cmd":  "cleanup",
-				},
-			)
-			if err = backend.CleanUp(); err != nil {
-				cleanupLogger.WithError(err).Warn("failed to cleanup backup")
-			} else {
-				cleanupLogger.Info("successfully cleaned up backup")
-			}
-		}()
-	}
+		if cleanup {
+			defer func() {
+				cleanupLogger := logKind.WithFields(
+					log.Fields{
+						"path": backend.GetBackupPath(),
+						"cmd":  "cleanup",
+					},
+				)
+				if err = backend.CleanUp(); err != nil {
+					cleanupLogger.WithError(err).Warn("failed to cleanup backup")
+				} else {
+					cleanupLogger.Info("successfully cleaned up backup")
+				}
+			}()
+		}
 
-	logKind.Info("finished backing up")
+		logKind.Info("finished backing up")
+	}
 
 	if !useRestic {
 		return nil
@@ -87,7 +95,7 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 		resticClient.Config.Forget.Flags.Prune = false
 	}
 
-	if doBackupErr := resticClient.DoResticBackup(ctx); doBackupErr != nil {
+	if doBackupErr := resticClient.DoResticBackup(ctx, backupCmd); doBackupErr != nil {
 		return doBackupErr
 	}
 

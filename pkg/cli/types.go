@@ -3,6 +3,7 @@ package cli
 import "io"
 
 const GzipSuffix = ".gz"
+const DoStdinBackupKey = "doPipingBackup"
 
 type CommandType struct {
 	Binary      string

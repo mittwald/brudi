@@ -3,6 +3,7 @@ package psql
 import (
 	"context"
 	"fmt"
+	"github.com/spf13/viper"
 	"os"
 
 	"github.com/mittwald/brudi/pkg/cli"
@@ -26,6 +27,9 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	err := config.InitFromViper()
 	if err != nil {
 		return nil, err
+	}
+	if viper.GetBool(cli.DoStdinBackupKey) {
+		config.Options.Flags.Output = ""
 	}
 
 	return &ConfigBasedBackend{cfg: config}, nil

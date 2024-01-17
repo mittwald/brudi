@@ -3,6 +3,7 @@ package mongodump
 import (
 	"context"
 	"fmt"
+	"github.com/spf13/viper"
 	"os"
 
 	"github.com/pkg/errors"
@@ -27,15 +28,15 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	if err != nil {
 		return nil, err
 	}
+	if viper.GetBool(cli.DoStdinBackupKey) {
+		config.Options.Flags.Archive = ""
+	}
 
 	return &ConfigBasedBackend{cfg: config}, nil
 }
 
 func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
-	cmd := cli.CommandType{
-		Binary: binary,
-		Args:   cli.StructToCLI(b.cfg.Options),
-	}
+	cmd := b.GetBackupCommand()
 
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
@@ -43,6 +44,13 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (b *ConfigBasedBackend) GetBackupCommand() cli.CommandType {
+	return cli.CommandType{
+		Binary: binary,
+		Args:   cli.StructToCLI(b.cfg.Options),
+	}
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {

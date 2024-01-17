@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -80,7 +81,7 @@ func parseSnapshotOut(jsonLog []byte) (BackupResult, error) {
 }
 
 // CreateBackup executes "restic backup" and returns the parent snapshot id (if available) and the snapshot id
-func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *BackupOptions, unlock bool) (BackupResult, []byte, error) {
+func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *BackupOptions, unlock bool, backupDataCmd *cli.CommandType) (BackupResult, []byte, error) {
 	var out []byte
 	var err error
 
@@ -99,6 +100,17 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 	var args []string
 	args = cli.StructToCLI(globalOpts)
 	args = append(args, cli.StructToCLI(backupOpts)...)
+	if backupDataCmd != nil {
+		if backupOpts.Flags.StdinFilename == "" {
+			binName := path.Base(backupDataCmd.Binary)
+			if binName == "." || binName == "/" {
+				args = append(args, "--stdin-filename", "stdin-backup-file")
+			} else {
+				args = append(args, "--stdin-filename", fmt.Sprintf("%s-file", binName))
+			}
+		}
+		args = append(args, "--stdin-from-command", strings.Join(cli.ParseCommandLine(*backupDataCmd), " "))
+	}
 
 	cmd := newCommand("backup", args...)
 
