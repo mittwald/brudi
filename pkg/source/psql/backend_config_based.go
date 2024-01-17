@@ -11,6 +11,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+//var _ source.GenericRestore = &ConfigBasedBackend{}
+
 type ConfigBasedBackend struct {
 	cfg *Config
 }
@@ -49,7 +51,7 @@ func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
 		Args:   args,
 	}
 	var out []byte
-	out, err = cli.Run(ctx, cmd)
+	out, err = cli.Run(ctx, &cmd, false)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
 	}

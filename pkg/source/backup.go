@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/mittwald/brudi/pkg/cli"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	"github.com/mittwald/brudi/pkg/restic"
@@ -37,6 +38,9 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 }
 
 func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useResticForget, useResticPrune bool) error {
+	if viper.GetBool(cli.DoStdinBackupKey) && !useRestic {
+		return errors.New("doStdinBackup is enabled but restic is disabled")
+	}
 	logKind := log.WithFields(
 		log.Fields{
 			"kind": kind,
@@ -48,16 +52,18 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 		return err
 	}
 
-	var backupCmd *cli.CommandType = nil
+	// TODO: Re-activate when --stdin-command was added to restic
+	/*var backupCmd *cli.CommandType = nil
 	if viper.GetBool(cli.DoStdinBackupKey) {
 		bc := backend.GetBackupCommand()
 		backupCmd = &bc
-	} else {
-		err = backend.CreateBackup(ctx)
-		if err != nil {
-			return err
-		}
+	} else {*/
+	backupCmd, err := backend.CreateBackup(ctx)
+	if err != nil {
+		return err
+	}
 
+	if !viper.GetBool(cli.DoStdinBackupKey) {
 		if cleanup {
 			defer func() {
 				cleanupLogger := logKind.WithFields(
@@ -73,7 +79,6 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 				}
 			}()
 		}
-
 		logKind.Info("finished backing up")
 	}
 

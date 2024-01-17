@@ -12,6 +12,8 @@ import (
 	"github.com/mittwald/brudi/pkg/cli"
 )
 
+//var _ source.Generic = &ConfigBasedBackend{}
+
 type ConfigBasedBackend struct {
 	cfg *Config
 }
@@ -40,7 +42,7 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 }
 
 // Do a bgsave of the given redis instance
-func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
+func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) (*cli.CommandType, error) {
 	gzip := false
 	// create temporary, unzipped backup first, thus trim '.gz' extension
 	if strings.HasSuffix(b.cfg.Options.Flags.Rdb, cli.GzipSuffix) {
@@ -49,20 +51,20 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 	}
 	cmd := b.GetBackupCommand()
 
-	out, err := cli.Run(ctx, cmd)
+	out, err := cli.Run(ctx, &cmd, false)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
+		return nil, errors.WithStack(fmt.Errorf("%+v - %s", err, out))
 	}
 
 	// zip backup, update flag with the name returned by GzipFile for correct handover to restic
 	if gzip {
 		b.cfg.Options.Flags.Rdb, err = cli.GzipFile(b.cfg.Options.Flags.Rdb)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (b *ConfigBasedBackend) GetBackupCommand() cli.CommandType {

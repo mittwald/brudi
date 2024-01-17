@@ -32,7 +32,7 @@ var (
 func initBackup(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) {
 	cmd := newCommand("init", cli.StructToCLI(globalOpts)...)
 
-	out, err := cli.RunWithTimeout(ctx, cmd, cmdTimeout)
+	out, err := cli.RunWithTimeout(ctx, &cmd, false, cmdTimeout)
 	if err != nil {
 		// s3 init-check
 		if strings.Contains(string(out), "config already initialized") {
@@ -99,22 +99,29 @@ func CreateBackup(ctx context.Context, globalOpts *GlobalOptions, backupOpts *Ba
 
 	var args []string
 	args = cli.StructToCLI(globalOpts)
-	args = append(args, cli.StructToCLI(backupOpts)...)
 	if backupDataCmd != nil {
+		backupOpts.Paths = nil
 		if backupOpts.Flags.StdinFilename == "" {
 			binName := path.Base(backupDataCmd.Binary)
 			if binName == "." || binName == "/" {
-				args = append(args, "--stdin-filename", "stdin-backup-file")
+				backupOpts.Flags.StdinFilename = "stdin-backup-file"
 			} else {
-				args = append(args, "--stdin-filename", fmt.Sprintf("%s-file", binName))
+				backupOpts.Flags.StdinFilename = fmt.Sprintf("%s-file", binName)
 			}
 		}
-		args = append(args, "--stdin-from-command", strings.Join(cli.ParseCommandLine(*backupDataCmd), " "))
+		// TODO: Change back when --stdin-command was added to restic
+		// args = append(args, "--stdin-from-command", strings.Join(cli.ParseCommandLine(*backupDataCmd), " "))
+		backupOpts.Flags.Stdin = true
 	}
+	args = append(args, cli.StructToCLI(backupOpts)...)
 
 	cmd := newCommand("backup", args...)
+	if backupDataCmd != nil {
+		cmd.Pipe = backupDataCmd.Pipe
+		cmd.ReadingDone = backupDataCmd.ReadingDone
+	}
 
-	out, err = cli.RunWithTimeout(ctx, cmd, cmdTimeout)
+	out, err = cli.RunWithTimeout(ctx, &cmd, false, cmdTimeout)
 	if err != nil {
 		return BackupResult{}, out, err
 	}
@@ -153,7 +160,7 @@ func Ls(ctx context.Context, glob *GlobalOptions, opts *LsOptions) ([]LsResult, 
 	args = append(args, cli.StructToCLI(opts)...)
 	cmd := newCommand("ls", args...)
 
-	out, err := cli.Run(ctx, cmd)
+	out, err := cli.Run(ctx, &cmd, false)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +245,7 @@ func GetSnapshotSize(ctx context.Context, snapshotIDs []string) (size uint64) {
 	}
 	cmd := newCommand("stats", cli.StructToCLI(&opts)...)
 
-	out, err := cli.Run(ctx, cmd)
+	out, err := cli.Run(ctx, &cmd, false)
 	if err != nil {
 		return
 	}
@@ -279,7 +286,7 @@ func GetSnapshotSizeByPath(ctx context.Context, snapshotID, path string) (size u
 func ListSnapshots(ctx context.Context, opts *SnapshotOptions) ([]Snapshot, error) {
 	cmd := newCommand("snapshots", cli.StructToCLI(&opts)...)
 
-	out, err := cli.Run(ctx, cmd)
+	out, err := cli.Run(ctx, &cmd, false)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +301,7 @@ func ListSnapshots(ctx context.Context, opts *SnapshotOptions) ([]Snapshot, erro
 // Find executes "restic find"
 func Find(ctx context.Context, opts *FindOptions) ([]FindResult, error) {
 	cmd := newCommand("find", cli.StructToCLI(&opts)...)
-	out, err := cli.Run(ctx, cmd)
+	out, err := cli.Run(ctx, &cmd, false)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +317,7 @@ func Find(ctx context.Context, opts *FindOptions) ([]FindResult, error) {
 // Check executes "restic check"
 func Check(ctx context.Context, flags *CheckFlags) ([]byte, error) {
 	cmd := newCommand("check", cli.StructToCLI(flags)...)
-	return cli.Run(ctx, cmd)
+	return cli.Run(ctx, &cmd, false)
 }
 
 // Forget executes "restic forget"
@@ -332,7 +339,7 @@ func Forget(
 		Args:    args,
 	}
 
-	out, err := cli.Run(ctx, cmd)
+	out, err := cli.Run(ctx, &cmd, false)
 	if err != nil {
 		return nil, out, err
 	}
@@ -361,7 +368,7 @@ func Forget(
 func Prune(ctx context.Context, globalOpts *GlobalOptions) ([]byte, error) {
 	cmd := newCommand("prune", cli.StructToCLI(globalOpts)...)
 
-	return cli.Run(ctx, cmd)
+	return cli.Run(ctx, &cmd, false)
 }
 
 // RebuildIndex executes "restic rebuild-index"
@@ -375,7 +382,7 @@ func RebuildIndex(ctx context.Context) ([]byte, error) {
 		Nice:    &nice,
 		IONice:  &ionice,
 	}
-	return cli.Run(ctx, cmd)
+	return cli.Run(ctx, &cmd, false)
 }
 
 // RestoreBackup executes "restic restore"
@@ -397,7 +404,7 @@ func RestoreBackup(ctx context.Context, glob *GlobalOptions, opts *RestoreOption
 
 	cmd := newCommand("restore", args...)
 
-	return cli.Run(ctx, cmd)
+	return cli.Run(ctx, &cmd, false)
 }
 
 // Unlock executes "restic unlock"
@@ -407,12 +414,12 @@ func Unlock(ctx context.Context, globalOpts *GlobalOptions, unlockOpts *UnlockOp
 	args = append(args, cli.StructToCLI(unlockOpts)...)
 	cmd := newCommand("unlock", args...)
 
-	return cli.Run(ctx, cmd)
+	return cli.Run(ctx, &cmd, false)
 }
 
 // Tag executes "restic tag"
 func Tag(ctx context.Context, opts *TagOptions) ([]byte, error) {
 	cmd := newCommand("tag", cli.StructToCLI(opts)...)
 
-	return cli.Run(ctx, cmd)
+	return cli.Run(ctx, &cmd, false)
 }

@@ -210,7 +210,6 @@ func Run(ctx context.Context, cmd *CommandType, outputToPipe bool) ([]byte, erro
 	var err, pipeErr error
 	commandLine := ParseCommandLine(*cmd)
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("executing command")
-	// TODO: Assure that --stdin and --stdin-filename are set if the backup from STDIN is enabled
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -218,16 +217,20 @@ func Run(ctx context.Context, cmd *CommandType, outputToPipe bool) ([]byte, erro
 	defer cancelFunc()
 	cmdExec = exec.CommandContext(cCtx, commandLine[0], commandLine[1:]...) //nolint: gosec
 	if outputToPipe {
+		cmd.PipeReady.L.Lock()
 		cmd.Pipe, err = cmdExec.StdoutPipe()
+		cmd.PipeReady.L.Unlock()
 		if err != nil {
+			defer cmd.PipeReady.Broadcast()
 			return nil, errors.Wrapf(err, "error while getting STDOUT pipe for command: %s", strings.Join(commandLine, " "))
 		}
 		cmd.ReadingDone = make(chan bool, 1)
+		cmd.PipeReady.Broadcast()
 	} else {
 		cmdExec.Stdout = &outBuffer
 	}
 	cmdExec.Stderr = &outBuffer
-	if !outputToPipe && cmd.Pipe != nil {
+	if cmd.Pipe != nil {
 		stdin, err = cmdExec.StdinPipe()
 		if err != nil {
 			return nil, errors.Wrapf(err, "error while getting STDIN pipe for command: %s", strings.Join(commandLine, " "))
