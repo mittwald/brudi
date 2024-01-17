@@ -195,104 +195,25 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 
 // TestPGDumpRestic performs an integration test for brudi pgdump with restic
 func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreRestic() {
-	pgDumpAndRestoreTestSuite.True(pgDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
-	if !pgDumpAndRestoreTestSuite.resticExists {
-		return
-	}
-	ctx := context.Background()
-
-	// remove backup files after test
-	defer func() {
-		// delete folder with backup file
-		removeErr := os.RemoveAll(backupPath)
-		if removeErr != nil {
-			log.WithError(removeErr).Error("failed to remove pgdump backup files")
-		}
-	}()
-
-	// setup a container running the restic rest-server
-	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
-	pgDumpAndRestoreTestSuite.Require().NoError(err)
-	defer func() {
-		resticErr := resticContainer.Container.Terminate(ctx)
-		if resticErr != nil {
-			log.WithError(resticErr).Error("failed to terminate pgdump restic container")
-		}
-	}()
-
-	// backup test data with brudi and retain test data for verification
-	var testData []testStruct
-	testData, err = pgDoBackup(
-		ctx, true, resticContainer,
-		"tar", backupPath, false,
-	)
-	pgDumpAndRestoreTestSuite.Require().NoError(err)
-
-	// restore test data with brudi and retrieve it from the db for verification
-	var restoreResult []testStruct
-	restoreResult, err = pgDoRestore(
-		ctx, true, resticContainer,
-		"tar", backupPath, false,
-	)
-	pgDumpAndRestoreTestSuite.Require().NoError(err)
-
-	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testData, restoreResult)
+	pgDumpAndRestoreTestSuite.pgDumpAndRestoreRestic(backupPath, false)
 }
 
 // TestPGDumpResticGzip performs an integration test for brudi pgdump with restic and gzip
 func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreResticGzip() {
-	pgDumpAndRestoreTestSuite.True(pgDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
-	if !pgDumpAndRestoreTestSuite.resticExists {
-		return
-	}
-	ctx := context.Background()
-
-	// remove backup files after test
-	defer func() {
-		// delete folder with backup file
-		removeErr := os.RemoveAll(backupPathZip)
-		if removeErr != nil {
-			log.WithError(removeErr).Error("failed to remove pgdump backup files")
-		}
-	}()
-
-	// setup a container running the restic rest-server
-	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
-	pgDumpAndRestoreTestSuite.Require().NoError(err)
-	defer func() {
-		resticErr := resticContainer.Container.Terminate(ctx)
-		if resticErr != nil {
-			log.WithError(resticErr).Error("failed to terminate pgdump restic container")
-		}
-	}()
-
-	// backup test data with brudi and retain test data for verification
-	var testData []testStruct
-	testData, err = pgDoBackup(
-		ctx, true, resticContainer,
-		"tar", backupPathZip, false,
-	)
-	pgDumpAndRestoreTestSuite.Require().NoError(err)
-
-	// restore test data with brudi and retrieve it from the db for verification
-	var restoreResult []testStruct
-	restoreResult, err = pgDoRestore(
-		ctx, true, resticContainer,
-		"tar", backupPathZip, false,
-	)
-	pgDumpAndRestoreTestSuite.Require().NoError(err)
-
-	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testData, restoreResult)
+	pgDumpAndRestoreTestSuite.pgDumpAndRestoreRestic(backupPathZip, false)
 }
 
 // TestPGDumpResticStdin performs an integration test for brudi pgdump with restic over STDIN
 func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreResticStdin() {
+	pgDumpAndRestoreTestSuite.pgDumpAndRestoreRestic(backupPath, true)
+}
+
+func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) pgDumpAndRestoreRestic(backupPath string, useStdin bool) {
 	pgDumpAndRestoreTestSuite.True(pgDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
 	if !pgDumpAndRestoreTestSuite.resticExists {
 		return
 	}
 	ctx := context.Background()
-	backupPath := path.Base(backupPath)
 
 	// remove backup files after test
 	defer func() {
@@ -317,7 +238,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 	var testData []testStruct
 	testData, err = pgDoBackup(
 		ctx, true, resticContainer,
-		"tar", backupPath, true,
+		"tar", backupPath, useStdin,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -325,7 +246,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 	var restoreResult []testStruct
 	restoreResult, err = pgDoRestore(
 		ctx, true, resticContainer,
-		"tar", backupPath, true,
+		"tar", backupPath, useStdin,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 

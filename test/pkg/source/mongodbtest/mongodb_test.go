@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"testing"
 
 	"github.com/mittwald/brudi/pkg/source"
@@ -63,7 +64,7 @@ func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongo
 		ctx, false, commons.TestContainerSetup{
 			Port:    "",
 			Address: "",
-		},
+		}, false,
 	)
 	mongoDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -81,8 +82,7 @@ func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongo
 	assert.DeepEqual(mongoDumpAndRestoreTestSuite.T(), testData, results)
 }
 
-// TestBasicMongoDBDumpRestic performs an integration test for the `mongodump` command with restic support
-func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongoDBDumpAndRestoreRestic() {
+func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) basicMongoDBDumpAndRestoreRestic(backupPath string, useStdin bool) {
 	mongoDumpAndRestoreTestSuite.True(mongoDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
 	if !mongoDumpAndRestoreTestSuite.resticExists {
 		return
@@ -108,7 +108,7 @@ func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongo
 
 	// backup database and retain test data for verification
 	var testData []interface{}
-	testData, err = mongoDoBackup(ctx, true, resticContainer)
+	testData, err = mongoDoBackup(ctx, true, resticContainer, useStdin)
 	mongoDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore database from backup and pull test data for verification
@@ -116,6 +116,16 @@ func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongo
 	results, err = mongoDoRestore(ctx, true, resticContainer)
 
 	assert.DeepEqual(mongoDumpAndRestoreTestSuite.T(), testData, results)
+}
+
+// TestBasicMongoDBDumpRestic performs an integration test for the `mongodump` command with restic support
+func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongoDBDumpAndRestoreRestic() {
+	mongoDumpAndRestoreTestSuite.basicMongoDBDumpAndRestoreRestic(backupPath, false)
+}
+
+// TestBasicMongoDBDumpResticStdin performs an integration test for the `mongodump` command with restic support using STDIN
+func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongoDBDumpAndRestoreResticStdin() {
+	mongoDumpAndRestoreTestSuite.basicMongoDBDumpAndRestoreRestic(backupPath, true)
 }
 
 func TestMongoDumpAndRestoreTestSuite(t *testing.T) {
@@ -129,7 +139,7 @@ func TestMongoDumpAndRestoreTestSuite(t *testing.T) {
 // mongoDoBackup performs a mongodump and returns the test data that was used for verification purposes
 func mongoDoBackup(
 	ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup,
+	resticContainer commons.TestContainerSetup, doStdinBackup bool,
 ) ([]interface{}, error) {
 	// create a mongodb-container to test backup function
 	mongoBackupTarget, err := commons.NewTestContainerSetup(ctx, &mongoRequest, mongoPort)
@@ -164,7 +174,7 @@ func mongoDoBackup(
 	}
 
 	// create brudi config for backup
-	backupMongoConfig := createMongoConfig(mongoBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, dumpKind)
+	backupMongoConfig := createMongoConfig(mongoBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, dumpKind, doStdinBackup)
 	err = viper.ReadConfig(bytes.NewBuffer(backupMongoConfig))
 	if err != nil {
 		return []interface{}{}, err
@@ -197,7 +207,7 @@ func mongoDoRestore(
 	}()
 
 	// create brudi config for restoration
-	restoreMongoConfig := createMongoConfig(mongoRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, restoreKind)
+	restoreMongoConfig := createMongoConfig(mongoRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, restoreKind, false)
 	err = viper.ReadConfig(bytes.NewBuffer(restoreMongoConfig))
 	if err != nil {
 		return []interface{}{}, err
@@ -286,7 +296,7 @@ func newMongoClient(target *commons.TestContainerSetup) (mongo.Client, error) {
 }
 
 // createMongoConfig creates a brudi config for the brudi command specified via kind
-func createMongoConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, kind string) []byte {
+func createMongoConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, kind string, doStdinBackup bool) []byte {
 	if !useRestic {
 		return []byte(fmt.Sprintf(
 			`
@@ -303,8 +313,13 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
 `, kind, container.Address, container.Port, mongoUser, mongoPW, backupPath,
 		))
 	}
+	restoreTarget := "/"
+	if doStdinBackup {
+		restoreTarget = path.Join(restoreTarget, backupPath)
+	}
 	return []byte(fmt.Sprintf(
 		`
+      doPipingBackup: %t
       %s:
         options:
           flags:
@@ -329,9 +344,9 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
             keepYearly: 0
         restore:
           flags:
-            target: "/"
+            target: "%s"
           id: "latest"
-`, kind, container.Address, container.Port, mongoUser, mongoPW, backupPath, resticIP, resticPort,
+`, doStdinBackup, kind, container.Address, container.Port, mongoUser, mongoPW, backupPath, resticIP, resticPort, restoreTarget,
 	))
 }
 

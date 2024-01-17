@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path"
 	"testing"
 	"time"
 
@@ -77,7 +78,7 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQL
 		ctx, false, commons.TestContainerSetup{
 			Port:    "",
 			Address: "",
-		}, backupPath,
+		}, backupPath, false,
 	)
 	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -111,7 +112,7 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQL
 		ctx, false, commons.TestContainerSetup{
 			Port:    "",
 			Address: "",
-		}, backupPathZip,
+		}, backupPathZip, false,
 	)
 	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -128,8 +129,7 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQL
 	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }
 
-// TestMySQLDumpRestic performs an integration test for mysqldump with restic
-func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpAndRestoreRestic() {
+func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) mySQLDumpAndRestoreRestic(backupPath string, useStdin bool) {
 	mySQLDumpAndRestoreTestSuite.True(mySQLDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
 	if !mySQLDumpAndRestoreTestSuite.resticExists {
 		return
@@ -155,7 +155,7 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 
 	// backup test data with brudi and retain test data for verification
 	var testData []TestStruct
-	testData, err = mySQLDoBackup(ctx, true, resticContainer, backupPath)
+	testData, err = mySQLDoBackup(ctx, true, resticContainer, backupPath, useStdin)
 	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore database from backup and pull test data from it for verification
@@ -166,42 +166,19 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }
 
+// TestMySQLDumpRestic performs an integration test for mysqldump with restic
+func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpAndRestoreRestic() {
+	mySQLDumpAndRestoreTestSuite.mySQLDumpAndRestoreRestic(backupPath, false)
+}
+
 // TestMySQLDumpResticGzip performs an integration test for mysqldump with restic and gzip
 func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpAndRestoreResticGzip() {
-	mySQLDumpAndRestoreTestSuite.True(mySQLDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
-	if !mySQLDumpAndRestoreTestSuite.resticExists {
-		return
-	}
-	ctx := context.Background()
+	mySQLDumpAndRestoreTestSuite.mySQLDumpAndRestoreRestic(backupPathZip, false)
+}
 
-	defer func() {
-		removeErr := os.Remove(backupPathZip)
-		if removeErr != nil {
-			log.WithError(removeErr).Error("failed to clean up mysql backup files")
-		}
-	}()
-
-	// setup a container running the restic rest-server
-	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
-	defer func() {
-		resticErr := resticContainer.Container.Terminate(ctx)
-		if resticErr != nil {
-			log.WithError(resticErr).Error("failed to terminate mysql restic container")
-		}
-	}()
-
-	// backup test data with brudi and retain test data for verification
-	var testData []TestStruct
-	testData, err = mySQLDoBackup(ctx, true, resticContainer, backupPathZip)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
-
-	// restore database from backup and pull test data from it for verification
-	var restoreResult []TestStruct
-	restoreResult, err = mySQLDoRestore(ctx, true, resticContainer, backupPathZip)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
-
-	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
+// TestMySQLDumpResticStdin performs an integration test for mysqldump with restic using STDIN
+func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpAndRestoreResticStdin() {
+	mySQLDumpAndRestoreTestSuite.mySQLDumpAndRestoreRestic(backupPath, true)
 }
 
 func TestMySQLDumpAndRestoreTestSuite(t *testing.T) {
@@ -215,7 +192,7 @@ func TestMySQLDumpAndRestoreTestSuite(t *testing.T) {
 // mySQLDoBackup inserts test data into the given database and then executes brudi's `mysqldump`
 func mySQLDoBackup(
 	ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup, path string,
+	resticContainer commons.TestContainerSetup, path string, useStdinBackup bool,
 ) ([]TestStruct, error) {
 	// setup a mysql container to backup from
 	mySQLBackupTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
@@ -261,7 +238,7 @@ func mySQLDoBackup(
 	}
 
 	// create brudi config for mysqldump
-	MySQLBackupConfig := createMySQLConfig(mySQLBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, path)
+	MySQLBackupConfig := createMySQLConfig(mySQLBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, path, useStdinBackup)
 	err = viper.ReadConfig(bytes.NewBuffer(MySQLBackupConfig))
 	if err != nil {
 		return []TestStruct{}, err
@@ -293,7 +270,7 @@ func mySQLDoRestore(
 	}()
 
 	// create a brudi config for mysql restore
-	MySQLRestoreConfig := createMySQLConfig(mySQLRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, path)
+	MySQLRestoreConfig := createMySQLConfig(mySQLRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, path, false)
 	err = viper.ReadConfig(bytes.NewBuffer(MySQLRestoreConfig))
 	if err != nil {
 		return []TestStruct{}, err
@@ -356,11 +333,15 @@ func mySQLDoRestore(
 }
 
 // createMySQLConfig creates a brudi config for mysqldump and mysqlrestore command.
-func createMySQLConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, path string) []byte {
+func createMySQLConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, filepath string, doStdinBackup bool) []byte {
 	var resticConfig string
 	if useRestic {
+		restoreTarget := "/"
+		if doStdinBackup {
+			restoreTarget = path.Join(restoreTarget, filepath)
+		}
 		resticConfig = fmt.Sprintf(
-			`
+			`doPipingBackup: %t
 restic:
   global:
     flags:
@@ -375,9 +356,9 @@ restic:
       keepYearly: 0
   restore:
     flags:
-      target: "/"
+      target: "%s"
     id: "latest"
-`, resticIP, resticPort,
+`, doStdinBackup, resticIP, resticPort, restoreTarget,
 		)
 	}
 
@@ -405,8 +386,8 @@ mysqlrestore:
       Database: %s
     additionalArgs: []
     sourceFile: %s%s
-`, hostName, container.Port, mySQLRootPW, mySQLRoot, path,
-		hostName, container.Port, mySQLRootPW, mySQLRoot, mySQLDatabase, path,
+`, hostName, container.Port, mySQLRootPW, mySQLRoot, filepath,
+		hostName, container.Port, mySQLRootPW, mySQLRoot, mySQLDatabase, filepath,
 		resticConfig,
 	))
 	return result
