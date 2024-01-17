@@ -3,12 +3,15 @@ package psql
 import (
 	"context"
 	"fmt"
+	"github.com/spf13/viper"
 	"os"
 
 	"github.com/mittwald/brudi/pkg/cli"
 
 	"github.com/pkg/errors"
 )
+
+//var _ source.GenericRestore = &ConfigBasedBackend{}
 
 type ConfigBasedBackend struct {
 	cfg *Config
@@ -26,6 +29,9 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	err := config.InitFromViper()
 	if err != nil {
 		return nil, err
+	}
+	if viper.GetBool(cli.DoStdinBackupKey) {
+		config.Options.Flags.Output = ""
 	}
 
 	return &ConfigBasedBackend{cfg: config}, nil
@@ -45,7 +51,7 @@ func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
 		Args:   args,
 	}
 	var out []byte
-	out, err = cli.Run(ctx, cmd)
+	out, err = cli.Run(ctx, &cmd, false)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
 	}

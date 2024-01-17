@@ -93,7 +93,7 @@ func (cliTestSuite *CliTestSuite) TestGzipFile() {
 		Binary: binary,
 		Args:   []string{"-t", fileName},
 	}
-	_, err = cli.Run(context.TODO(), cmd)
+	_, err = cli.Run(context.TODO(), &cmd, false)
 	cliTestSuite.Require().NoError(err)
 }
 

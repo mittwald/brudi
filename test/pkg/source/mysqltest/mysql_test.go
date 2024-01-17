@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/pkg/errors"
 	"os"
 	"testing"
 	"time"
@@ -41,6 +42,7 @@ const mysqlImage = "docker.io/bitnami/mysql:latest"
 
 type MySQLDumpAndRestoreTestSuite struct {
 	suite.Suite
+	resticExists bool
 }
 
 // struct for test data
@@ -76,7 +78,7 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQL
 		ctx, false, commons.TestContainerSetup{
 			Port:    "",
 			Address: "",
-		}, backupPath,
+		}, backupPath, false,
 	)
 	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -110,7 +112,7 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQL
 		ctx, false, commons.TestContainerSetup{
 			Port:    "",
 			Address: "",
-		}, backupPathZip,
+		}, backupPathZip, false,
 	)
 	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -127,8 +129,11 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQL
 	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }
 
-// TestMySQLDumpRestic performs an integration test for mysqldump with restic
-func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpAndRestoreRestic() {
+func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) mySQLDumpAndRestoreRestic(backupPath string, useStdin bool) {
+	mySQLDumpAndRestoreTestSuite.True(mySQLDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
+	if !mySQLDumpAndRestoreTestSuite.resticExists {
+		return
+	}
 	ctx := context.Background()
 
 	defer func() {
@@ -140,7 +145,7 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 
 	// setup a container running the restic rest-server
 	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	mySQLDumpAndRestoreTestSuite.Require().NoErrorf(err, "backupPath: '%s', useStdin: '%t'", backupPath, useStdin)
 	defer func() {
 		resticErr := resticContainer.Container.Terminate(ctx)
 		if resticErr != nil {
@@ -150,59 +155,44 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 
 	// backup test data with brudi and retain test data for verification
 	var testData []TestStruct
-	testData, err = mySQLDoBackup(ctx, true, resticContainer, backupPath)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	testData, err = mySQLDoBackup(ctx, true, resticContainer, backupPath, useStdin)
+	mySQLDumpAndRestoreTestSuite.Require().NoErrorf(err, "backupPath: '%s', useStdin: '%t'", backupPath, useStdin)
 
 	// restore database from backup and pull test data from it for verification
 	var restoreResult []TestStruct
 	restoreResult, err = mySQLDoRestore(ctx, true, resticContainer, backupPath)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	mySQLDumpAndRestoreTestSuite.Require().NoErrorf(err, "backupPath: '%s', useStdin: '%t'", backupPath, useStdin)
 
 	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
+}
+
+// TestMySQLDumpRestic performs an integration test for mysqldump with restic
+func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpAndRestoreRestic() {
+	mySQLDumpAndRestoreTestSuite.mySQLDumpAndRestoreRestic(backupPath, false)
 }
 
 // TestMySQLDumpResticGzip performs an integration test for mysqldump with restic and gzip
 func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpAndRestoreResticGzip() {
-	ctx := context.Background()
+	mySQLDumpAndRestoreTestSuite.mySQLDumpAndRestoreRestic(backupPathZip, false)
+}
 
-	defer func() {
-		removeErr := os.Remove(backupPathZip)
-		if removeErr != nil {
-			log.WithError(removeErr).Error("failed to clean up mysql backup files")
-		}
-	}()
-
-	// setup a container running the restic rest-server
-	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
-	defer func() {
-		resticErr := resticContainer.Container.Terminate(ctx)
-		if resticErr != nil {
-			log.WithError(resticErr).Error("failed to terminate mysql restic container")
-		}
-	}()
-
-	// backup test data with brudi and retain test data for verification
-	var testData []TestStruct
-	testData, err = mySQLDoBackup(ctx, true, resticContainer, backupPathZip)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
-
-	// restore database from backup and pull test data from it for verification
-	var restoreResult []TestStruct
-	restoreResult, err = mySQLDoRestore(ctx, true, resticContainer, backupPathZip)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
-
-	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
+// TestMySQLDumpResticStdin performs an integration test for mysqldump with restic using STDIN
+func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpAndRestoreResticStdin() {
+	mySQLDumpAndRestoreTestSuite.mySQLDumpAndRestoreRestic(backupPath, true)
 }
 
 func TestMySQLDumpAndRestoreTestSuite(t *testing.T) {
-	suite.Run(t, new(MySQLDumpAndRestoreTestSuite))
+	_, resticExists := commons.CheckProgramsAndRestic(t, "mysqldump", "", "mysql", "")
+	testSuite := &MySQLDumpAndRestoreTestSuite{
+		resticExists: resticExists,
+	}
+	suite.Run(t, testSuite)
 }
 
 // mySQLDoBackup inserts test data into the given database and then executes brudi's `mysqldump`
 func mySQLDoBackup(
 	ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup, path string,
+	resticContainer commons.TestContainerSetup, path string, useStdinBackup bool,
 ) ([]TestStruct, error) {
 	// setup a mysql container to backup from
 	mySQLBackupTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
@@ -232,8 +222,10 @@ func mySQLDoBackup(
 			log.WithError(dbErr).Error("failed to close connection to mysql backup database")
 		}
 	}()
-	// sleep to give mysql server time to get ready
-	time.Sleep(1 * time.Second)
+	err = waitForDb(db)
+	if err != nil {
+		return []TestStruct{}, err
+	}
 
 	// create table for test data
 	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));", tableName))
@@ -248,7 +240,7 @@ func mySQLDoBackup(
 	}
 
 	// create brudi config for mysqldump
-	MySQLBackupConfig := createMySQLConfig(mySQLBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, path)
+	MySQLBackupConfig := createMySQLConfig(mySQLBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, path, useStdinBackup)
 	err = viper.ReadConfig(bytes.NewBuffer(MySQLBackupConfig))
 	if err != nil {
 		return []TestStruct{}, err
@@ -280,22 +272,13 @@ func mySQLDoRestore(
 	}()
 
 	// create a brudi config for mysql restore
-	MySQLRestoreConfig := createMySQLConfig(mySQLRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, path)
+	MySQLRestoreConfig := createMySQLConfig(mySQLRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, path, false)
 	err = viper.ReadConfig(bytes.NewBuffer(MySQLRestoreConfig))
 	if err != nil {
 		return []TestStruct{}, err
 	}
 
-	// sleep to give mysql time to get ready
-	time.Sleep(1 * time.Second)
-
-	// restore server from mysqldump
-	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false, false)
-	if err != nil {
-		return []TestStruct{}, err
-	}
-
-	// establish connection for retrieving restored data
+	// establish connection to be able to wait for the DB and retrieving restored data
 	restoreConnectionString := fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
 		mySQLRoot, mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase,
@@ -308,9 +291,19 @@ func mySQLDoRestore(
 	defer func() {
 		dbErr := dbRestore.Close()
 		if dbErr != nil {
-			log.WithError(dbErr).Error("failed to close connection to mysql restore database")
+			log.WithError(dbErr).Error("failed to close connection to mysql backup database")
 		}
 	}()
+	err = waitForDb(dbRestore)
+	if err != nil {
+		return []TestStruct{}, err
+	}
+
+	// restore server from mysqldump
+	err = source.DoRestoreForKind(ctx, restoreKind, false, useRestic)
+	if err != nil {
+		return []TestStruct{}, err
+	}
 
 	// attempt to retrieve test data from database
 	var result *sql.Rows
@@ -343,16 +336,22 @@ func mySQLDoRestore(
 }
 
 // createMySQLConfig creates a brudi config for mysqldump and mysqlrestore command.
-func createMySQLConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, path string) []byte {
+func createMySQLConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, filepath string, doStdinBackup bool) []byte {
 	var resticConfig string
 	if useRestic {
+		//restoreTarget := "/"
+		stdinFilename := ""
+		if doStdinBackup {
+			stdinFilename = fmt.Sprintf("  backup:\n    flags:\n      stdinFilename: %s\n", filepath)
+			//restoreTarget = path.Join(restoreTarget, filepath)
+		}
 		resticConfig = fmt.Sprintf(
-			`
+			`doPipingBackup: %t
 restic:
   global:
     flags:
       repo: rest:http://%s:%s/
-  forget:
+%s  forget:
     flags:
       keepLast: 1
       keepHourly: 0
@@ -364,7 +363,7 @@ restic:
     flags:
       target: "/"
     id: "latest"
-`, resticIP, resticPort,
+`, doStdinBackup, resticIP, resticPort, stdinFilename,
 		)
 	}
 
@@ -391,12 +390,31 @@ mysqlrestore:
       user: %s
       Database: %s
     additionalArgs: []
-    sourceFile: %s%s
-`, hostName, container.Port, mySQLRootPW, mySQLRoot, path,
-		hostName, container.Port, mySQLRootPW, mySQLRoot, mySQLDatabase, path,
+    sourceFile: %s
+%s
+`, hostName, container.Port, mySQLRootPW, mySQLRoot, filepath,
+		hostName, container.Port, mySQLRootPW, mySQLRoot, mySQLDatabase, filepath,
 		resticConfig,
 	))
 	return result
+}
+
+func waitForDb(db *sql.DB) error {
+	var err error
+	// sleep to give mysql server time to get ready
+	time.Sleep(10 * time.Second)
+	// Ping until ready or 30 seconds are over
+	for i := 0; i < 20; i++ {
+		err = db.Ping()
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	if err != nil {
+		return errors.Wrap(err, "can't ping database after 30 seconds")
+	}
+	return nil
 }
 
 // prepareTestData creates test data and inserts it into the given database

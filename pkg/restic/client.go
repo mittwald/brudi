@@ -3,6 +3,8 @@ package restic
 import (
 	"context"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/cli"
+	"github.com/spf13/viper"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -36,6 +38,9 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	if viper.GetBool(cli.DoStdinBackupKey) {
+		conf.Backup.Paths = nil
+	}
 
 	if (conf.Backup.Flags.Host) == "" {
 		conf.Backup.Flags.Host = hostname
@@ -51,7 +56,7 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 	}, nil
 }
 
-func (c *Client) DoResticBackup(ctx context.Context) error {
+func (c *Client) DoResticBackup(ctx context.Context, backupDataCmd *cli.CommandType) error {
 	c.Logger.Info("running 'restic backup'")
 
 	_, err := initBackup(ctx, c.Config.Global)
@@ -64,7 +69,7 @@ func (c *Client) DoResticBackup(ctx context.Context) error {
 	}
 
 	var out []byte
-	_, out, err = CreateBackup(ctx, c.Config.Global, c.Config.Backup, true)
+	_, out, err = CreateBackup(ctx, c.Config.Global, c.Config.Backup, true, backupDataCmd)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("error while running restic backup: %s - %s", err.Error(), out))
 	}

@@ -3,6 +3,9 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/cli"
+	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 
 	"github.com/mittwald/brudi/pkg/restic"
 
@@ -35,6 +38,9 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 }
 
 func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useResticForget, useResticPrune bool) error {
+	if viper.GetBool(cli.DoStdinBackupKey) && !useRestic {
+		return errors.New("doStdinBackup is enabled but restic is disabled")
+	}
 	logKind := log.WithFields(
 		log.Fields{
 			"kind": kind,
@@ -46,28 +52,35 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 		return err
 	}
 
-	err = backend.CreateBackup(ctx)
+	// TODO: Re-activate when --stdin-command was added to restic
+	/*var backupCmd *cli.CommandType = nil
+	if viper.GetBool(cli.DoStdinBackupKey) {
+		bc := backend.GetBackupCommand()
+		backupCmd = &bc
+	} else {*/
+	backupCmd, err := backend.CreateBackup(ctx)
 	if err != nil {
 		return err
 	}
 
-	if cleanup {
-		defer func() {
-			cleanupLogger := logKind.WithFields(
-				log.Fields{
-					"path": backend.GetBackupPath(),
-					"cmd":  "cleanup",
-				},
-			)
-			if err = backend.CleanUp(); err != nil {
-				cleanupLogger.WithError(err).Warn("failed to cleanup backup")
-			} else {
-				cleanupLogger.Info("successfully cleaned up backup")
-			}
-		}()
+	if !viper.GetBool(cli.DoStdinBackupKey) {
+		if cleanup {
+			defer func() {
+				cleanupLogger := logKind.WithFields(
+					log.Fields{
+						"path": backend.GetBackupPath(),
+						"cmd":  "cleanup",
+					},
+				)
+				if err = backend.CleanUp(); err != nil {
+					cleanupLogger.WithError(err).Warn("failed to cleanup backup")
+				} else {
+					cleanupLogger.Info("successfully cleaned up backup")
+				}
+			}()
+		}
+		logKind.Info("finished backing up")
 	}
-
-	logKind.Info("finished backing up")
 
 	if !useRestic {
 		return nil
@@ -87,7 +100,7 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 		resticClient.Config.Forget.Flags.Prune = false
 	}
 
-	if doBackupErr := resticClient.DoResticBackup(ctx); doBackupErr != nil {
+	if doBackupErr := resticClient.DoResticBackup(ctx, backupCmd); doBackupErr != nil {
 		return doBackupErr
 	}
 

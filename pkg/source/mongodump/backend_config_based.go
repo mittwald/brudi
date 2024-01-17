@@ -3,7 +3,10 @@ package mongodump
 import (
 	"context"
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"os"
+	"sync"
 
 	"github.com/pkg/errors"
 
@@ -11,8 +14,11 @@ import (
 	"github.com/mittwald/brudi/pkg/cli"
 )
 
+//var _ source.Generic = &ConfigBasedBackend{}
+
 type ConfigBasedBackend struct {
-	cfg *Config
+	cfg             *Config
+	outputAsArchive bool
 }
 
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
@@ -27,22 +33,55 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	if err != nil {
 		return nil, err
 	}
+	outputAsArchive := false
+	if viper.GetBool(cli.DoStdinBackupKey) {
+		if config.Options.Flags.Archive != "" {
+			outputAsArchive = true
+		}
+		config.Options.Flags.Archive = ""
+		if config.Options.Flags.Out != "" {
+			config.Options.Flags.Out = "-"
+		}
+	}
 
-	return &ConfigBasedBackend{cfg: config}, nil
+	return &ConfigBasedBackend{cfg: config, outputAsArchive: outputAsArchive}, nil
 }
 
-func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
-	cmd := cli.CommandType{
+func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) (*cli.CommandType, error) {
+	cmd := b.GetBackupCommand()
+
+	var out []byte
+	var err error = nil
+	if viper.GetBool(cli.DoStdinBackupKey) {
+		cmd.PipeReady = &sync.Cond{L: &sync.Mutex{}}
+		if b.outputAsArchive {
+			cmd.Args = append(cmd.Args, "--archive")
+		}
+		go func() {
+			_, err = cli.Run(ctx, &cmd, true)
+			if err != nil {
+				log.Errorf("error while running backup program: %v", err)
+			}
+		}()
+		cmd.PipeReady.L.Lock()
+		cmd.PipeReady.Wait()
+		cmd.PipeReady.L.Unlock()
+		return &cmd, err
+	} else {
+		out, err = cli.Run(ctx, &cmd, false)
+	}
+	if err != nil {
+		return nil, errors.WithStack(fmt.Errorf("%+v - %s", err, out))
+	}
+
+	return nil, nil
+}
+
+func (b *ConfigBasedBackend) GetBackupCommand() cli.CommandType {
+	return cli.CommandType{
 		Binary: binary,
 		Args:   cli.StructToCLI(b.cfg.Options),
 	}
-
-	out, err := cli.Run(ctx, cmd)
-	if err != nil {
-		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
-	}
-
-	return nil
 }
 
 func (b *ConfigBasedBackend) GetBackupPath() string {

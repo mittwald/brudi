@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"fmt"
@@ -20,7 +21,7 @@ import (
 const flagTag = "flag"
 const gzipType = "application/x-gzip"
 
-// includeFlag returns an string slice of [<flag>, <val>], or [<val>]
+// includeFlag returns a string slice of [<flag>, <val>], or [<val>]
 func includeFlag(flag, val string) []string {
 	var cmd []string
 	if flag != "" {
@@ -107,6 +108,9 @@ func StructToCLI(optionStruct interface{}) []string {
 		if flag == "-" {
 			continue
 		}
+		if fieldVal == nil {
+			continue
+		}
 
 		switch t := fieldVal.(type) {
 		case int:
@@ -188,33 +192,86 @@ func ParseCommandLine(cmd CommandType) []string {
 }
 
 // RunWithTimeout executes the given binary within a max execution time
-func RunWithTimeout(runContext context.Context, cmd CommandType, timeout time.Duration) ([]byte, error) {
+func RunWithTimeout(runContext context.Context, cmd *CommandType, outputToPipe bool, timeout time.Duration) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(runContext, timeout)
 	defer cancel()
 
-	return Run(ctx, cmd)
+	return Run(ctx, cmd, outputToPipe)
 }
 
 // Run executes the given binary
-func Run(ctx context.Context, cmd CommandType) ([]byte, error) {
-	var out []byte
-	var err error
-	commandLine := ParseCommandLine(cmd)
+func Run(ctx context.Context, cmd *CommandType, outputToPipe bool) ([]byte, error) {
+	if outputToPipe && cmd.Pipe != nil {
+		return nil, errors.New("output is supposed to be used but Pipe is already not nil")
+	}
+	var cmdExec *exec.Cmd
+	var outBuffer bytes.Buffer
+	var stdin io.WriteCloser
+	var err, pipeErr error
+	commandLine := ParseCommandLine(*cmd)
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("executing command")
-	if ctx != nil {
-		out, err = exec.CommandContext(ctx, commandLine[0], commandLine[1:]...).CombinedOutput() //nolint: gosec
-		if ctx.Err() != nil {
-			return out, fmt.Errorf("failed to execute command: timed out or canceled")
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	cCtx, cancelFunc := context.WithCancel(ctx)
+	defer cancelFunc()
+	cmdExec = exec.CommandContext(cCtx, commandLine[0], commandLine[1:]...) //nolint: gosec
+	if outputToPipe {
+		cmd.PipeReady.L.Lock()
+		cmd.Pipe, err = cmdExec.StdoutPipe()
+		cmd.PipeReady.L.Unlock()
+		if err != nil {
+			defer cmd.PipeReady.Broadcast()
+			return nil, errors.Wrapf(err, "error while getting STDOUT pipe for command: %s", strings.Join(commandLine, " "))
 		}
+		cmd.ReadingDone = make(chan bool, 1)
+		cmd.PipeReady.Broadcast()
 	} else {
-		out, err = exec.Command(commandLine[0], commandLine[1:]...).CombinedOutput() //nolint: gosec
+		cmdExec.Stdout = &outBuffer
+	}
+	cmdExec.Stderr = &outBuffer
+	if cmd.Pipe != nil {
+		stdin, err = cmdExec.StdinPipe()
+		if err != nil {
+			return nil, errors.Wrapf(err, "error while getting STDIN pipe for command: %s", strings.Join(commandLine, " "))
+		}
+	}
+
+	err = cmdExec.Start()
+	if err != nil {
+		return nil, errors.Wrapf(err, "error while getting starting restic command: %s", strings.Join(commandLine, " "))
+	}
+	if outputToPipe {
+		for done := range cmd.ReadingDone {
+			if done {
+				cancelFunc()
+				break
+			}
+		}
+	} else if cmd.Pipe != nil {
+		_, pipeErr = io.Copy(stdin, cmd.Pipe)
+		cmd.ReadingDone <- true
+		close(cmd.ReadingDone)
+		if pipeErr != nil {
+			cancelFunc()
+		}
+		_ = stdin.Close()
+	}
+	err = cmdExec.Wait()
+	cancelFunc()
+	if ctx != nil && ctx.Err() != nil {
+		return outBuffer.Bytes(), fmt.Errorf("failed to execute command: timed out or canceled")
+	}
+
+	if pipeErr != nil {
+		return outBuffer.Bytes(), fmt.Errorf("failed to pipe data into STDIN for command: %s", err)
 	}
 	if err != nil {
-		return out, fmt.Errorf("failed to execute command: %s", err)
+		return outBuffer.Bytes(), fmt.Errorf("failed to execute command: %s", err)
 	}
 
 	log.WithField("command", strings.Join(commandLine, " ")).Debug("successfully executed command")
-	return out, nil
+	return outBuffer.Bytes(), nil
 }
 
 // GzipFile compresses a file with gzip and returns the path of the created archive

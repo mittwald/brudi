@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -66,6 +68,68 @@ func TestSetup() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 	os.Setenv("RESTIC_PASSWORD", ResticPassword)
+}
+
+// CheckProgramsAndRestic determines the given programs versions (see GetProgramsVersions) and evaluates restics existence.
+// Returns the determined program versions and a bool that describes if restic exists.
+// Lets the test fail if the program versions check wasn't successful.
+func CheckProgramsAndRestic(t *testing.T, programsAndVersions ...string) (versions []string, resticExists bool) {
+	var err error
+	versions, err = GetProgramsVersions(programsAndVersions...)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	_, err = GetProgramVersion("restic", "version")
+	resticExists = err == nil
+	if !resticExists {
+		t.Logf("can't determine restics version: %v", err)
+	}
+	return
+}
+
+// GetProgramVersion tries to run the given program with the given version argument to determine its version.
+// Leave the version string empty to use "--version".
+func GetProgramVersion(program, versionArg string) (string, error) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancelFunc()
+	if versionArg == "" {
+		versionArg = "--version"
+	}
+	cmd := exec.CommandContext(ctx, program, versionArg)
+	version, err := cmd.Output()
+	if err != nil {
+		return "", errors.Wrapf(err, "error running '%s %s'", program, versionArg)
+	}
+	return string(version), nil
+}
+
+// GetProgramsVersions does the same as GetProgramVersion but for multiple programs. Give the programs and their versions
+// like this: "[program]", "[version]", "[program]", "[version]"... - Leave the version string empty to use "--version".
+// Returns after all programs have been tested.
+func GetProgramsVersions(programsAndVersions ...string) (versions []string, err error) {
+	versions = make([]string, 0, len(programsAndVersions))
+	if len(programsAndVersions) == 0 {
+		return versions, nil
+	}
+	if len(programsAndVersions)%2 != 0 {
+		return versions, errors.New("the count of the given programs and their version arguments aren't a multiple of 2")
+	}
+
+	errs := make([]string, 0, len(programsAndVersions))
+	for i := 0; i < len(programsAndVersions); i += 2 {
+		v, err := GetProgramVersion(programsAndVersions[i], programsAndVersions[i+1])
+		versions = append(versions, v)
+		if err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+	err = nil
+	if len(errs) > 0 {
+		err = errors.Errorf("got error(s) while determining the versions of required programsAndVersions for testing:\n\t%s",
+			strings.Join(errs, "\n\t"))
+	}
+	return
 }
 
 // DoResticRestore pulls the given backup from the given restic repo
