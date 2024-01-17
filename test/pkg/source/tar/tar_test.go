@@ -25,6 +25,7 @@ const extractedPath = "/tmp/testdata/tarTestFile.yaml"
 
 type TarTestSuite struct {
 	suite.Suite
+	resticExists bool
 }
 
 func (tarTestSuite *TarTestSuite) SetupTest() {
@@ -70,7 +71,11 @@ func (tarTestSuite *TarTestSuite) TestBasicTarDump() {
 }
 
 func TestTarTestSuite(t *testing.T) {
-	suite.Run(t, new(TarTestSuite))
+	_, resticExists := commons.CheckProgramsAndRestic(t, "tar", "--version")
+	testSuite := &TarTestSuite{
+		resticExists: resticExists,
+	}
+	suite.Run(t, testSuite)
 }
 
 // tarDoBackup uses brudi to compress a test file into a tar.gz archive and returns the uncompressed files md5 hash

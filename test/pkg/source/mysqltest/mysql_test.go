@@ -41,6 +41,7 @@ const mysqlImage = "docker.io/bitnami/mysql:latest"
 
 type MySQLDumpAndRestoreTestSuite struct {
 	suite.Suite
+	resticExists bool
 }
 
 // struct for test data
@@ -129,6 +130,10 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQL
 
 // TestMySQLDumpRestic performs an integration test for mysqldump with restic
 func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpAndRestoreRestic() {
+	mySQLDumpAndRestoreTestSuite.True(mySQLDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
+	if !mySQLDumpAndRestoreTestSuite.resticExists {
+		return
+	}
 	ctx := context.Background()
 
 	defer func() {
@@ -163,6 +168,10 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 
 // TestMySQLDumpResticGzip performs an integration test for mysqldump with restic and gzip
 func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpAndRestoreResticGzip() {
+	mySQLDumpAndRestoreTestSuite.True(mySQLDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
+	if !mySQLDumpAndRestoreTestSuite.resticExists {
+		return
+	}
 	ctx := context.Background()
 
 	defer func() {
@@ -196,7 +205,11 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 }
 
 func TestMySQLDumpAndRestoreTestSuite(t *testing.T) {
-	suite.Run(t, new(MySQLDumpAndRestoreTestSuite))
+	_, resticExists := commons.CheckProgramsAndRestic(t, "mysqldump", "", "mysql", "")
+	testSuite := &MySQLDumpAndRestoreTestSuite{
+		resticExists: resticExists,
+	}
+	suite.Run(t, testSuite)
 }
 
 // mySQLDoBackup inserts test data into the given database and then executes brudi's `mysqldump`

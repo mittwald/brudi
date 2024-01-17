@@ -37,6 +37,7 @@ const redisImage = "docker.io/bitnami/redis:latest"
 
 type RedisDumpTestSuite struct {
 	suite.Suite
+	resticExists bool
 }
 
 func (redisDumpTestSuite *RedisDumpTestSuite) SetupTest() {
@@ -118,6 +119,10 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestBasicRedisDumpGzip() {
 
 // TestBasicRedisDumpRestic performs an integration test for brudi's `redisdump` command with restic
 func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
+	redisDumpTestSuite.True(redisDumpTestSuite.resticExists, "can't use restic on this machine")
+	if !redisDumpTestSuite.resticExists {
+		return
+	}
 	ctx := context.Background()
 
 	// remove backup files after test
@@ -154,6 +159,10 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpRestic() {
 
 // TestBasicRedisDumpRestic performs an integration test for brudi's `redisdump` command with restic and gzip
 func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpResticGzip() {
+	redisDumpTestSuite.True(redisDumpTestSuite.resticExists, "can't use restic on this machine")
+	if !redisDumpTestSuite.resticExists {
+		return
+	}
 	ctx := context.Background()
 
 	// remove backup files after test
@@ -189,7 +198,11 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpResticGzip() {
 }
 
 func TestRedisDumpTestSuite(t *testing.T) {
-	suite.Run(t, new(RedisDumpTestSuite))
+	_, resticExists := commons.CheckProgramsAndRestic(t, "tar", "--version")
+	testSuite := &RedisDumpTestSuite{
+		resticExists: resticExists,
+	}
+	suite.Run(t, testSuite)
 }
 
 // redisDoBackup populates a database with test data and performs a backup

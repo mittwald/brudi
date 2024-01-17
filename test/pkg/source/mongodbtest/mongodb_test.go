@@ -34,6 +34,7 @@ const logString = "Waiting for connections"
 
 type MongoDumpAndRestoreTestSuite struct {
 	suite.Suite
+	resticExists bool
 }
 
 func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) SetupTest() {
@@ -82,6 +83,10 @@ func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongo
 
 // TestBasicMongoDBDumpRestic performs an integration test for the `mongodump` command with restic support
 func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongoDBDumpAndRestoreRestic() {
+	mongoDumpAndRestoreTestSuite.True(mongoDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
+	if !mongoDumpAndRestoreTestSuite.resticExists {
+		return
+	}
 	ctx := context.Background()
 
 	// remove files after test is done
@@ -114,7 +119,11 @@ func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongo
 }
 
 func TestMongoDumpAndRestoreTestSuite(t *testing.T) {
-	suite.Run(t, new(MongoDumpAndRestoreTestSuite))
+	_, resticExists := commons.CheckProgramsAndRestic(t, "mongodump", "", "mongorestore", "")
+	testSuite := &MongoDumpAndRestoreTestSuite{
+		resticExists: resticExists,
+	}
+	suite.Run(t, testSuite)
 }
 
 // mongoDoBackup performs a mongodump and returns the test data that was used for verification purposes

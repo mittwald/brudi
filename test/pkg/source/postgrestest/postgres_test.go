@@ -47,15 +47,6 @@ type PGDumpAndRestoreTestSuite struct {
 }
 
 func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) SetupTest() {
-	_, err := commons.GetProgramsVersions("pg_dump", "", "pg_restore", "", "psql", "")
-	if err != nil {
-		panic(err)
-	}
-	_, err = commons.GetProgramVersion("restic", "version")
-	pgDumpAndRestoreTestSuite.resticExists = err == nil
-	if !pgDumpAndRestoreTestSuite.resticExists {
-		pgDumpAndRestoreTestSuite.T().Logf("can't determine restics version: %v", err)
-	}
 	commons.TestSetup()
 }
 
@@ -205,6 +196,9 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 // TestPGDumpRestic performs an integration test for brudi pgdump with restic
 func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreRestic() {
 	pgDumpAndRestoreTestSuite.True(pgDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
+	if !pgDumpAndRestoreTestSuite.resticExists {
+		return
+	}
 	ctx := context.Background()
 
 	// remove backup files after test
@@ -248,6 +242,9 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 // TestPGDumpResticGzip performs an integration test for brudi pgdump with restic and gzip
 func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreResticGzip() {
 	pgDumpAndRestoreTestSuite.True(pgDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
+	if !pgDumpAndRestoreTestSuite.resticExists {
+		return
+	}
 	ctx := context.Background()
 
 	// remove backup files after test
@@ -291,6 +288,9 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 // TestPGDumpResticStdin performs an integration test for brudi pgdump with restic over STDIN
 func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreResticStdin() {
 	pgDumpAndRestoreTestSuite.True(pgDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
+	if !pgDumpAndRestoreTestSuite.resticExists {
+		return
+	}
 	ctx := context.Background()
 	backupPath := path.Base(backupPath)
 
@@ -333,7 +333,11 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 }
 
 func TestPGDumpAndRestoreTestSuite(t *testing.T) {
-	suite.Run(t, new(PGDumpAndRestoreTestSuite))
+	_, resticExists := commons.CheckProgramsAndRestic(t, "pg_dump", "", "pg_restore", "", "psql", "")
+	testSuite := &PGDumpAndRestoreTestSuite{
+		resticExists: resticExists,
+	}
+	suite.Run(t, testSuite)
 }
 
 // pgDoBackup populates a database with data and performs a backup, optionally with restic

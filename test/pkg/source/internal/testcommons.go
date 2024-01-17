@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/pkg/errors"
@@ -69,6 +70,24 @@ func TestSetup() {
 	os.Setenv("RESTIC_PASSWORD", ResticPassword)
 }
 
+// CheckProgramsAndRestic determines the given programs versions (see GetProgramsVersions) and evaluates restics existence.
+// Returns the determined program versions and a bool that describes if restic exists.
+// Lets the test fail if the program versions check wasn't successful.
+func CheckProgramsAndRestic(t *testing.T, programsAndVersions ...string) (versions []string, resticExists bool) {
+	var err error
+	versions, err = GetProgramsVersions(programsAndVersions...)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	_, err = GetProgramVersion("restic", "version")
+	resticExists = err == nil
+	if !resticExists {
+		t.Logf("can't determine restics version: %v", err)
+	}
+	return
+}
+
 // GetProgramVersion tries to run the given program with the given version argument to determine its version.
 // Leave the version string empty to use "--version".
 func GetProgramVersion(program, versionArg string) (string, error) {
@@ -90,6 +109,13 @@ func GetProgramVersion(program, versionArg string) (string, error) {
 // Returns after all programs have been tested.
 func GetProgramsVersions(programsAndVersions ...string) (versions []string, err error) {
 	versions = make([]string, 0, len(programsAndVersions))
+	if len(programsAndVersions) == 0 {
+		return versions, nil
+	}
+	if len(programsAndVersions)%2 != 0 {
+		return versions, errors.New("the count of the given programs and their version arguments aren't a multiple of 2")
+	}
+
 	errs := make([]string, 0, len(programsAndVersions))
 	for i := 0; i < len(programsAndVersions); i += 2 {
 		v, err := GetProgramVersion(programsAndVersions[i], programsAndVersions[i+1])
