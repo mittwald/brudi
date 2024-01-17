@@ -29,6 +29,10 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 		return nil, err
 	}
 	if viper.GetBool(cli.DoStdinBackupKey) {
+		if strings.TrimSpace(strings.ToLower(config.Options.Flags.Format)) == "directory" {
+			return nil, errors.New("the output format of pgdump is set to directory but doPipingBackup " +
+				"is also active. Use 'plain', 'custom' or 'tar' instead")
+		}
 		config.Options.Flags.File = ""
 	}
 
