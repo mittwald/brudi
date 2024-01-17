@@ -43,8 +43,8 @@ jobs:
 
     - name: Update postgres tools
       run: |
-        sudo apt update
-        sudo apt install -y postgresql-client
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client-16
 
     - name: Test
       run: go test -v ./...
