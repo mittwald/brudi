@@ -17,7 +17,8 @@ import (
 //var _ source.Generic = &ConfigBasedBackend{}
 
 type ConfigBasedBackend struct {
-	cfg *Config
+	cfg             *Config
+	outputAsArchive bool
 }
 
 func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
@@ -32,11 +33,18 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 	if err != nil {
 		return nil, err
 	}
+	outputAsArchive := false
 	if viper.GetBool(cli.DoStdinBackupKey) {
+		if config.Options.Flags.Archive != "" {
+			outputAsArchive = true
+		}
 		config.Options.Flags.Archive = ""
+		if config.Options.Flags.Out != "" {
+			config.Options.Flags.Out = "-"
+		}
 	}
 
-	return &ConfigBasedBackend{cfg: config}, nil
+	return &ConfigBasedBackend{cfg: config, outputAsArchive: outputAsArchive}, nil
 }
 
 func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) (*cli.CommandType, error) {
@@ -46,6 +54,9 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) (*cli.CommandType
 	var err error = nil
 	if viper.GetBool(cli.DoStdinBackupKey) {
 		cmd.PipeReady = &sync.Cond{L: &sync.Mutex{}}
+		if b.outputAsArchive {
+			cmd.Args = append(cmd.Args, "--archive")
+		}
 		go func() {
 			_, err = cli.Run(ctx, &cmd, true)
 			if err != nil {

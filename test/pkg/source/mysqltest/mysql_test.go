@@ -5,8 +5,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/pkg/errors"
 	"os"
-	"path"
 	"testing"
 	"time"
 
@@ -222,8 +222,10 @@ func mySQLDoBackup(
 			log.WithError(dbErr).Error("failed to close connection to mysql backup database")
 		}
 	}()
-	// sleep to give mysql server time to get ready
-	time.Sleep(1 * time.Second)
+	err = waitForDb(db)
+	if err != nil {
+		return []TestStruct{}, err
+	}
 
 	// create table for test data
 	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));", tableName))
@@ -276,16 +278,7 @@ func mySQLDoRestore(
 		return []TestStruct{}, err
 	}
 
-	// sleep to give mysql time to get ready
-	time.Sleep(1 * time.Second)
-
-	// restore server from mysqldump
-	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false, false)
-	if err != nil {
-		return []TestStruct{}, err
-	}
-
-	// establish connection for retrieving restored data
+	// establish connection to be able to wait for the DB and retrieving restored data
 	restoreConnectionString := fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
 		mySQLRoot, mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase,
@@ -298,9 +291,19 @@ func mySQLDoRestore(
 	defer func() {
 		dbErr := dbRestore.Close()
 		if dbErr != nil {
-			log.WithError(dbErr).Error("failed to close connection to mysql restore database")
+			log.WithError(dbErr).Error("failed to close connection to mysql backup database")
 		}
 	}()
+	err = waitForDb(dbRestore)
+	if err != nil {
+		return []TestStruct{}, err
+	}
+
+	// restore server from mysqldump
+	err = source.DoRestoreForKind(ctx, restoreKind, false, useRestic)
+	if err != nil {
+		return []TestStruct{}, err
+	}
 
 	// attempt to retrieve test data from database
 	var result *sql.Rows
@@ -336,9 +339,11 @@ func mySQLDoRestore(
 func createMySQLConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, filepath string, doStdinBackup bool) []byte {
 	var resticConfig string
 	if useRestic {
-		restoreTarget := "/"
+		//restoreTarget := "/"
+		stdinFilename := ""
 		if doStdinBackup {
-			restoreTarget = path.Join(restoreTarget, filepath)
+			stdinFilename = fmt.Sprintf("  backup:\n    flags:\n      stdinFilename: %s\n", filepath)
+			//restoreTarget = path.Join(restoreTarget, filepath)
 		}
 		resticConfig = fmt.Sprintf(
 			`doPipingBackup: %t
@@ -346,7 +351,7 @@ restic:
   global:
     flags:
       repo: rest:http://%s:%s/
-  forget:
+%s  forget:
     flags:
       keepLast: 1
       keepHourly: 0
@@ -356,9 +361,9 @@ restic:
       keepYearly: 0
   restore:
     flags:
-      target: "%s"
+      target: "/"
     id: "latest"
-`, doStdinBackup, resticIP, resticPort, restoreTarget,
+`, doStdinBackup, resticIP, resticPort, stdinFilename,
 		)
 	}
 
@@ -385,12 +390,31 @@ mysqlrestore:
       user: %s
       Database: %s
     additionalArgs: []
-    sourceFile: %s%s
+    sourceFile: %s
+%s
 `, hostName, container.Port, mySQLRootPW, mySQLRoot, filepath,
 		hostName, container.Port, mySQLRootPW, mySQLRoot, mySQLDatabase, filepath,
 		resticConfig,
 	))
 	return result
+}
+
+func waitForDb(db *sql.DB) error {
+	var err error
+	// sleep to give mysql server time to get ready
+	time.Sleep(10 * time.Second)
+	// Ping until ready or 30 seconds are over
+	for i := 0; i < 20; i++ {
+		err = db.Ping()
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	if err != nil {
+		return errors.Wrap(err, "can't ping database after 30 seconds")
+	}
+	return nil
 }
 
 // prepareTestData creates test data and inserts it into the given database

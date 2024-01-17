@@ -198,7 +198,7 @@ func (redisDumpTestSuite *RedisDumpTestSuite) TestRedisDumpResticGzip() {
 }
 
 func TestRedisDumpTestSuite(t *testing.T) {
-	_, resticExists := commons.CheckProgramsAndRestic(t, "tar", "--version")
+	_, resticExists := commons.CheckProgramsAndRestic(t, "redis-cli", "--version", "tar", "--version")
 	testSuite := &RedisDumpTestSuite{
 		resticExists: resticExists,
 	}
@@ -298,7 +298,11 @@ func redisDoRestore(
 
 	// pull data from restic repository if needed
 	if useRestic {
-		err = commons.DoResticRestore(ctx, resticContainer, backupPath)
+		err = os.Remove(path)
+		if err != nil {
+			return testStruct{}, errors.Wrapf(err, "error while removing redis dump before restoring it")
+		}
+		err = commons.DoResticRestore(ctx, resticContainer, path)
 		if err != nil {
 			return testStruct{}, errors.WithStack(err)
 		}

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
 	"testing"
 
 	"github.com/mittwald/brudi/pkg/source"
@@ -82,6 +81,16 @@ func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongo
 	assert.DeepEqual(mongoDumpAndRestoreTestSuite.T(), testData, results)
 }
 
+// TestBasicMongoDBDumpRestic performs an integration test for the `mongodump` command with restic support
+func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongoDBDumpAndRestoreRestic() {
+	mongoDumpAndRestoreTestSuite.basicMongoDBDumpAndRestoreRestic(backupPath, false)
+}
+
+// TestBasicMongoDBDumpResticStdin performs an integration test for the `mongodump` command with restic support using STDIN
+func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongoDBDumpAndRestoreResticStdin() {
+	mongoDumpAndRestoreTestSuite.basicMongoDBDumpAndRestoreRestic(backupPath, true)
+}
+
 func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) basicMongoDBDumpAndRestoreRestic(backupPath string, useStdin bool) {
 	mongoDumpAndRestoreTestSuite.True(mongoDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
 	if !mongoDumpAndRestoreTestSuite.resticExists {
@@ -114,18 +123,9 @@ func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) basicMongoDBDu
 	// restore database from backup and pull test data for verification
 	var results []interface{}
 	results, err = mongoDoRestore(ctx, true, resticContainer)
+	mongoDumpAndRestoreTestSuite.Require().NoError(err)
 
 	assert.DeepEqual(mongoDumpAndRestoreTestSuite.T(), testData, results)
-}
-
-// TestBasicMongoDBDumpRestic performs an integration test for the `mongodump` command with restic support
-func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongoDBDumpAndRestoreRestic() {
-	mongoDumpAndRestoreTestSuite.basicMongoDBDumpAndRestoreRestic(backupPath, false)
-}
-
-// TestBasicMongoDBDumpResticStdin performs an integration test for the `mongodump` command with restic support using STDIN
-func (mongoDumpAndRestoreTestSuite *MongoDumpAndRestoreTestSuite) TestBasicMongoDBDumpAndRestoreResticStdin() {
-	mongoDumpAndRestoreTestSuite.basicMongoDBDumpAndRestoreRestic(backupPath, true)
 }
 
 func TestMongoDumpAndRestoreTestSuite(t *testing.T) {
@@ -313,9 +313,13 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
 `, kind, container.Address, container.Port, mongoUser, mongoPW, backupPath,
 		))
 	}
-	restoreTarget := "/"
+	//restoreTarget := "/"
+	stdinFilename := ""
 	if doStdinBackup {
-		restoreTarget = path.Join(restoreTarget, backupPath)
+		stdinFilename = fmt.Sprintf("        backup:\n          flags:\n            stdinFilename: %s\n",
+			backupPath)
+		//restoreTarget = path.Join(restoreTarget, backupPath)
+
 	}
 	return []byte(fmt.Sprintf(
 		`
@@ -334,7 +338,7 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
         global:
           flags:
             repo: rest:http://%s:%s/
-        forget:
+%s        forget:
           flags:
             keepLast: 1
             keepHourly: 0
@@ -344,9 +348,9 @@ func createMongoConfig(container commons.TestContainerSetup, useRestic bool, res
             keepYearly: 0
         restore:
           flags:
-            target: "%s"
+            target: "/"
           id: "latest"
-`, doStdinBackup, kind, container.Address, container.Port, mongoUser, mongoPW, backupPath, resticIP, resticPort, restoreTarget,
+`, doStdinBackup, kind, container.Address, container.Port, mongoUser, mongoPW, backupPath, resticIP, resticPort, stdinFilename,
 	))
 }
 

@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"path"
 	"testing"
 	"time"
 
@@ -443,9 +442,11 @@ func createPGConfig(container commons.TestContainerSetup, useRestic bool, restic
 
 	var resticConfig string
 	if useRestic {
-		restoreTarget := "/"
+		stdinFilename := ""
+		//restoreTarget := "/"
 		if doStdinBackup {
-			restoreTarget = path.Join(restoreTarget, filepath)
+			stdinFilename = fmt.Sprintf("  backup:\n    flags:\n      stdinFilename: %s\n", filepath)
+			//restoreTarget = path.Join(restoreTarget, filepath)
 		}
 		resticConfig = fmt.Sprintf(
 			`doPipingBackup: %t
@@ -453,7 +454,7 @@ restic:
   global:
     flags:
       repo: rest:http://%s:%s/
-  forget:
+%s  forget:
     flags:
       keepLast: 1
       keepHourly: 0
@@ -463,15 +464,15 @@ restic:
       keepYearly: 0
   restore:
     flags:
-      target: "%s"
+      target: "/"
     id: "latest"
-`, doStdinBackup, resticIP, resticPort, restoreTarget,
+`, doStdinBackup, resticIP, resticPort, stdinFilename,
 		)
 	}
 
-	filenameKey := "file"
-	if doStdinBackup {
-		filenameKey = "stdinFilename"
+	filename := ""
+	if !doStdinBackup {
+		filename = fmt.Sprintf("      file: %s\n", filepath)
 	}
 
 	result := []byte(fmt.Sprintf(
@@ -484,13 +485,12 @@ pgdump:
       password: %s
       username: %s
       dbName: %s
-      %s: %s
-      format: %s
+%s      format: %s
     additionalArgs: []
 %s
 %s
 
-`, hostName, container.Port, postgresPW, postgresUser, postgresDB, filenameKey, filepath, format, restoreConfig, resticConfig,
+`, hostName, container.Port, postgresPW, postgresUser, postgresDB, filename, format, restoreConfig, resticConfig,
 	))
 	return result
 }
