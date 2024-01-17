@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path"
 	"testing"
 	"time"
 
@@ -42,9 +43,19 @@ const plainKind = "plain"
 
 type PGDumpAndRestoreTestSuite struct {
 	suite.Suite
+	resticExists bool
 }
 
 func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) SetupTest() {
+	_, err := commons.GetProgramsVersions("pg_dump", "", "pg_restore", "", "psql", "")
+	if err != nil {
+		panic(err)
+	}
+	_, err = commons.GetProgramVersion("restic", "version")
+	pgDumpAndRestoreTestSuite.resticExists = err == nil
+	if !pgDumpAndRestoreTestSuite.resticExists {
+		pgDumpAndRestoreTestSuite.T().Logf("can't determine restics version: %v", err)
+	}
 	commons.TestSetup()
 }
 
@@ -80,7 +91,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 			Port:    "",
 			Address: "",
 		},
-		"tar", backupPath,
+		"tar", backupPath, false,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -91,7 +102,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 			Port:    "",
 			Address: "",
 		},
-		"tar", backupPath,
+		"tar", backupPath, false,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -104,7 +115,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 			Port:    "",
 			Address: "",
 		},
-		"plain", backupPathPlain,
+		"plain", backupPathPlain, false,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -115,7 +126,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 			Port:    "",
 			Address: "",
 		},
-		"plain", backupPathPlain,
+		"plain", backupPathPlain, false,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -149,7 +160,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 			Port:    "",
 			Address: "",
 		},
-		"tar", backupPathZip,
+		"tar", backupPathZip, false,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -160,7 +171,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 			Port:    "",
 			Address: "",
 		},
-		"tar", backupPathZip,
+		"tar", backupPathZip, false,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -173,7 +184,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 			Port:    "",
 			Address: "",
 		},
-		"plain", backupPathPlainZip,
+		"plain", backupPathPlainZip, false,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -184,7 +195,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 			Port:    "",
 			Address: "",
 		},
-		"plain", backupPathPlainZip,
+		"plain", backupPathPlainZip, false,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -193,6 +204,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 
 // TestPGDumpRestic performs an integration test for brudi pgdump with restic
 func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreRestic() {
+	pgDumpAndRestoreTestSuite.True(pgDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
 	ctx := context.Background()
 
 	// remove backup files after test
@@ -218,7 +230,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 	var testData []testStruct
 	testData, err = pgDoBackup(
 		ctx, true, resticContainer,
-		"tar", backupPath,
+		"tar", backupPath, false,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -226,7 +238,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 	var restoreResult []testStruct
 	restoreResult, err = pgDoRestore(
 		ctx, true, resticContainer,
-		"tar", backupPath,
+		"tar", backupPath, false,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -235,6 +247,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 
 // TestPGDumpResticGzip performs an integration test for brudi pgdump with restic and gzip
 func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreResticGzip() {
+	pgDumpAndRestoreTestSuite.True(pgDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
 	ctx := context.Background()
 
 	// remove backup files after test
@@ -260,7 +273,7 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 	var testData []testStruct
 	testData, err = pgDoBackup(
 		ctx, true, resticContainer,
-		"tar", backupPathZip,
+		"tar", backupPathZip, false,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -268,7 +281,51 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestore
 	var restoreResult []testStruct
 	restoreResult, err = pgDoRestore(
 		ctx, true, resticContainer,
-		"tar", backupPathZip,
+		"tar", backupPathZip, false,
+	)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+
+	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testData, restoreResult)
+}
+
+// TestPGDumpResticStdin performs an integration test for brudi pgdump with restic over STDIN
+func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreResticStdin() {
+	pgDumpAndRestoreTestSuite.True(pgDumpAndRestoreTestSuite.resticExists, "can't use restic on this machine")
+	ctx := context.Background()
+	backupPath := path.Base(backupPath)
+
+	// remove backup files after test
+	defer func() {
+		// delete folder with backup file
+		removeErr := os.RemoveAll(backupPath)
+		if removeErr != nil {
+			log.WithError(removeErr).Error("failed to remove pgdump backup files")
+		}
+	}()
+
+	// setup a container running the restic rest-server
+	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+	defer func() {
+		resticErr := resticContainer.Container.Terminate(ctx)
+		if resticErr != nil {
+			log.WithError(resticErr).Error("failed to terminate pgdump restic container")
+		}
+	}()
+
+	// backup test data with brudi and retain test data for verification
+	var testData []testStruct
+	testData, err = pgDoBackup(
+		ctx, true, resticContainer,
+		"tar", backupPath, true,
+	)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+
+	// restore test data with brudi and retrieve it from the db for verification
+	var restoreResult []testStruct
+	restoreResult, err = pgDoRestore(
+		ctx, true, resticContainer,
+		"tar", backupPath, true,
 	)
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
@@ -282,7 +339,7 @@ func TestPGDumpAndRestoreTestSuite(t *testing.T) {
 // pgDoBackup populates a database with data and performs a backup, optionally with restic
 func pgDoBackup(
 	ctx context.Context, useRestic bool,
-	resticContainer commons.TestContainerSetup, format, path string,
+	resticContainer commons.TestContainerSetup, format, path string, doStdinBackup bool,
 ) ([]testStruct, error) {
 	// create a postgres container to test backup function
 	pgBackupTarget, err := commons.NewTestContainerSetup(ctx, &pgRequest, pgPort)
@@ -328,7 +385,7 @@ func pgDoBackup(
 	}
 
 	// create a brudi config for pgdump
-	testPGConfig := createPGConfig(pgBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, format, path)
+	testPGConfig := createPGConfig(pgBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, format, path, doStdinBackup)
 	err = viper.ReadConfig(bytes.NewBuffer(testPGConfig))
 	if err != nil {
 		return []testStruct{}, err
@@ -346,7 +403,7 @@ func pgDoBackup(
 // pgDoRestore restores data from backup and retrieves it for verification, optionally using restic
 func pgDoRestore(
 	ctx context.Context, useRestic bool, resticContainer commons.TestContainerSetup,
-	format, path string,
+	format, path string, backuppedWithStdin bool,
 ) ([]testStruct, error) {
 
 	// setup second postgres container to test if correct data is restored
@@ -362,7 +419,7 @@ func pgDoRestore(
 	}()
 
 	// create a brudi configuration for pgrestore, depending on backup format
-	restorePGConfig := createPGConfig(pgRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, format, path)
+	restorePGConfig := createPGConfig(pgRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, format, path, backuppedWithStdin)
 	err = viper.ReadConfig(bytes.NewBuffer(restorePGConfig))
 	if err != nil {
 		return []testStruct{}, err
@@ -427,7 +484,7 @@ func pgDoRestore(
 }
 
 // createPGConfig creates a brudi config for the pgdump and the correct restoration command based on format
-func createPGConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, format, path string) []byte {
+func createPGConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, format, filepath string, doStdinBackup bool) []byte {
 	var restoreConfig string
 	if format != plainKind {
 		restoreConfig = fmt.Sprintf(
@@ -441,7 +498,7 @@ func createPGConfig(container commons.TestContainerSetup, useRestic bool, restic
       dbname: %s
     additionalArgs: []
     sourcefile: %s
-`, hostName, container.Port, postgresPW, postgresUser, postgresDB, path,
+`, hostName, container.Port, postgresPW, postgresUser, postgresDB, filepath,
 		)
 	} else {
 		restoreConfig = fmt.Sprintf(
@@ -455,14 +512,19 @@ func createPGConfig(container commons.TestContainerSetup, useRestic bool, restic
       dbname: %s
     additionalArgs: []
     sourcefile: %s 
-`, hostName, container.Port, postgresUser, postgresPW, postgresDB, path,
+`, hostName, container.Port, postgresUser, postgresPW, postgresDB, filepath,
 		)
 	}
 
 	var resticConfig string
 	if useRestic {
+		restoreTarget := "/"
+		if doStdinBackup {
+			restoreTarget = path.Join(restoreTarget, filepath)
+		}
 		resticConfig = fmt.Sprintf(
-			`restic:
+			`doPipingBackup: %t
+restic:
   global:
     flags:
       repo: rest:http://%s:%s/
@@ -476,10 +538,15 @@ func createPGConfig(container commons.TestContainerSetup, useRestic bool, restic
       keepYearly: 0
   restore:
     flags:
-      target: "/"
+      target: "%s"
     id: "latest"
-`, resticIP, resticPort,
+`, doStdinBackup, resticIP, resticPort, restoreTarget,
 		)
+	}
+
+	filenameKey := "file"
+	if doStdinBackup {
+		filenameKey = "stdinFilename"
 	}
 
 	result := []byte(fmt.Sprintf(
@@ -492,13 +559,13 @@ pgdump:
       password: %s
       username: %s
       dbName: %s
-      file: %s
+      %s: %s
       format: %s
     additionalArgs: []
 %s
 %s
 
-`, hostName, container.Port, postgresPW, postgresUser, postgresDB, path, format, restoreConfig, resticConfig,
+`, hostName, container.Port, postgresPW, postgresUser, postgresDB, filenameKey, filepath, format, restoreConfig, resticConfig,
 	))
 	return result
 }
