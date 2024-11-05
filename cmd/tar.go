@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/mittwald/brudi/pkg/source/tar"
 
 	"github.com/mittwald/brudi/pkg/source"
@@ -21,6 +23,7 @@ var (
 
 			err := source.DoBackupForKind(ctx, tar.Kind, cleanup, useRestic, useResticForget)
 			if err != nil {
+				logrus.WithError(err).Error("Failed to backup database")
 				panic(err)
 			}
 		},

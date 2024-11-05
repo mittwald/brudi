@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/mittwald/brudi/pkg/source"
 	"github.com/mittwald/brudi/pkg/source/psql"
 
@@ -20,6 +22,7 @@ var (
 
 			err := source.DoRestoreForKind(ctx, psql.Kind, cleanup, useRestic, useResticForget)
 			if err != nil {
+				logrus.WithError(err).Error("Failed to restore database")
 				panic(err)
 			}
 		},
