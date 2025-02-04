@@ -233,7 +233,7 @@ func mySQLDoBackup(
 		}
 	}()
 	// sleep to give mysql server time to get ready
-	time.Sleep(1 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	// create table for test data
 	_, err = db.Exec(
