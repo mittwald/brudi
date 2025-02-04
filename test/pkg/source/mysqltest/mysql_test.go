@@ -236,7 +236,12 @@ func mySQLDoBackup(
 	time.Sleep(1 * time.Second)
 
 	// create table for test data
-	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));", tableName))
+	_, err = db.Exec(
+		fmt.Sprintf(
+			"CREATE TABLE %s(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));",
+			tableName,
+		),
+	)
 	if err != nil {
 		return []TestStruct{}, err
 	}
@@ -248,7 +253,13 @@ func mySQLDoBackup(
 	}
 
 	// create brudi config for mysqldump
-	MySQLBackupConfig := createMySQLConfig(mySQLBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, path)
+	MySQLBackupConfig := createMySQLConfig(
+		mySQLBackupTarget,
+		useRestic,
+		resticContainer.Address,
+		resticContainer.Port,
+		path,
+	)
 	err = viper.ReadConfig(bytes.NewBuffer(MySQLBackupConfig))
 	if err != nil {
 		return []TestStruct{}, err
@@ -280,7 +291,13 @@ func mySQLDoRestore(
 	}()
 
 	// create a brudi config for mysql restore
-	MySQLRestoreConfig := createMySQLConfig(mySQLRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, path)
+	MySQLRestoreConfig := createMySQLConfig(
+		mySQLRestoreTarget,
+		useRestic,
+		resticContainer.Address,
+		resticContainer.Port,
+		path,
+	)
 	err = viper.ReadConfig(bytes.NewBuffer(MySQLRestoreConfig))
 	if err != nil {
 		return []TestStruct{}, err
@@ -408,18 +425,27 @@ func prepareTestData(database *sql.DB) ([]TestStruct, error) {
 	}
 	testData := []TestStruct{testStruct1}
 	var insert *sql.Rows
+	defer func() {
+		err = insert.Close()
+		if err != nil {
+			log.WithError(err).Error("failed to close insert")
+		}
+	}()
 	for idx := range testData {
-		insert, err = database.Query(fmt.Sprintf("INSERT INTO %s VALUES ( %d, '%s' )", tableName, testData[idx].ID, testData[idx].Name))
+		insert, err = database.Query(
+			fmt.Sprintf(
+				"INSERT INTO %s VALUES ( %d, '%s' )",
+				tableName,
+				testData[idx].ID,
+				testData[idx].Name,
+			),
+		)
 		if err != nil {
 			return []TestStruct{}, err
 		}
 		if insert.Err() != nil {
 			return []TestStruct{}, insert.Err()
 		}
-	}
-	err = insert.Close()
-	if err != nil {
-		return []TestStruct{}, err
 	}
 	return testData, nil
 }
