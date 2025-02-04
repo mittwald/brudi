@@ -13,8 +13,8 @@ import (
 	"github.com/mittwald/brudi/pkg/source"
 	commons "github.com/mittwald/brudi/test/pkg/source/internal"
 
-	"github.com/go-redis/redis"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
@@ -223,7 +223,7 @@ func redisDoBackup(
 	}()
 
 	// test connection
-	_, err = redisClient.Ping().Result()
+	_, err = redisClient.Ping(ctx).Result()
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
 	}
@@ -233,18 +233,24 @@ func redisDoBackup(
 		Name: testName,
 		Type: testType,
 	}
-	err = redisClient.Set(nameKey, testData.Name, 0).Err()
+	err = redisClient.Set(ctx, nameKey, testData.Name, 0).Err()
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
 	}
 
-	err = redisClient.Set(typeKey, testData.Type, 0).Err()
+	err = redisClient.Set(ctx, typeKey, testData.Type, 0).Err()
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
 	}
 
 	// create a brudi config for redisdump
-	redisBackupConfig := createRedisConfig(redisBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, path)
+	redisBackupConfig := createRedisConfig(
+		redisBackupTarget,
+		useRestic,
+		resticContainer.Address,
+		resticContainer.Port,
+		path,
+	)
 	err = viper.ReadConfig(bytes.NewBuffer(redisBackupConfig))
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
@@ -305,21 +311,21 @@ func redisDoRestore(
 	}()
 
 	// check connection
-	_, err = redisRestoreClient.Ping().Result()
+	_, err = redisRestoreClient.Ping(ctx).Result()
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
 	}
 
 	// retrieve first test value
 	var nameVal string
-	nameVal, err = redisRestoreClient.Get(nameKey).Result()
+	nameVal, err = redisRestoreClient.Get(ctx, nameKey).Result()
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
 	}
 
 	// retrive second test value
 	var typeVal string
-	typeVal, err = redisRestoreClient.Get(typeKey).Result()
+	typeVal, err = redisRestoreClient.Get(ctx, typeKey).Result()
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
 	}
