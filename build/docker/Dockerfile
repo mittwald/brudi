@@ -1,4 +1,4 @@
-FROM        alpine:3.18
+FROM        alpine:3.21
 
 LABEL       maintainer="Mittwald CM Service <https://github.com/mittwald>"
 
@@ -15,6 +15,7 @@ RUN         apk add --no-cache --upgrade \
                 mongodb-tools \
                 mysql-client \
                 postgresql-client \
+                gcompat \
             && \
             addgroup \
                 -S "${BRUDI_USER}" \
