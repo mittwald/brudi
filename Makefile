@@ -48,25 +48,30 @@ upTestMongo: downTestMongo
 	docker-compose --file example/docker-compose/mongo.yml up -d
 
 downTestMongo:
-	docker-compose --file example/docker-compose/mongo.yml down -v --remove-orphans
+	docker compose --file example/docker-compose/mongo.yml down -v --remove-orphans
 
 upTestMysql: downTestMysql
 	trap 'cd $(CURDIR) && make downTestMysql' 0 1 2 3 6 9 15
-	docker-compose --file example/docker-compose/mysql.yml up -d
+	docker compose --file example/docker-compose/mysql.yml up -d
 
 downTestMysql:
-	docker-compose --file example/docker-compose/mysql.yml down -v --remove-orphans
+	docker compose --file example/docker-compose/mysql.yml down -v --remove-orphans
 
 upTestPostgres: downTestPostgres
 	trap 'cd $(CURDIR) && make downTestPostgres' 0 1 2 3 6 9 15
-	docker-compose --file example/docker-compose/postgresql.yml up -d
+	docker compose --file example/docker-compose/postgresql.yml up -d
 
 downTestPostgres:
-	docker-compose --file example/docker-compose/postgresql.yml down -v --remove-orphans
+	docker compose --file example/docker-compose/postgresql.yml down -v --remove-orphans
 
 upTestRedis: downTestRedis
 	trap 'cd $(CURDIR) && make downTestRedis' 0 1 2 3 6 9 15
-	docker-compose --file example/docker-compose/redis.yml up -d
+	docker compose --file example/docker-compose/redis.yml up -d
 
 downTestRedis:
-	docker-compose --file example/docker-compose/redis.yml down -v --remove-orphans
+	docker compose --file example/docker-compose/redis.yml down -v --remove-orphans
+
+runLocalPostgres:
+	make build
+	docker build -f build/docker/Dockerfile . -t brudi
+	docker run --rm --add-host=host.docker.internal:host-gateway -v ./example/config/.brudi.postgresql.yaml:/home/brudi/.brudi.yaml brudi pgdump
