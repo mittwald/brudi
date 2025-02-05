@@ -374,10 +374,9 @@ redisdump:
     flags:
       host: %s
       port: %s
-      password: %s
       rdb: %s
     additionalArgs: []
-`, container.Address, container.Port, redisPW, path,
+`, container.Address, container.Port, path,
 		))
 	}
 	return []byte(fmt.Sprintf(
@@ -387,7 +386,6 @@ redisdump:
     flags:
       host: %s
       port: %s
-      password: %s
       rdb: %s
     additionalArgs: []
 restic:
@@ -407,7 +405,7 @@ restic:
     flags:
       target: "/"
     id: "latest"
-`, container.Address, container.Port, redisPW, path, resticIP, resticPort,
+`, container.Address, container.Port, path, resticIP, resticPort,
 	))
 }
 
