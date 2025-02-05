@@ -28,7 +28,7 @@ RUN         apk add --no-cache --upgrade \
                 "${BRUDI_USER}"
 
 RUN         curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg && \
-            sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg && \
+            chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg && \
             echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list && \
             apt-get update && \
             apt-get install redis-tools=6:7.2.5-1rl1~noble1
