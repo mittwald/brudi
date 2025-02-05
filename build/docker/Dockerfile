@@ -31,7 +31,7 @@ RUN         curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /usr/sha
             sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg && \
             echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list && \
             apt-get update && \
-            apt-get install redis-tools=6:6.2.15-1rl1~noble1
+            apt-get install redis-tools=6:7.2.5-1rl1~noble1
 
 USER        ${BRUDI_USER}
 
