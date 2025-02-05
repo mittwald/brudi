@@ -33,7 +33,7 @@ const nameKey = "name"
 const typeKey = "type"
 const logString = "Ready to accept connections"
 const dumpKind = "redisdump"
-const redisImage = "docker.io/bitnami/redis:7.2.5"
+const redisImage = "docker.io/bitnami/redis:latest"
 
 type RedisDumpTestSuite struct {
 	suite.Suite
