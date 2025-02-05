@@ -37,7 +37,7 @@ const dumpKind = "pgdump"
 // mysql and psql are a bit picky when it comes to localhost, use ip instead
 const hostName = "127.0.0.1"
 const dbDriver = "pgx"
-const pgImage = "docker.io/bitnami/postgresql:latest"
+const pgImage = "docker.io/bitnami/postgresql:17"
 const plainKind = "plain"
 
 type PGDumpAndRestoreTestSuite struct {
@@ -328,7 +328,14 @@ func pgDoBackup(
 	}
 
 	// create a brudi config for pgdump
-	testPGConfig := createPGConfig(pgBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, format, path)
+	testPGConfig := createPGConfig(
+		pgBackupTarget,
+		useRestic,
+		resticContainer.Address,
+		resticContainer.Port,
+		format,
+		path,
+	)
 	err = viper.ReadConfig(bytes.NewBuffer(testPGConfig))
 	if err != nil {
 		return []testStruct{}, err
@@ -362,7 +369,14 @@ func pgDoRestore(
 	}()
 
 	// create a brudi configuration for pgrestore, depending on backup format
-	restorePGConfig := createPGConfig(pgRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, format, path)
+	restorePGConfig := createPGConfig(
+		pgRestoreTarget,
+		useRestic,
+		resticContainer.Address,
+		resticContainer.Port,
+		format,
+		path,
+	)
 	err = viper.ReadConfig(bytes.NewBuffer(restorePGConfig))
 	if err != nil {
 		return []testStruct{}, err
@@ -427,7 +441,11 @@ func pgDoRestore(
 }
 
 // createPGConfig creates a brudi config for the pgdump and the correct restoration command based on format
-func createPGConfig(container commons.TestContainerSetup, useRestic bool, resticIP, resticPort, format, path string) []byte {
+func createPGConfig(
+	container commons.TestContainerSetup,
+	useRestic bool,
+	resticIP, resticPort, format, path string,
+) []byte {
 	var restoreConfig string
 	if format != plainKind {
 		restoreConfig = fmt.Sprintf(
@@ -513,7 +531,14 @@ func prepareTestData(database *sql.DB) ([]testStruct, error) {
 	testData := []testStruct{testStruct1}
 	var insert *sql.Rows
 	for idx := range testData {
-		insert, err = database.Query(fmt.Sprintf("INSERT INTO %s (id, name) VALUES ( %d, '%s' )", tableName, testData[idx].ID, testData[idx].Name))
+		insert, err = database.Query(
+			fmt.Sprintf(
+				"INSERT INTO %s (id, name) VALUES ( %d, '%s' )",
+				tableName,
+				testData[idx].ID,
+				testData[idx].Name,
+			),
+		)
 		if err != nil {
 			return []testStruct{}, err
 		}
