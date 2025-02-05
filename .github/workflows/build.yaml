@@ -45,6 +45,7 @@ jobs:
         echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
         sudo apt-get update
         sudo apt-get install redis-tools=6:6.2.15-1rl1~noble1
+        redis-cli --version
 
     - name: install mongodb
       run: |
