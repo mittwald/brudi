@@ -75,3 +75,8 @@ runLocalPostgres:
 	make build
 	docker build -f build/docker/Dockerfile . -t brudi
 	docker run --rm --add-host=host.docker.internal:host-gateway -v ./example/config/.brudi.postgresql.yaml:/home/brudi/.brudi.yaml brudi pgdump
+
+runLocalMysql:
+	make build
+	docker build -f build/docker/Dockerfile . -t brudi
+	docker run --rm --add-host=host.docker.internal:host-gateway -v ./example/config/.brudi.mysql.yaml:/home/brudi/.brudi.yaml brudi mysqldump
