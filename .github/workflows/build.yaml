@@ -64,6 +64,9 @@ jobs:
         sudo apt update
         sudo apt install postgresql-client-17
 
+    - name: install mariadb
+      run: sudo apt install mariadb-client
+
 
     - name: Test
       run: go test -v ./...
