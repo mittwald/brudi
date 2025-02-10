@@ -35,9 +35,9 @@ const dbDriver = "mysql"
 const tableName = "testTable"
 
 // mysql and psql are a bit picky when it comes to localhost, use ip instead
-const hostName = "host.docker.internal"
+const hostName = "127.0.0.1"
 const logString = "ready for connections"
-const mysqlImage = "docker.io/bitnami/mysql:8.0.40"
+const mysqlImage = "docker.io/bitnami/mysql:5.7"
 
 type MySQLDumpAndRestoreTestSuite struct {
 	suite.Suite
