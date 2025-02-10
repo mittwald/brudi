@@ -461,6 +461,7 @@ var mySQLRequest = testcontainers.ContainerRequest{
 		"MYSQL_DATABASE":      mySQLDatabase,
 		"MYSQL_USER":          mySQLUser,
 		"MYSQL_PASSWORD":      mySQLPw,
+		"JDBC_PARAMS":         "useSSL=false",
 		"MYSQL_EXTRA:FLAGS":   "--default-authentication-plugin=mysql_native_password --skip-ssl",
 	},
 	WaitingFor: wait.ForLog(logString),
