@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/mittwald/brudi/pkg/cli"
 )
@@ -43,6 +44,7 @@ func (b *ConfigBasedBackend) CreateBackup(ctx context.Context) error {
 		Binary: binary,
 		Args:   cli.StructToCLI(b.cfg.Options),
 	}
+	log.Warnf("cmd: %+v", cmd)
 	out, err := cli.Run(ctx, cmd)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))

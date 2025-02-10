@@ -1,7 +1,8 @@
 package mysqldump
 
 const (
-	binary = "mysqldump"
+	binary = "mariadb-dump"
+	// binary = "mysqldump"
 )
 
 type Options struct {
@@ -47,6 +48,7 @@ type Flags struct {
 	SslCrl                     string   `flag:"--ssl-crl="`
 	SslCrlPath                 string   `flag:"--ssl-crlpath="`
 	SslKey                     string   `flag:"--ssl-key="`
+	SkipSsl                    bool     `flag:"--skip-ssl"`
 	Tab                        string   `flag:"--tab="`
 	TLSCipherSuites            string   `flag:"--tls-ciphersuites="`
 	TLSVersion                 string   `flag:"--tls-version="`

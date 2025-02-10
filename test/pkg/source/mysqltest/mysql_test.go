@@ -35,7 +35,7 @@ const dbDriver = "mysql"
 const tableName = "testTable"
 
 // mysql and psql are a bit picky when it comes to localhost, use ip instead
-const hostName = "127.0.0.1"
+const hostName = "host.docker.internal"
 const logString = "ready for connections"
 const mysqlImage = "docker.io/bitnami/mysql:8.0.40"
 
@@ -233,7 +233,7 @@ func mySQLDoBackup(
 		}
 	}()
 	// sleep to give mysql server time to get ready
-	time.Sleep(20 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// create table for test data
 	_, err = db.Exec(
@@ -369,6 +369,7 @@ restic:
   global:
     flags:
       repo: rest:http://%s:%s/
+      skipSsl: "foo"
   forget:
     flags:
       keepLast: 1
@@ -398,6 +399,7 @@ mysqldump:
       force: true
       allDatabases: true
       resultFile: %s
+      skipSsl: true
     additionalArgs: []
 mysqlrestore:
   options:
