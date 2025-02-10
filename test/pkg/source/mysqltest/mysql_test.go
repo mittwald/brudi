@@ -37,7 +37,7 @@ const tableName = "testTable"
 // mysql and psql are a bit picky when it comes to localhost, use ip instead
 const hostName = "127.0.0.1"
 const logString = "ready for connections"
-const mysqlImage = "docker.io/bitnami/mysql:5.7"
+const mysqlImage = "docker.io/bitnami/mysql:8"
 
 type MySQLDumpAndRestoreTestSuite struct {
 	suite.Suite
@@ -461,7 +461,7 @@ var mySQLRequest = testcontainers.ContainerRequest{
 		"MYSQL_DATABASE":      mySQLDatabase,
 		"MYSQL_USER":          mySQLUser,
 		"MYSQL_PASSWORD":      mySQLPw,
-		"MYSQL_EXTRA:FLAGS":   "--default-authentication-plugin=mysql_native_password",
+		"MYSQL_EXTRA:FLAGS":   "--default-authentication-plugin=mysql_native_password --skip-ssl",
 	},
 	WaitingFor: wait.ForLog(logString),
 }
