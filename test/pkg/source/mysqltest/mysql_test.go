@@ -182,14 +182,12 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 	}()
 
 	// backup test data with brudi and retain test data for verification
-	var testData []TestStruct
-	testData, err = mySQLDoBackup(ctx, true, resticContainer, backupPathZip)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	testData, backupErr := mySQLDoBackup(ctx, true, resticContainer, backupPathZip)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(backupErr)
 
 	// restore database from backup and pull test data from it for verification
-	var restoreResult []TestStruct
-	restoreResult, err = mySQLDoRestore(ctx, true, resticContainer, backupPathZip)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	restoreResult, restoreErr := mySQLDoRestore(ctx, true, resticContainer, backupPathZip)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(restoreErr)
 
 	mySQLDumpAndRestoreTestSuite.Require().True(reflect.DeepEqual(testData, restoreResult))
 }
@@ -399,7 +397,7 @@ mysqldump:
       allDatabases: true
       resultFile: %s
       ssl: 0
-    additionalArgs: []
+    additionalArgs: ["--ssl=0"]
 mysqlrestore:
   options:
     flags:
@@ -409,7 +407,7 @@ mysqlrestore:
       user: %s
       Database: %s
       ssl: 0
-    additionalArgs: []
+    additionalArgs: ["--ssl=0"]
     sourceFile: %s%s
 `, hostName, container.Port, mySQLRootPW, mySQLRoot, path,
 		hostName, container.Port, mySQLRootPW, mySQLRoot, mySQLDatabase, path,

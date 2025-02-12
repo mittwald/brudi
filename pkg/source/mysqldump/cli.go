@@ -48,7 +48,6 @@ type Flags struct {
 	SslCrl                     string   `flag:"--ssl-crl="`
 	SslCrlPath                 string   `flag:"--ssl-crlpath="`
 	SslKey                     string   `flag:"--ssl-key="`
-	Ssl                        *int     `flag:"--ssl="`
 	Tab                        string   `flag:"--tab="`
 	TLSCipherSuites            string   `flag:"--tls-ciphersuites="`
 	TLSVersion                 string   `flag:"--tls-version="`
