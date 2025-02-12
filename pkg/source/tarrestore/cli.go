@@ -12,7 +12,7 @@ type Options struct {
 
 type Flags struct {
 	Target          string   `flag:"-C"`
-	File            string   `flag:"-f" validate:"min=1"`
+	File            string   `flag:"-f"                  validate:"min=1"`
 	Warning         []string `flag:"--warning"`
 	Exclude         []string `flag:"--exclude"`
 	StripComponents int      `flag:"--strip-components="`

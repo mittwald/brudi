@@ -14,11 +14,11 @@ type Flags struct {
 	Cluster          string `flag:"--cluster="`
 	Delimiter        string `flag:"-d"`
 	Eval             string `flag:"--eval="`
-	Host             string `flag:"-h" validate:"min=1"`
+	Host             string `flag:"-h"                   validate:"min=1"`
 	LruTest          string `flag:"--lru-test="`
 	Password         string `flag:"-a"`
 	Pattern          string `flag:"--pattern="`
-	Rdb              string `flag:"--rdb" validate:"min=1"`
+	Rdb              string `flag:"--rdb"                validate:"min=1"`
 	Socket           string `flag:"-s"`
 	URI              string `flag:"-u"`
 	DatabaseNumber   int    `flag:"-n"`

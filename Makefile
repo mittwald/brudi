@@ -29,7 +29,7 @@ lintci:
     -v $(CURDIR):/app \
     -w /app \
 	-e GOLANGCI_ADDITIONAL_YML=/app/build/ci/.golangci.yml \
-	quay.io/mittwald/golangci-lint:0.0.29 \
+	quay.io/mittwald/golangci-lint:0.0.37 \
 		golangci-lint run -v --fix  ./...
 
 lint:
@@ -37,7 +37,7 @@ lint:
 		-v $(shell go env GOPATH):/go \
 		-v ${CURDIR}:/app -w /app \
 		-e GOLANGCI_ADDITIONAL_YML=/app/build/ci/.golangci.yml \
-		quay.io/mittwald/golangci-lint:0.0.29 \
+		quay.io/mittwald/golangci-lint:0.0.37 \
 			golangci-lint run -v --fix  ./...
 
 goreleaser:

@@ -24,7 +24,7 @@ type Flags struct {
 	Delimiter              string `flag:"--delimiter="`
 	DNSSrvName             string `flag:"--dns-srv-name"`
 	Execute                string `flag:"--execute="`
-	Host                   string `flag:"--host=" validate:"min=1"`
+	Host                   string `flag:"--host="                    validate:"min=1"`
 	InitCommand            string `flag:"--init-command="`
 	LoadDataLocalDir       string `flag:"--load-data-local-dir="`
 	LoginPath              string `flag:"--login-path="`

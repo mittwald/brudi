@@ -23,7 +23,7 @@ type Flags struct {
 	LockWaitTimeout string `flag:"--lock-wait-timeout="`
 	// unfortunately pg_restore has no cli-option to specify the password
 	// therefore we have to workaround by setting the corresponding password env-var
-	Password                   string `flag:"-" env:"PGPASSWORD"`
+	Password                   string `env:"PGPASSWORD"                       flag:"-"`
 	Role                       string `flag:"--role="`
 	Schema                     string `flag:"--schema="`
 	Section                    string `flag:"--section="`

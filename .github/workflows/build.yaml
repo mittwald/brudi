@@ -5,14 +5,14 @@ on: [push]
 jobs:
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: "1.20"
+        go-version: "1.23"
 
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v2
@@ -23,12 +23,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: "1.20"
+        go-version: "1.23"
 
     - name: Install restic
       run: |
@@ -40,33 +40,29 @@ jobs:
 
     - name: install redis-cli
       run: |
-        curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
-        sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg
-        echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
         sudo apt-get update
-        sudo apt-get install redis-tools=5:7.0.15-1build2
+        sudo apt-get install redis-tools -y
         redis-cli --version
 
     - name: install mongodb
       run: |
-        sudo apt-get install gnupg curl
+        sudo apt-get install gnupg curl -y
         curl -fsSL https://pgp.mongodb.com/server-7.0.asc | \
           sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg \
           --dearmor
         echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
         sudo apt-get update
-        sudo apt-get install mongodb-org-tools
+        sudo apt-get install mongodb-org-tools -y
 
     - name: install postgresql
       run: |
         sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
         curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
         sudo apt update
-        sudo apt install postgresql-client-17
+        sudo apt install postgresql-client-17 -y
 
     - name: install mariadb
-      run: sudo apt install mariadb-client
-
+      run: sudo apt install mariadb-client -y
 
     - name: Test
       run: go test -v ./...

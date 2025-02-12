@@ -1,6 +1,6 @@
 module github.com/mittwald/brudi
 
-go 1.20
+go 1.23
 
 require (
 	github.com/docker/go-connections v0.4.0
