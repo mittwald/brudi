@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -149,14 +150,12 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 	}()
 
 	// backup test data with brudi and retain test data for verification
-	var testData []TestStruct
-	testData, err = mySQLDoBackup(ctx, true, resticContainer, backupPath)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	testData, backupErr := mySQLDoBackup(ctx, true, resticContainer, backupPath)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(backupErr)
 
 	// restore database from backup and pull test data from it for verification
-	var restoreResult []TestStruct
-	restoreResult, err = mySQLDoRestore(ctx, true, resticContainer, backupPath)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	restoreResult, restoreErr := mySQLDoRestore(ctx, true, resticContainer, backupPath)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(restoreErr)
 
 	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }
@@ -192,7 +191,7 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 	restoreResult, err = mySQLDoRestore(ctx, true, resticContainer, backupPathZip)
 	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
-	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
+	mySQLDumpAndRestoreTestSuite.Require().True(reflect.DeepEqual(testData, restoreResult))
 }
 
 func TestMySQLDumpAndRestoreTestSuite(t *testing.T) {
@@ -399,7 +398,7 @@ mysqldump:
       force: true
       allDatabases: true
       resultFile: %s
-      skipSsl: true
+      ssl: 0
     additionalArgs: []
 mysqlrestore:
   options:
