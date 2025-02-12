@@ -38,7 +38,7 @@ type Flags struct {
 	ServerPublicKeyPath    string `flag:"--server-public-key-path="`
 	SharedMemoryBaseName   string `flag:"--shared-memory-base-name="`
 	Socket                 string `flag:"--socket="`
-	SkipSsl                bool   `flag:"--skip-ssl"`
+	Ssl                    int    `flag:"--ssl="`
 	SslCa                  string `flag:"--ssl-ca="`
 	SslCaPath              string `flag:"--ssl-capath="`
 	SslCert                string `flag:"--ssl-cert="`

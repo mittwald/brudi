@@ -409,7 +409,7 @@ mysqlrestore:
       password: %s
       user: %s
       Database: %s
-      skipSsl: true
+      ssl: 0
     additionalArgs: []
     sourceFile: %s%s
 `, hostName, container.Port, mySQLRootPW, mySQLRoot, path,
