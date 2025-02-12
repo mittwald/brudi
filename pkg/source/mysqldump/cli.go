@@ -41,6 +41,7 @@ type Flags struct {
 	SharedMemoryBaseName       string   `flag:"--shared-memory-base-name="`
 	ShowCreateSkipSecondary    string   `flag:"--show-create-skip-secondary-engine="`
 	Socket                     string   `flag:"--socket="`
+	SkipSsl                    bool     `flag:"--skip-ssl"`
 	SslCa                      string   `flag:"--ssl-ca="`
 	SslCaPath                  string   `flag:"--ssl-capath="`
 	SslCert                    string   `flag:"--ssl-cert="`

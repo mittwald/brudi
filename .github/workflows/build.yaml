@@ -68,3 +68,4 @@ jobs:
       run: go test -v ./...
       env:
         RESTIC_PASSWORD: mongorepo
+        DEBUG: true

@@ -193,6 +193,7 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 }
 
 func TestMySQLDumpAndRestoreTestSuite(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	suite.Run(t, new(MySQLDumpAndRestoreTestSuite))
 }
 
@@ -396,8 +397,8 @@ mysqldump:
       force: true
       allDatabases: true
       resultFile: %s
-      ssl: 0
-    additionalArgs: ["--ssl=0"]
+      skipSsl: true
+	additionalArgs: []
 mysqlrestore:
   options:
     flags:
@@ -406,8 +407,8 @@ mysqlrestore:
       password: %s
       user: %s
       Database: %s
-      ssl: 0
-    additionalArgs: ["--ssl=0"]
+      skipSsl: true
+    additionalArgs: []
     sourceFile: %s%s
 `, hostName, container.Port, mySQLRootPW, mySQLRoot, path,
 		hostName, container.Port, mySQLRootPW, mySQLRoot, mySQLDatabase, path,
