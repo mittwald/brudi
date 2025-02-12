@@ -398,7 +398,6 @@ mysqldump:
       allDatabases: true
       resultFile: %s
       skipSsl: true
-	additionalArgs: []
 mysqlrestore:
   options:
     flags:
@@ -408,7 +407,6 @@ mysqlrestore:
       user: %s
       Database: %s
       skipSsl: true
-    additionalArgs: []
     sourceFile: %s%s
 `, hostName, container.Port, mySQLRootPW, mySQLRoot, path,
 		hostName, container.Port, mySQLRootPW, mySQLRoot, mySQLDatabase, path,
