@@ -34,7 +34,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y libseccomp2
-        sudo apt purge docker*
+        sudo apt purge -y docker*
         curl -sS -L get.docker.com | sudo bash
 
     - name: Install restic
