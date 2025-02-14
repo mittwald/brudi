@@ -39,7 +39,7 @@ const tableName = "testTable"
 
 // mysql and psql are a bit picky when it comes to localhost, use ip instead
 const hostName = "127.0.0.1"
-const logString = "ready for connections"
+const logString = "** Starting MySQL **"
 const mysqlImage = "docker.io/bitnami/mysql:5.7"
 
 type MySQLDumpAndRestoreTestSuite struct {
@@ -217,6 +217,8 @@ func mySQLDoBackup(
 		}
 	}()
 
+	time.Sleep(time.Second * 10)
+
 	// establish connection
 	backupConnectionString := fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?tls=false",
@@ -232,9 +234,7 @@ func mySQLDoBackup(
 			log.WithError(dbErr).Error("failed to close connection to mysql backup database")
 		}
 	}()
-	// sleep to give mysql server time to get ready
-	time.Sleep(5 * time.Second)
-
+	
 	// create table for test data
 	_, createTableErr := db.Exec(
 		fmt.Sprintf(
