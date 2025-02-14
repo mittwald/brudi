@@ -234,7 +234,7 @@ func mySQLDoBackup(
 			log.WithError(dbErr).Error("failed to close connection to mysql backup database")
 		}
 	}()
-	
+
 	// create table for test data
 	_, createTableErr := db.Exec(
 		fmt.Sprintf(
@@ -307,7 +307,7 @@ func mySQLDoRestore(
 	}
 
 	// sleep to give mysql time to get ready
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	// restore server from mysqldump
 	doBackupErr := source.DoBackupForKind(ctx, dumpKind, false, useRestic, false, false)
@@ -338,7 +338,7 @@ func mySQLDoRestore(
 		return []TestStruct{}, err
 	}
 	if result.Err() != nil {
-		return []TestStruct{}, result.Err()
+		return []TestStruct{}, errors.Wrap(result.Err(), "failed to query mysql restore container")
 	}
 	defer func() {
 		resultErr := result.Close()
@@ -351,9 +351,9 @@ func mySQLDoRestore(
 	var restoreResult []TestStruct
 	for result.Next() {
 		var test TestStruct
-		err := result.Scan(&test.ID, &test.Name)
-		if err != nil {
-			return []TestStruct{}, err
+		scanErr := result.Scan(&test.ID, &test.Name)
+		if scanErr != nil {
+			return []TestStruct{}, errors.Wrap(scanErr, "failed to scan mysql restore result")
 		}
 		restoreResult = append(restoreResult, test)
 	}
