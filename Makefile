@@ -22,7 +22,7 @@ build:
 		-a main.go
 
 test:
-	go test -v ./...
+	go test -count=1 -failfast -v ./...
 
 lintci:
 	docker run --rm \

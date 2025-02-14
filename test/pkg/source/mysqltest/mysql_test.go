@@ -28,7 +28,7 @@ const sqlPort = "3306/tcp"
 const backupPath = "/tmp/test.sqldump"
 const backupPathZip = "/tmp/test.sqldump.gz"
 const mySQLRootPW = "mysqlroot"
-const mySQLDatabase = "mysql"
+const mySQLDatabase = "testdatabase"
 const mySQLUser = "mysqluser"
 const mySQLRoot = "root"
 const mySQLPw = "mysql"
@@ -310,9 +310,9 @@ func mySQLDoRestore(
 	time.Sleep(10 * time.Second)
 
 	// restore server from mysqldump
-	doBackupErr := source.DoBackupForKind(ctx, dumpKind, false, useRestic, false, false)
-	if doBackupErr != nil {
-		return []TestStruct{}, errors.Wrap(doBackupErr, "failed to restore mysql backup container")
+	doRestoreErr := source.DoRestoreForKind(ctx, restoreKind, false, useRestic)
+	if doRestoreErr != nil {
+		return []TestStruct{}, errors.Wrap(doRestoreErr, "failed to restore mysql backup container")
 	}
 
 	// establish connection for retrieving restored data
