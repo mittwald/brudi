@@ -282,7 +282,7 @@ func mySQLDoRestore(
 	if err != nil {
 		return []TestStruct{}, err
 	}
-	
+
 	defer func() {
 		reader, _ := mySQLRestoreTarget.Container.Logs(context.Background())
 
@@ -479,7 +479,7 @@ var mySQLRequest = testcontainers.ContainerRequest{
 		"MYSQL_USER":          mySQLUser,
 		"MYSQL_PASSWORD":      mySQLPw,
 		"JDBC_PARAMS":         "useSSL=false",
-		"MYSQL_EXTRA:FLAGS":   "--default-authentication-plugin=mysql_native_password --skip-ssl",
+		"MYSQL_EXTRA_FLAGS":   "--default-authentication-plugin=mysql_native_password --skip-ssl",
 	},
 	WaitingFor: wait.ForLog(logString),
 }
