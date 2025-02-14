@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"testing"
@@ -281,7 +282,26 @@ func mySQLDoRestore(
 	if err != nil {
 		return []TestStruct{}, err
 	}
+	
 	defer func() {
+		reader, _ := mySQLRestoreTarget.Container.Logs(context.Background())
+
+		fmt.Printf("\n\n##### START SQL CONTAINER LOGS #####\n\n")
+
+		buf := make([]byte, 4096)
+		for {
+			n, readErr := reader.Read(buf)
+			if readErr != nil {
+				if readErr == io.EOF {
+					break
+				}
+				log.Fatalf("Error reading logs: %v", err)
+			}
+			fmt.Print(string(buf[:n]))
+		}
+
+		fmt.Printf("\n\n##### END SQL CONTAINER LOGS #####\n\n")
+
 		restoreErr := mySQLRestoreTarget.Container.Terminate(ctx)
 		if restoreErr != nil {
 			log.WithError(restoreErr).Error("failed to terminate mysql restore container")
