@@ -119,14 +119,16 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQL
 	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore test data with brudi and retrieve it from the db for verification
-	var restoreResult []TestStruct
-	restoreResult, err = mySQLDoRestore(
+	restoreResult, restoreErr := mySQLDoRestore(
 		ctx, false, commons.TestContainerSetup{
 			Port:    "",
 			Address: "",
 		}, backupPathZip,
 	)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	if restoreErr != nil {
+		log.Errorf("%+v", restoreErr)g
+	}
+	mySQLDumpAndRestoreTestSuite.Require().NoError(restoreErr)
 
 	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }
