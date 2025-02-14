@@ -280,7 +280,7 @@ func mySQLDoRestore(
 	// create a mysql container to restore data to
 	mySQLRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	if err != nil {
-		return []TestStruct{}, err
+		return []TestStruct{}, errors.Wrap(err, "failed to create mysql restore container")
 	}
 
 	defer func() {
@@ -316,18 +316,18 @@ func mySQLDoRestore(
 		resticContainer.Port,
 		path,
 	)
-	err = viper.ReadConfig(bytes.NewBuffer(MySQLRestoreConfig))
-	if err != nil {
-		return []TestStruct{}, err
+	viperErr := viper.ReadConfig(bytes.NewBuffer(MySQLRestoreConfig))
+	if viperErr != nil {
+		return []TestStruct{}, errors.Wrap(viperErr, "failed to read mysql restore configuration")
 	}
 
 	// sleep to give mysql time to get ready
-	time.Sleep(1 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// restore server from mysqldump
-	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false, false)
-	if err != nil {
-		return []TestStruct{}, err
+	doBackupErr := source.DoBackupForKind(ctx, dumpKind, false, useRestic, false, false)
+	if doBackupErr != nil {
+		return []TestStruct{}, errors.Wrap(doBackupErr, "failed to restore mysql backup container")
 	}
 
 	// establish connection for retrieving restored data
@@ -335,10 +335,9 @@ func mySQLDoRestore(
 		"%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
 		mySQLRoot, mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase,
 	)
-	var dbRestore *sql.DB
-	dbRestore, err = sql.Open(dbDriver, restoreConnectionString)
-	if err != nil {
-		return []TestStruct{}, err
+	dbRestore, dbRestoreConnection := sql.Open(dbDriver, restoreConnectionString)
+	if dbRestoreConnection != nil {
+		return []TestStruct{}, errors.Wrap(dbRestoreConnection, "failed to connect mysql restore container")
 	}
 	defer func() {
 		dbErr := dbRestore.Close()
