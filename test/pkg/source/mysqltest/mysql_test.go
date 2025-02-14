@@ -317,7 +317,7 @@ func mySQLDoRestore(
 
 	// establish connection for retrieving restored data
 	restoreConnectionString := fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
+		"%s:%s@tcp(%s:%s)/%s?tls=false",
 		mySQLRoot, mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase,
 	)
 	dbRestore, dbRestoreConnection := sql.Open(dbDriver, restoreConnectionString)
@@ -332,10 +332,9 @@ func mySQLDoRestore(
 	}()
 
 	// attempt to retrieve test data from database
-	var result *sql.Rows
-	result, err = dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
-	if err != nil {
-		return []TestStruct{}, err
+	result, queryErr := dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
+	if queryErr != nil {
+		return []TestStruct{}, errors.Wrap(queryErr, "failed to query mysql restore container")
 	}
 	if result.Err() != nil {
 		return []TestStruct{}, errors.Wrap(result.Err(), "failed to query mysql restore container")
