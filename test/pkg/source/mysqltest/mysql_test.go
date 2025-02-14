@@ -196,7 +196,6 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 }
 
 func TestMySQLDumpAndRestoreTestSuite(t *testing.T) {
-	log.SetLevel(log.DebugLevel)
 	suite.Run(t, new(MySQLDumpAndRestoreTestSuite))
 }
 
