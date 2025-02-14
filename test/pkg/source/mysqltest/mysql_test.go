@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/mittwald/brudi/pkg/source"
 	commons "github.com/mittwald/brudi/test/pkg/source/internal"
 
@@ -220,10 +222,9 @@ func mySQLDoBackup(
 		"%s:%s@tcp(%s:%s)/%s?tls=false",
 		mySQLRoot, mySQLRootPW, mySQLBackupTarget.Address, mySQLBackupTarget.Port, mySQLDatabase,
 	)
-	var db *sql.DB
-	db, err = sql.Open(dbDriver, backupConnectionString)
-	if err != nil {
-		return []TestStruct{}, err
+	db, openDbErr := sql.Open(dbDriver, backupConnectionString)
+	if openDbErr != nil {
+		return []TestStruct{}, errors.Wrap(err, "failed to connect mysql backup container")
 	}
 	defer func() {
 		dbErr := db.Close()
@@ -235,14 +236,14 @@ func mySQLDoBackup(
 	time.Sleep(5 * time.Second)
 
 	// create table for test data
-	_, err = db.Exec(
+	_, createTableErr := db.Exec(
 		fmt.Sprintf(
 			"CREATE TABLE %s(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));",
 			tableName,
 		),
 	)
-	if err != nil {
-		return []TestStruct{}, err
+	if createTableErr != nil {
+		return []TestStruct{}, errors.Wrap(createTableErr, "failed to create mysql backup table")
 	}
 
 	// insert test data
