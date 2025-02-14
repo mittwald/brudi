@@ -126,7 +126,7 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQL
 		}, backupPathZip,
 	)
 	if restoreErr != nil {
-		log.Errorf("%+v", restoreErr)g
+		log.Errorf("%+v", restoreErr)
 	}
 	mySQLDumpAndRestoreTestSuite.Require().NoError(restoreErr)
 
