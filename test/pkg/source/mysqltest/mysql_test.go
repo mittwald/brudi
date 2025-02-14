@@ -217,7 +217,7 @@ func mySQLDoBackup(
 
 	// establish connection
 	backupConnectionString := fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
+		"%s:%s@tcp(%s:%s)/%s?tls=false",
 		mySQLRoot, mySQLRootPW, mySQLBackupTarget.Address, mySQLBackupTarget.Port, mySQLDatabase,
 	)
 	var db *sql.DB
