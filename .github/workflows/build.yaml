@@ -5,30 +5,37 @@ on: [push]
 jobs:
 
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: "1.20"
+        go-version: "1.23"
 
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v2
       with:
         version: latest
-        args: release --clean --snapshot --skip-publish -f build/ci/.goreleaser.yml
+        args: release --clean --snapshot --skip publish -f build/ci/.goreleaser.yml
 
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: "1.20"
+        go-version: "1.23"
+
+    - name: install deps
+      run: |
+        sudo apt update
+        sudo apt install -y libseccomp2
+        sudo apt purge -y docker*
+        curl -sS -L get.docker.com | sudo bash
 
     - name: Install restic
       run: |
@@ -39,9 +46,33 @@ jobs:
         sudo chmod +x /usr/local/bin/restic
 
     - name: install redis-cli
-      run: sudo apt-get install redis-tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install redis-tools -y
+        redis-cli --version
+
+    - name: install mongodb
+      run: |
+        sudo apt-get install gnupg curl -y
+        curl -fsSL https://pgp.mongodb.com/server-7.0.asc | \
+          sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg \
+          --dearmor
+        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+        sudo apt-get update
+        sudo apt-get install mongodb-org-tools -y
+
+    - name: install postgresql
+      run: |
+        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+        sudo apt update
+        sudo apt install postgresql-client-17 -y
+
+    - name: install mariadb
+      run: sudo apt install mariadb-client -y
 
     - name: Test
-      run: go test -v ./...
+      run: go test -count=1 -failfast -v ./...
       env:
         RESTIC_PASSWORD: mongorepo
+        DEBUG: true

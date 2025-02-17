@@ -16,10 +16,10 @@ type Flags struct {
 	Dbname              string `flag:"--dbname="`
 	FieldSeparator      string `flag:"--field-separator="`
 	File                string `flag:"--file="`
-	Host                string `flag:"--host=" validate:"min=1"`
+	Host                string `flag:"--host="                 validate:"min=1"`
 	LogFile             string `flag:"--log-file="`
 	Output              string `flag:"--output="`
-	Password            string `flag:"-" env:"PGPASSWORD"`
+	Password            string `env:"PGPASSWORD"               flag:"-"`
 	Pset                string `flag:"--pset="`
 	RecordSeparator     string `flag:"--record-separator="`
 	Set                 string `flag:"--set="`

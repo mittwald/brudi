@@ -6,8 +6,11 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/mittwald/brudi/pkg/source"
 	commons "github.com/mittwald/brudi/test/pkg/source/internal"
@@ -25,7 +28,7 @@ const sqlPort = "3306/tcp"
 const backupPath = "/tmp/test.sqldump"
 const backupPathZip = "/tmp/test.sqldump.gz"
 const mySQLRootPW = "mysqlroot"
-const mySQLDatabase = "mysql"
+const mySQLDatabase = "testdatabase"
 const mySQLUser = "mysqluser"
 const mySQLRoot = "root"
 const mySQLPw = "mysql"
@@ -36,8 +39,8 @@ const tableName = "testTable"
 
 // mysql and psql are a bit picky when it comes to localhost, use ip instead
 const hostName = "127.0.0.1"
-const logString = "ready for connections"
-const mysqlImage = "docker.io/bitnami/mysql:latest"
+const logString = "** Starting MySQL **"
+const mysqlImage = "docker.io/bitnami/mysql:5.7"
 
 type MySQLDumpAndRestoreTestSuite struct {
 	suite.Suite
@@ -115,14 +118,16 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestBasicMySQL
 	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
 
 	// restore test data with brudi and retrieve it from the db for verification
-	var restoreResult []TestStruct
-	restoreResult, err = mySQLDoRestore(
+	restoreResult, restoreErr := mySQLDoRestore(
 		ctx, false, commons.TestContainerSetup{
 			Port:    "",
 			Address: "",
 		}, backupPathZip,
 	)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	if restoreErr != nil {
+		log.Errorf("%+v", restoreErr)
+	}
+	mySQLDumpAndRestoreTestSuite.Require().NoError(restoreErr)
 
 	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }
@@ -149,14 +154,12 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 	}()
 
 	// backup test data with brudi and retain test data for verification
-	var testData []TestStruct
-	testData, err = mySQLDoBackup(ctx, true, resticContainer, backupPath)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	testData, backupErr := mySQLDoBackup(ctx, true, resticContainer, backupPath)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(backupErr)
 
 	// restore database from backup and pull test data from it for verification
-	var restoreResult []TestStruct
-	restoreResult, err = mySQLDoRestore(ctx, true, resticContainer, backupPath)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	restoreResult, restoreErr := mySQLDoRestore(ctx, true, resticContainer, backupPath)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(restoreErr)
 
 	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }
@@ -183,16 +186,14 @@ func (mySQLDumpAndRestoreTestSuite *MySQLDumpAndRestoreTestSuite) TestMySQLDumpA
 	}()
 
 	// backup test data with brudi and retain test data for verification
-	var testData []TestStruct
-	testData, err = mySQLDoBackup(ctx, true, resticContainer, backupPathZip)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	testData, backupErr := mySQLDoBackup(ctx, true, resticContainer, backupPathZip)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(backupErr)
 
 	// restore database from backup and pull test data from it for verification
-	var restoreResult []TestStruct
-	restoreResult, err = mySQLDoRestore(ctx, true, resticContainer, backupPathZip)
-	mySQLDumpAndRestoreTestSuite.Require().NoError(err)
+	restoreResult, restoreErr := mySQLDoRestore(ctx, true, resticContainer, backupPathZip)
+	mySQLDumpAndRestoreTestSuite.Require().NoError(restoreErr)
 
-	assert.DeepEqual(mySQLDumpAndRestoreTestSuite.T(), testData, restoreResult)
+	mySQLDumpAndRestoreTestSuite.Require().True(reflect.DeepEqual(testData, restoreResult))
 }
 
 func TestMySQLDumpAndRestoreTestSuite(t *testing.T) {
@@ -216,15 +217,16 @@ func mySQLDoBackup(
 		}
 	}()
 
+	time.Sleep(time.Second * 10)
+
 	// establish connection
 	backupConnectionString := fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
+		"%s:%s@tcp(%s:%s)/%s?tls=false",
 		mySQLRoot, mySQLRootPW, mySQLBackupTarget.Address, mySQLBackupTarget.Port, mySQLDatabase,
 	)
-	var db *sql.DB
-	db, err = sql.Open(dbDriver, backupConnectionString)
-	if err != nil {
-		return []TestStruct{}, err
+	db, openDbErr := sql.Open(dbDriver, backupConnectionString)
+	if openDbErr != nil {
+		return []TestStruct{}, errors.Wrap(err, "failed to connect mysql backup container")
 	}
 	defer func() {
 		dbErr := db.Close()
@@ -232,13 +234,16 @@ func mySQLDoBackup(
 			log.WithError(dbErr).Error("failed to close connection to mysql backup database")
 		}
 	}()
-	// sleep to give mysql server time to get ready
-	time.Sleep(1 * time.Second)
 
 	// create table for test data
-	_, err = db.Exec(fmt.Sprintf("CREATE TABLE %s(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));", tableName))
-	if err != nil {
-		return []TestStruct{}, err
+	_, createTableErr := db.Exec(
+		fmt.Sprintf(
+			"CREATE TABLE %s(id INT NOT NULL AUTO_INCREMENT, name VARCHAR(100) NOT NULL, PRIMARY KEY ( id ));",
+			tableName,
+		),
+	)
+	if createTableErr != nil {
+		return []TestStruct{}, errors.Wrap(createTableErr, "failed to create mysql backup table")
 	}
 
 	// insert test data
@@ -248,7 +253,13 @@ func mySQLDoBackup(
 	}
 
 	// create brudi config for mysqldump
-	MySQLBackupConfig := createMySQLConfig(mySQLBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, path)
+	MySQLBackupConfig := createMySQLConfig(
+		mySQLBackupTarget,
+		useRestic,
+		resticContainer.Address,
+		resticContainer.Port,
+		path,
+	)
 	err = viper.ReadConfig(bytes.NewBuffer(MySQLBackupConfig))
 	if err != nil {
 		return []TestStruct{}, err
@@ -270,9 +281,12 @@ func mySQLDoRestore(
 	// create a mysql container to restore data to
 	mySQLRestoreTarget, err := commons.NewTestContainerSetup(ctx, &mySQLRequest, sqlPort)
 	if err != nil {
-		return []TestStruct{}, err
+		return []TestStruct{}, errors.Wrap(err, "failed to create mysql restore container")
 	}
+
 	defer func() {
+		mySQLRestoreTarget.PrintLogs()
+
 		restoreErr := mySQLRestoreTarget.Container.Terminate(ctx)
 		if restoreErr != nil {
 			log.WithError(restoreErr).Error("failed to terminate mysql restore container")
@@ -280,30 +294,35 @@ func mySQLDoRestore(
 	}()
 
 	// create a brudi config for mysql restore
-	MySQLRestoreConfig := createMySQLConfig(mySQLRestoreTarget, useRestic, resticContainer.Address, resticContainer.Port, path)
-	err = viper.ReadConfig(bytes.NewBuffer(MySQLRestoreConfig))
-	if err != nil {
-		return []TestStruct{}, err
+	MySQLRestoreConfig := createMySQLConfig(
+		mySQLRestoreTarget,
+		useRestic,
+		resticContainer.Address,
+		resticContainer.Port,
+		path,
+	)
+	viperErr := viper.ReadConfig(bytes.NewBuffer(MySQLRestoreConfig))
+	if viperErr != nil {
+		return []TestStruct{}, errors.Wrap(viperErr, "failed to read mysql restore configuration")
 	}
 
 	// sleep to give mysql time to get ready
-	time.Sleep(1 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	// restore server from mysqldump
-	err = source.DoBackupForKind(ctx, dumpKind, false, useRestic, false, false)
-	if err != nil {
-		return []TestStruct{}, err
+	doRestoreErr := source.DoRestoreForKind(ctx, restoreKind, false, useRestic)
+	if doRestoreErr != nil {
+		return []TestStruct{}, errors.Wrap(doRestoreErr, "failed to restore mysql backup container")
 	}
 
 	// establish connection for retrieving restored data
 	restoreConnectionString := fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?tls=skip-verify",
+		"%s:%s@tcp(%s:%s)/%s?tls=false",
 		mySQLRoot, mySQLRootPW, mySQLRestoreTarget.Address, mySQLRestoreTarget.Port, mySQLDatabase,
 	)
-	var dbRestore *sql.DB
-	dbRestore, err = sql.Open(dbDriver, restoreConnectionString)
-	if err != nil {
-		return []TestStruct{}, err
+	dbRestore, dbRestoreConnection := sql.Open(dbDriver, restoreConnectionString)
+	if dbRestoreConnection != nil {
+		return []TestStruct{}, errors.Wrap(dbRestoreConnection, "failed to connect mysql restore container")
 	}
 	defer func() {
 		dbErr := dbRestore.Close()
@@ -313,13 +332,12 @@ func mySQLDoRestore(
 	}()
 
 	// attempt to retrieve test data from database
-	var result *sql.Rows
-	result, err = dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
-	if err != nil {
-		return []TestStruct{}, err
+	result, queryErr := dbRestore.Query(fmt.Sprintf("SELECT * FROM %s", tableName))
+	if queryErr != nil {
+		return []TestStruct{}, errors.Wrap(queryErr, "failed to query mysql restore container")
 	}
 	if result.Err() != nil {
-		return []TestStruct{}, result.Err()
+		return []TestStruct{}, errors.Wrap(result.Err(), "failed to query mysql restore container")
 	}
 	defer func() {
 		resultErr := result.Close()
@@ -332,9 +350,9 @@ func mySQLDoRestore(
 	var restoreResult []TestStruct
 	for result.Next() {
 		var test TestStruct
-		err := result.Scan(&test.ID, &test.Name)
-		if err != nil {
-			return []TestStruct{}, err
+		scanErr := result.Scan(&test.ID, &test.Name)
+		if scanErr != nil {
+			return []TestStruct{}, errors.Wrap(scanErr, "failed to scan mysql restore result")
 		}
 		restoreResult = append(restoreResult, test)
 	}
@@ -352,6 +370,7 @@ restic:
   global:
     flags:
       repo: rest:http://%s:%s/
+      skipSsl: "foo"
   forget:
     flags:
       keepLast: 1
@@ -381,7 +400,7 @@ mysqldump:
       force: true
       allDatabases: true
       resultFile: %s
-    additionalArgs: []
+      skipSsl: true
 mysqlrestore:
   options:
     flags:
@@ -390,7 +409,7 @@ mysqlrestore:
       password: %s
       user: %s
       Database: %s
-    additionalArgs: []
+      skipSsl: true
     sourceFile: %s%s
 `, hostName, container.Port, mySQLRootPW, mySQLRoot, path,
 		hostName, container.Port, mySQLRootPW, mySQLRoot, mySQLDatabase, path,
@@ -408,18 +427,27 @@ func prepareTestData(database *sql.DB) ([]TestStruct, error) {
 	}
 	testData := []TestStruct{testStruct1}
 	var insert *sql.Rows
+	defer func() {
+		err = insert.Close()
+		if err != nil {
+			log.WithError(err).Error("failed to close insert")
+		}
+	}()
 	for idx := range testData {
-		insert, err = database.Query(fmt.Sprintf("INSERT INTO %s VALUES ( %d, '%s' )", tableName, testData[idx].ID, testData[idx].Name))
+		insert, err = database.Query(
+			fmt.Sprintf(
+				"INSERT INTO %s VALUES ( %d, '%s' )",
+				tableName,
+				testData[idx].ID,
+				testData[idx].Name,
+			),
+		)
 		if err != nil {
 			return []TestStruct{}, err
 		}
 		if insert.Err() != nil {
 			return []TestStruct{}, insert.Err()
 		}
-	}
-	err = insert.Close()
-	if err != nil {
-		return []TestStruct{}, err
 	}
 	return testData, nil
 }
@@ -433,7 +461,8 @@ var mySQLRequest = testcontainers.ContainerRequest{
 		"MYSQL_DATABASE":      mySQLDatabase,
 		"MYSQL_USER":          mySQLUser,
 		"MYSQL_PASSWORD":      mySQLPw,
-		"MYSQL_EXTRA:FLAGS":   "--default-authentication-plugin=mysql_native_password",
+		"JDBC_PARAMS":         "useSSL=false",
+		"MYSQL_EXTRA_FLAGS":   "--default-authentication-plugin=mysql_native_password --skip-ssl",
 	},
 	WaitingFor: wait.ForLog(logString),
 }

@@ -24,7 +24,7 @@ type Flags struct {
 	Delimiter              string `flag:"--delimiter="`
 	DNSSrvName             string `flag:"--dns-srv-name"`
 	Execute                string `flag:"--execute="`
-	Host                   string `flag:"--host=" validate:"min=1"`
+	Host                   string `flag:"--host="                    validate:"min=1"`
 	InitCommand            string `flag:"--init-command="`
 	LoadDataLocalDir       string `flag:"--load-data-local-dir="`
 	LoginPath              string `flag:"--login-path="`
@@ -38,6 +38,7 @@ type Flags struct {
 	ServerPublicKeyPath    string `flag:"--server-public-key-path="`
 	SharedMemoryBaseName   string `flag:"--shared-memory-base-name="`
 	Socket                 string `flag:"--socket="`
+	SkipSsl                bool   `flag:"--skip-ssl"`
 	SslCa                  string `flag:"--ssl-ca="`
 	SslCaPath              string `flag:"--ssl-capath="`
 	SslCert                string `flag:"--ssl-cert="`

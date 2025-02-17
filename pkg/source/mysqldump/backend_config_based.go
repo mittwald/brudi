@@ -6,9 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/mittwald/brudi/pkg/cli"
+	"github.com/pkg/errors"
 )
 
 type ConfigBasedBackend struct {

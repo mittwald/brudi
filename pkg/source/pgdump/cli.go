@@ -27,7 +27,7 @@ type Flags struct {
 	Username         string `flag:"--username="`
 	// unfortunately pg_dump has no cli-option to specify the password
 	// therefore we have to workaround by setting the corresponding password env-var
-	Password                   string `flag:"-" env:"PGPASSWORD"`
+	Password                   string `env:"PGPASSWORD"                       flag:"-"`
 	Role                       string `flag:"--role="`
 	Jobs                       int    `flag:"--jobs="`
 	Compress                   int    `flag:"--compress="`

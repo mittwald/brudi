@@ -1,11 +1,12 @@
 mysqldump:
   options:
     flags:
-      host: 127.0.0.1
+      host: host.docker.internal
       port: 3306
       password: mysqlroot
       user: root
       opt: true
       allDatabases: true
       resultFile: /tmp/test.sqldump
+      skipSsl: true
     additionalArgs: []

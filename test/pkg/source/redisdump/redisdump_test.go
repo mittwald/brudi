@@ -244,7 +244,13 @@ func redisDoBackup(
 	}
 
 	// create a brudi config for redisdump
-	redisBackupConfig := createRedisConfig(redisBackupTarget, useRestic, resticContainer.Address, resticContainer.Port, path)
+	redisBackupConfig := createRedisConfig(
+		redisBackupTarget,
+		useRestic,
+		resticContainer.Address,
+		resticContainer.Port,
+		path,
+	)
 	err = viper.ReadConfig(bytes.NewBuffer(redisBackupConfig))
 	if err != nil {
 		return testStruct{}, errors.WithStack(err)
@@ -368,10 +374,9 @@ redisdump:
     flags:
       host: %s
       port: %s
-      password: %s
       rdb: %s
     additionalArgs: []
-`, container.Address, container.Port, redisPW, path,
+`, container.Address, container.Port, path,
 		))
 	}
 	return []byte(fmt.Sprintf(
@@ -381,7 +386,6 @@ redisdump:
     flags:
       host: %s
       port: %s
-      password: %s
       rdb: %s
     additionalArgs: []
 restic:
@@ -401,7 +405,7 @@ restic:
     flags:
       target: "/"
     id: "latest"
-`, container.Address, container.Port, redisPW, path, resticIP, resticPort,
+`, container.Address, container.Port, path, resticIP, resticPort,
 	))
 }
 

@@ -1,7 +1,8 @@
 package mysqldump
 
 const (
-	binary = "mysqldump"
+	binary = "mariadb-dump"
+	// binary = "mysqldump"
 )
 
 type Options struct {
@@ -23,7 +24,7 @@ type Flags struct {
 	FieldsEscapedBy            string   `flag:"--fields-escaped-by="`
 	FieldsOptionallyEnclosedBy string   `flag:"--fields-optionally-enclosed-by="`
 	FieldsTerminatedBy         string   `flag:"--fields-terminated-by="`
-	Host                       string   `flag:"--host=" validate:"min=1"`
+	Host                       string   `flag:"--host="                              validate:"min=1"`
 	IgnoreError                string   `flag:"--ignore-error="`
 	IgnoreTable                string   `flag:"--ignore-table="`
 	LinesTerminatedBy          string   `flag:"--lines-terminated-by="`
@@ -35,11 +36,12 @@ type Flags struct {
 	Password                   string   `flag:"--password="`
 	PluginDir                  string   `flag:"--plugin-dir="`
 	Protocol                   string   `flag:"--protocol="`
-	ResultFile                 string   `flag:"--result-file=" validate:"min=1"`
+	ResultFile                 string   `flag:"--result-file="                       validate:"min=1"`
 	ServerPublicKeyPath        string   `flag:"--server-public-key-path="`
 	SharedMemoryBaseName       string   `flag:"--shared-memory-base-name="`
 	ShowCreateSkipSecondary    string   `flag:"--show-create-skip-secondary-engine="`
 	Socket                     string   `flag:"--socket="`
+	SkipSsl                    bool     `flag:"--skip-ssl"`
 	SslCa                      string   `flag:"--ssl-ca="`
 	SslCaPath                  string   `flag:"--ssl-capath="`
 	SslCert                    string   `flag:"--ssl-cert="`

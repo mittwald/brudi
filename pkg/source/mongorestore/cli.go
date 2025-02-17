@@ -11,7 +11,7 @@ type Options struct {
 
 type Flags struct {
 	URI                              string `flag:"--uri="`
-	Host                             string `flag:"--host=" validate:"min=1"`
+	Host                             string `flag:"--host="                             validate:"min=1"`
 	SslCAFile                        string `flag:"--sslCAFile="`
 	SslPEMKeyFile                    string `flag:"--sslPEMKeyFile="`
 	SslPEMKeyPassword                string `flag:"--sslPEMKeyPassword="`
@@ -40,7 +40,7 @@ type Flags struct {
 	NumInsertionWorkersPerCollection int    `flag:"--numInsertionWorkersPerCollection="`
 	NumParallelCollections           int    `flag:"--numParallelCollections="`
 	Ssl                              bool   `flag:"--ssl"`
-	SslFIPSMode                      bool   `flag:"	--sslFIPSMode"`
+	SslFIPSMode                      bool   `flag:"\t--sslFIPSMode"`
 	TlSInsecure                      bool   `flag:"--tlsInsecure"`
 	ForceTableScan                   bool   `flag:"--forceTableScan"`
 	Objcheck                         bool   `flag:"--objcheck"`

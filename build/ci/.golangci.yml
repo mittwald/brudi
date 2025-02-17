@@ -8,6 +8,10 @@ run:
 linters:
   disable:
     - forcetypeassert
+    - perfsprint
+    - intrange
+    - musttag
+    - mnd
 
 linters-settings:
   cyclop:
