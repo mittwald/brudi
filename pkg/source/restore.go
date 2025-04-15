@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/source/directoryrestore"
 
 	log "github.com/sirupsen/logrus"
 
@@ -26,6 +27,8 @@ func getGenericRestoreBackendForKind(kind string) (GenericRestore, error) {
 		return tarrestore.NewConfigBasedBackend()
 	case psql.Kind:
 		return psql.NewConfigBasedBackend()
+	case directoryrestore.Kind:
+		return directoryrestore.NewConfigBasedBackend()
 	default:
 		return nil, fmt.Errorf("unsupported kind '%s'", kind)
 	}

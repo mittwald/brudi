@@ -54,11 +54,11 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 func (c *Client) DoResticBackup(ctx context.Context) error {
 	c.Logger.Info("running 'restic backup'")
 
-	_, err := initBackup(ctx, c.Config.Global)
+	initOut, err := initBackup(ctx, c.Config.Global)
 	if errors.Is(err, ErrRepoAlreadyInitialized) {
 		c.Logger.Info("restic repo is already initialized")
 	} else if err != nil {
-		return errors.WithStack(fmt.Errorf("error while initializing restic repository: %s", err.Error()))
+		return errors.WithStack(fmt.Errorf("error while initializing restic repository: %s: %s", err.Error(), initOut))
 	} else {
 		c.Logger.Info("restic repo initialized successfully")
 	}

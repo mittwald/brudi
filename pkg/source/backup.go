@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/mittwald/brudi/pkg/source/directory"
 
 	"github.com/mittwald/brudi/pkg/restic"
 
@@ -29,6 +30,8 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 		return redisdump.NewConfigBasedBackend()
 	case tar.Kind:
 		return tar.NewConfigBasedBackend()
+	case directory.Kind:
+		return directory.NewConfigBasedBackend()
 	default:
 		return nil, fmt.Errorf("unsupported kind '%s'", kind)
 	}
