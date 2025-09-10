@@ -266,7 +266,7 @@ restic:
     backup:
       flags:
         # in case there is no hostname given, the hostname from source backup is used
-        hostname: "MyHost"
+        host: "MyHost"
       # these paths are backuped additionally to your given source backup
       paths: []
   forget:
