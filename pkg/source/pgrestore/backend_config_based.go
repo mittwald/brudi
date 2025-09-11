@@ -33,10 +33,24 @@ func NewConfigBasedBackend() (*ConfigBasedBackend, error) {
 }
 
 func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
-	fileName, err := cli.CheckAndGunzipFile(b.cfg.Options.SourceFile)
-	if err != nil {
-		return err
+	// Check if SourceFile is a directory (i.e., a pg_dump directory format)
+	src := b.cfg.Options.SourceFile
+	info, statErr := os.Stat(src)
+	if statErr != nil {
+		return statErr
 	}
+
+	fileName := src
+
+	if !info.IsDir() {
+		unzippedFileName, err := cli.CheckAndGunzipFile(src)
+		if err != nil {
+			return err
+		}
+
+		fileName = unzippedFileName
+	}
+
 	args := append(cli.StructToCLI(b.cfg.Options.Flags), b.cfg.Options.AdditionalArgs...)
 	args = append(args, fileName)
 	cmd := cli.CommandType{
@@ -44,6 +58,7 @@ func (b *ConfigBasedBackend) RestoreBackup(ctx context.Context) error {
 		Args:   args,
 	}
 	var out []byte
+	var err error
 	out, err = cli.Run(ctx, cmd)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("%+v - %s", err, out))
