@@ -26,6 +26,7 @@ import (
 const pgPort = "5432/tcp"
 const backupPath = "/tmp/postgres.dump.tar"
 const backupPathPlain = "/tmp/postgres.dump"
+const backupPathDir = "/tmp/postgres-dir"
 const backupPathZip = "/tmp/postgres.dump.tar.gz"
 const backupPathPlainZip = "/tmp/postgres.dump.gz"
 const postgresPW = "postgresroot"
@@ -120,6 +121,71 @@ func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRe
 	pgDumpAndRestoreTestSuite.Require().NoError(err)
 
 	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testDataPlain, restoreResultPlain)
+}
+
+// TestBasicPGDumpAndRestoreDirectory führt einen Integrationstest mit Directory-Format (-F d) durch, ohne Restic
+func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestBasicPGDumpAndRestoreDirectory() {
+	ctx := context.Background()
+
+	// Verzeichnis nach dem Test aufräumen
+	defer func() {
+		removeErr := os.RemoveAll(backupPathDir)
+		if removeErr != nil {
+			log.WithError(removeErr).Error("failed to remove pgdump directory backup")
+		}
+	}()
+
+	log.Info("Testing postgres restoration with directory dump via pg_restore")
+	// Backup mit Directory-Format erstellen
+	testData, err := pgDoBackup(
+		ctx, false, commons.TestContainerSetup{
+			Port:    "",
+			Address: "",
+		},
+		"d", backupPathDir,
+	)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+
+	// In neuen Container restoren und Daten verifizieren
+	restoreResult, err := pgDoRestore(
+		ctx, false, commons.TestContainerSetup{
+			Port:    "",
+			Address: "",
+		},
+		"d", backupPathDir,
+	)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+
+	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testData, restoreResult)
+}
+
+// TestPGDumpAndRestoreDirectoryRestic testet Directory-Format (-F d) mit Restic
+func (pgDumpAndRestoreTestSuite *PGDumpAndRestoreTestSuite) TestPGDumpAndRestoreDirectoryRestic() {
+	ctx := context.Background()
+
+	defer func() {
+		removeErr := os.RemoveAll(backupPathDir)
+		if removeErr != nil {
+			log.WithError(removeErr).Error("failed to remove pgdump directory backup (restic)")
+		}
+	}()
+
+	resticContainer, err := commons.NewTestContainerSetup(ctx, &commons.ResticReq, commons.ResticPort)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+	defer func() {
+		resticErr := resticContainer.Container.Terminate(ctx)
+		if resticErr != nil {
+			log.WithError(resticErr).Error("failed to terminate directory restic container")
+		}
+	}()
+
+	testData, err := pgDoBackup(ctx, true, resticContainer, "d", backupPathDir)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+
+	restoreResult, err := pgDoRestore(ctx, true, resticContainer, "d", backupPathDir)
+	pgDumpAndRestoreTestSuite.Require().NoError(err)
+
+	assert.DeepEqual(pgDumpAndRestoreTestSuite.T(), testData, restoreResult)
 }
 
 // TestBasicPGDumpZip performs an integration test for brudi pgdump, with gzip and without use of restic
