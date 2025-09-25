@@ -12,6 +12,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/mittwald/brudi/pkg/source/fsbackup"
 	"github.com/mittwald/brudi/pkg/source/mongodump"
 	"github.com/mittwald/brudi/pkg/source/mysqldump"
 	"github.com/mittwald/brudi/pkg/source/redisdump"
@@ -29,6 +30,8 @@ func getGenericBackendForKind(kind string) (Generic, error) {
 		return redisdump.NewConfigBasedBackend()
 	case tar.Kind:
 		return tar.NewConfigBasedBackend()
+	case fsbackup.Kind:
+		return fsbackup.NewConfigBasedBackend()
 	default:
 		return nil, fmt.Errorf("unsupported kind '%s'", kind)
 	}

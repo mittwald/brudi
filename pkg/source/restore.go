@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/mittwald/brudi/pkg/restic"
+	"github.com/mittwald/brudi/pkg/source/fsrestore"
 	"github.com/mittwald/brudi/pkg/source/mongorestore"
 	"github.com/mittwald/brudi/pkg/source/mysqlrestore"
 	"github.com/mittwald/brudi/pkg/source/pgrestore"
@@ -26,6 +27,8 @@ func getGenericRestoreBackendForKind(kind string) (GenericRestore, error) {
 		return tarrestore.NewConfigBasedBackend()
 	case psql.Kind:
 		return psql.NewConfigBasedBackend()
+	case fsrestore.Kind:
+		return fsrestore.NewConfigBasedBackend()
 	default:
 		return nil, fmt.Errorf("unsupported kind '%s'", kind)
 	}
