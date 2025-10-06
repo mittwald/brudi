@@ -29,7 +29,7 @@ const dumpKind = "mongodump"
 const restoreKind = "mongorestore"
 const dbName = "test"
 const collName = "testColl"
-const mongoImage = "docker.io/bitnami/mongodb:latest"
+const mongoImage = "docker.io/mongo:latest"
 const logString = "Waiting for connections"
 
 type MongoDumpAndRestoreTestSuite struct {
@@ -243,8 +243,8 @@ var mongoRequest = testcontainers.ContainerRequest{
 	Image:        mongoImage,
 	ExposedPorts: []string{mongoPort},
 	Env: map[string]string{
-		"MONGODB_ROOT_USERNAME": mongoUser,
-		"MONGODB_ROOT_PASSWORD": mongoPW,
+		"MONGO_INITDB_ROOT_USERNAME": mongoUser,
+		"MONGO_INITDB_ROOT_PASSWORD": mongoPW,
 	},
 	WaitingFor: wait.ForLog(logString),
 }

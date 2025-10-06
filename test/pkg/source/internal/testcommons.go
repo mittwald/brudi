@@ -6,7 +6,10 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -17,6 +20,40 @@ import (
 
 const ResticPort = "8000/tcp"
 const ResticPassword = "resticRepo"
+
+var (
+	projectRootOnce sync.Once
+	projectRoot     string
+	projectRootErr  error
+)
+
+// ProjectRoot returns the repository root as determined by the location of go.mod relative to this file.
+func ProjectRoot() string {
+	projectRootOnce.Do(func() {
+		_, thisFile, _, ok := runtime.Caller(0)
+		if !ok {
+			projectRootErr = errors.New("unable to determine caller for project root lookup")
+			return
+		}
+		dir := filepath.Dir(thisFile)
+		for {
+			if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+				projectRoot = dir
+				return
+			}
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				projectRootErr = errors.New("go.mod not found while searching for project root")
+				return
+			}
+			dir = parent
+		}
+	})
+	if projectRootErr != nil {
+		panic(projectRootErr)
+	}
+	return projectRoot
+}
 
 // TestContainerSetup is a wrapper for testcontainers that gives easy access to container-address and container-port
 type TestContainerSetup struct {
