@@ -38,7 +38,7 @@ const dumpKind = "pgdump"
 // mysql and psql are a bit picky when it comes to localhost, use ip instead
 const hostName = "127.0.0.1"
 const dbDriver = "pgx"
-const pgImage = "docker.io/postgresql:17"
+const pgImage = "docker.io/postgres:17"
 const plainKind = "plain"
 
 type PGDumpAndRestoreTestSuite struct {
