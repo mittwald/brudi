@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/mittwald/brudi/pkg/source"
@@ -30,6 +29,7 @@ const dumpKind = "mongodump"
 const restoreKind = "mongorestore"
 const dbName = "test"
 const collName = "testColl"
+const mongoImage = "docker.io/mongo:latest"
 const logString = "Waiting for connections"
 
 type MongoDumpAndRestoreTestSuite struct {
@@ -240,11 +240,7 @@ func mongoDoRestore(
 
 // mongorequest is a testcontainers.ContainerRequest for a basic mongodb testcontainer
 var mongoRequest = testcontainers.ContainerRequest{
-	FromDockerfile: testcontainers.FromDockerfile{
-		Context:       filepath.Join(commons.ProjectRoot(), "/test/deploy/mongodb"),
-		Dockerfile:    "./Dockerfile",
-		PrintBuildLog: true,
-	},
+	Image:        mongoImage,
 	ExposedPorts: []string{mongoPort},
 	Env: map[string]string{
 		"MONGO_INITDB_ROOT_USERNAME": mongoUser,
