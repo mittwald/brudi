@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/mittwald/brudi/pkg/source"
@@ -29,7 +30,6 @@ const dumpKind = "mongodump"
 const restoreKind = "mongorestore"
 const dbName = "test"
 const collName = "testColl"
-const mongoImage = "docker.io/bitnami/mongodb:latest"
 const logString = "Waiting for connections"
 
 type MongoDumpAndRestoreTestSuite struct {
@@ -240,11 +240,15 @@ func mongoDoRestore(
 
 // mongorequest is a testcontainers.ContainerRequest for a basic mongodb testcontainer
 var mongoRequest = testcontainers.ContainerRequest{
-	Image:        mongoImage,
+	FromDockerfile: testcontainers.FromDockerfile{
+		Context:       filepath.Join(commons.ProjectRoot(), "/test/deploy/mongodb"),
+		Dockerfile:    "./Dockerfile",
+		PrintBuildLog: true,
+	},
 	ExposedPorts: []string{mongoPort},
 	Env: map[string]string{
-		"MONGODB_ROOT_USERNAME": mongoUser,
-		"MONGODB_ROOT_PASSWORD": mongoPW,
+		"MONGO_INITDB_ROOT_USERNAME": mongoUser,
+		"MONGO_INITDB_ROOT_PASSWORD": mongoPW,
 	},
 	WaitingFor: wait.ForLog(logString),
 }
