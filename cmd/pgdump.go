@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mittwald/brudi/pkg/source/pgdump"
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 
@@ -21,7 +22,7 @@ var (
 
 			err := source.DoBackupForKind(ctx, pgdump.Kind, cleanup, useRestic, useResticForget, useResticPrune)
 			if err != nil {
-				panic(err)
+				logrus.Panic(err)
 			}
 		},
 	}

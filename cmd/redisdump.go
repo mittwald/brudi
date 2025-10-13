@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mittwald/brudi/pkg/source/redisdump"
+	"github.com/sirupsen/logrus"
 
 	"github.com/mittwald/brudi/pkg/source"
 
@@ -21,7 +22,7 @@ var (
 
 			err := source.DoBackupForKind(ctx, redisdump.Kind, cleanup, useRestic, useResticForget, useResticPrune)
 			if err != nil {
-				panic(err)
+				logrus.Panic(err)
 			}
 		},
 	}

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/mittwald/brudi/pkg/source"
@@ -20,7 +21,7 @@ var (
 
 			err := source.DoRestoreForKind(ctx, mysqlrestore.Kind, cleanup, useRestic)
 			if err != nil {
-				panic(err)
+				logrus.Panic(err)
 			}
 		},
 	}

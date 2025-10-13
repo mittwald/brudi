@@ -5,6 +5,7 @@ import (
 
 	"github.com/mittwald/brudi/pkg/source"
 	"github.com/mittwald/brudi/pkg/source/fsbackup"
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 )
@@ -19,7 +20,7 @@ var (
 			defer cancel()
 
 			if err := source.DoBackupForKind(ctx, fsbackup.Kind, cleanup, useRestic, useResticForget, useResticPrune); err != nil {
-				panic(err)
+				logrus.Panic(err)
 			}
 		},
 	}

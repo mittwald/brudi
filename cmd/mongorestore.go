@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mittwald/brudi/pkg/source"
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 
@@ -21,7 +22,7 @@ var (
 
 			err := source.DoRestoreForKind(ctx, mongorestore.Kind, cleanup, useRestic)
 			if err != nil {
-				panic(err)
+				logrus.Panic(err)
 			}
 		},
 	}
