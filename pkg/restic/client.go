@@ -13,7 +13,7 @@ type Client struct {
 	Config *Config
 }
 
-func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) (*Client, error) {
+func NewResticClient(logger *log.Entry, kind, sourceHostname string, backupPaths ...string) (*Client, error) {
 	conf := &Config{
 		Global: &GlobalOptions{
 			Flags: &GlobalFlags{},
@@ -37,9 +37,7 @@ func NewResticClient(logger *log.Entry, hostname string, backupPaths ...string) 
 		return nil, errors.WithStack(err)
 	}
 
-	if (conf.Backup.Flags.Host) == "" {
-		conf.Backup.Flags.Host = hostname
-	}
+	conf.applyHostDefaults(kind, sourceHostname)
 
 	conf.Backup.Paths = append(conf.Backup.Paths, backupPaths...)
 	resticLogger := logger.WithField("cmd", "restic")

@@ -77,7 +77,7 @@ func DoBackupForKind(ctx context.Context, kind string, cleanup, useRestic, useRe
 	}
 
 	var resticClient *restic.Client
-	resticClient, err = restic.NewResticClient(logKind, backend.GetHostname(), backend.GetBackupPath())
+	resticClient, err = restic.NewResticClient(logKind, kind, backend.GetHostname(), backend.GetBackupPath())
 	if err != nil {
 		return err
 	}
