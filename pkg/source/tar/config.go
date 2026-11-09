@@ -1,8 +1,6 @@
 package tar
 
 import (
-	"os"
-
 	"github.com/pkg/errors"
 
 	"github.com/mittwald/brudi/pkg/config"
@@ -14,20 +12,12 @@ const (
 
 type Config struct {
 	Options  *Options
-	HostName string `validate:"min=1"`
+	HostName string
 }
 
 func (c *Config) InitFromViper() error {
-	err := config.InitializeStructFromViper(Kind, c)
-	if err != nil {
+	if err := config.InitializeStructFromViper(Kind, c); err != nil {
 		return errors.WithStack(err)
-	}
-
-	if c.HostName == "" {
-		c.HostName, err = os.Hostname()
-		if err != nil {
-			return errors.WithStack(err)
-		}
 	}
 
 	return config.Validate(c)
