@@ -291,9 +291,14 @@ func redisDoRestore(
 
 	// pull data from restic repository if needed
 	if useRestic {
-		err = commons.DoResticRestore(ctx, resticContainer, backupPath)
-		if err != nil {
-			return testStruct{}, errors.WithStack(err)
+		restoreDir, mkdirErr := os.MkdirTemp("", "redis-restic-restore")
+		if mkdirErr != nil {
+			return testStruct{}, errors.WithStack(mkdirErr)
+		}
+		defer os.RemoveAll(restoreDir)
+
+		if restoreErr := commons.DoResticRestore(ctx, resticContainer, restoreDir); restoreErr != nil {
+			return testStruct{}, errors.WithStack(restoreErr)
 		}
 	}
 

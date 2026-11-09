@@ -158,17 +158,6 @@ type ForgetTag struct {
 type ForgetReason struct {
 	Snapshot Snapshot `json:"snapshot"`
 	Matches  []string `json:"matches"`
-	Counters Counters `Json:"counters"`
-}
-
-// Counters for "restic forget" json-logging
-type Counters struct {
-	Last    int `json:"last"`
-	Hourly  int `json:"hourly"`
-	Daily   int `json:"daily"`
-	Weekly  int `json:"weekly"`
-	Monthly int `json:"monthly"`
-	Yearly  int `json:"yearly"`
 }
 
 // ForgetSnapshot for "restic forget" json-logging
