@@ -8,7 +8,7 @@ ENV         BRUDI_USER="brudi" \
 
 COPY        brudi /usr/local/bin/brudi
 
-COPY        --from=restic/restic:0.11.0 /usr/bin/restic /usr/local/bin/restic
+COPY        --from=restic/restic:0.19.1 /usr/bin/restic /usr/local/bin/restic
 COPY        --from=redis:alpine /usr/local/bin/redis-cli /usr/local/bin/redis-cli
 
 RUN         apk add --no-cache --upgrade \

@@ -39,9 +39,9 @@ jobs:
 
     - name: Install restic
       run: |
-        wget https://github.com/restic/restic/releases/download/v0.11.0/restic_0.11.0_linux_amd64.bz2
-        bzip2 -d restic_0.11.0_linux_amd64.bz2
-        sudo mv restic_0.11.0_linux_amd64 /usr/local/bin/restic
+        wget https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_linux_amd64.bz2
+        bzip2 -d restic_0.19.1_linux_amd64.bz2
+        sudo mv restic_0.19.1_linux_amd64 /usr/local/bin/restic
         sudo chown root:root /usr/local/bin/restic
         sudo chmod +x /usr/local/bin/restic
 
