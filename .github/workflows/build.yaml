@@ -10,17 +10,17 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4.4.0
       with:
         persist-credentials: false
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v5.6.0
       with:
         go-version: "1.23"
 
     - name: Run GoReleaser
-      uses: goreleaser/goreleaser-action@v2
+      uses: goreleaser/goreleaser-action@v2.9.1
       with:
         version: latest
         args: release --clean --snapshot --skip publish -f build/ci/.goreleaser.yml
@@ -28,12 +28,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4.4.0
       with:
         persist-credentials: false
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v5.6.0
       with:
         go-version: "1.23"
 

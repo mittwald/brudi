@@ -15,19 +15,19 @@ jobs:
     name: Build and release image
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.4.0
         with:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.6.0
         with:
           go-version: "1.23"
 
       - run: docker login -u "${{ secrets.QUAY_IO_USER }}" -p "${{ secrets.QUAY_IO_TOKEN }}" quay.io
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v7
+        uses: goreleaser/goreleaser-action@v7.3.0
         with:
           version: "~> v2"
           args: release --clean --config build/ci/.goreleaser.yml
