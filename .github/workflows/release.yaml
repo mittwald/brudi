@@ -5,6 +5,11 @@ on:
     tags:
       - '*'
 
+# GoReleaser publishes with RELEASE_USER_TOKEN and Docker logs in with the
+# Quay.io secrets, the job token only checks out the code.
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build and release image
